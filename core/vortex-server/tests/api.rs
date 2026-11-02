@@ -25,6 +25,8 @@ async fn fake_model() -> String {
             let schema = b["response_format"]["json_schema"]["schema"]["properties"].clone();
             let content = if schema.get("steps").is_some() {
                 json!({"steps": ["feiten verzamelen", "vergelijken"]}).to_string()
+            } else if schema.get("confidence").is_some() {
+                json!({"verdict": "accept", "confidence": 0.85, "reasons": ["onderbouwd"]}).to_string()
             } else if schema.get("verdict").is_some() {
                 json!({"verdict": "revise", "issues": ["mist een bron"]}).to_string()
             } else {
@@ -442,7 +444,7 @@ async fn events_of(fx: &Fx, run: &str) -> Vec<vortex_types::Event> {
 }
 
 #[tokio::test]
-async fn deep_mode_runs_full_cognitive_cycle_with_plan_and_critique() {
+async fn deep_mode_runs_full_cognitive_cycle_with_debate_team() {
     let fx = setup().await;
     let sid = fx.post("/api/sessions", json!({})).await["id"].as_str().unwrap_or_default().to_string();
     let r = fx
@@ -458,11 +460,26 @@ async fn deep_mode_runs_full_cognitive_cycle_with_plan_and_critique() {
     let kinds: Vec<_> = ev.iter().map(|e| e.kind).collect();
     use vortex_types::EventKind as K;
     assert_eq!(kinds.iter().filter(|k| **k == K::PhaseCompleted).count(), 8, "alle 8 fasen");
-    assert!(kinds.contains(&K::StrategyChosen) && kinds.contains(&K::PlanCreated));
-    assert_eq!(kinds.iter().filter(|k| **k == K::PlanStepCompleted).count(), 2);
+    assert!(kinds.contains(&K::StrategyChosen) && kinds.contains(&K::TeamComposed));
     assert!(kinds.contains(&K::DecisionMade), "router-features gelogd");
     let strat = ev.iter().find(|e| e.kind == K::StrategyChosen).map(|e| e.payload.clone()).unwrap_or_default();
     assert_eq!(strat["path"], "deliberate");
+    // Team: rollen gerapporteerd, Judge-gate vóór de Synthesizer.
+    let roles: Vec<String> = ev
+        .iter()
+        .filter(|e| e.kind == K::AgentRoleCompleted)
+        .map(|e| e.payload["role"].as_str().unwrap_or("").to_string())
+        .collect();
+    for want in ["Planner", "Solvers", "Critic", "Fact-checker", "Judge", "Synthesizer"] {
+        assert!(roles.iter().any(|r| r == want), "{want} ontbreekt: {roles:?}");
+    }
+    let judge = ev.iter().position(|e| e.kind == K::JudgeVerdict).unwrap_or(usize::MAX);
+    let first_delta = ev.iter().position(|e| e.kind == K::MessageDelta).unwrap_or(0);
+    assert!(judge < first_delta, "antwoord pas na het oordeel van de Judge");
+    let v = ev.iter().find(|e| e.kind == K::JudgeVerdict).map(|e| e.payload.clone()).unwrap_or_default();
+    assert_eq!(v["verdict"]["verdict"], "accept");
+    let ev_c = ev.iter().find(|e| e.kind == K::EvidenceCompiled).map(|e| e.payload.clone()).unwrap_or_default();
+    assert_eq!(ev_c["scope"], "lokaal", "geen SearXNG → offline, lokaal geverifieerd");
     let ws = fx.get(&format!("/api/runs/{run}/workspace")).await;
     assert_eq!(ws["live"], false);
     assert_eq!(ws["board"]["goals"].as_array().map(|g| g.len()), Some(2), "{ws}");

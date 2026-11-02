@@ -1,11 +1,28 @@
 # CARD — `vortex-agents`
 
-**Doel:** Debatteam, research-team, conflict-team, rollen.
-**VAULT-module:** VAULT/modules/redeneren-debat.md · **Waves:** W09, W10
-**Status:** skelet (leeg, compileert). Deze CARD wordt ingevuld zodra de wave start.
+**Doel:** Debatteam (W09), conflict-team (W09), research-team (W10).
+**VAULT-module:** VAULT/modules/redeneren-debat.md · **Waves:** W09 (af), W10
 
 ## Publieke API
-— (nog niets)
+| Item | Doet |
+| --- | --- |
+| `team::compose(route, strategy, mode) -> Option<TeamPlan>` | dynamische teamsamenstelling |
+| `debate::run(&DebateDeps, question, &TeamPlan) -> DebateOutcome` | Planner → Solvers ∥ → Critic/Fact-checker/Specialist → verifier-selectie → Judge-gate (rondes) |
+| `debate::synthesizer_guidance(&Roles, &DebateOutcome)` | instructie voor het gestreamde eindantwoord |
+| `factcheck::{extract_claims, check}` | claims + bewijs (geheugen, web als online) + labels |
+| `specialist::{code, math}` | objectieve checks in de sandbox |
+| `conflict::{resolve, rule_based}` | conflict-team → `MemoryStore::apply_resolution` |
+| `roles::{Roles, ensure_defaults}` | rollen uit `config/roles/` |
+| `connectivity::Connectivity` | online/offline (60 s cache, `force` voor tests/offline-modus) |
+| `Reporter` | statusevents per rol |
 
-## Afhankelijk van
-zie `Cargo.toml`; richting wordt gecontroleerd door `tools/check_deps.py`.
+## Events (schrijft)
+`agent.team.composed`, `agent.role.{started,completed}`, `agent.judge.verdict`, `agent.evidence.compiled`; via geheugen: `memory.conflict.{resolved,rolled_back}`.
+
+## Invarianten
+- Objectieve checks wegen zwaarder dan overeenstemming; antwoord pas na het Judge-oordeel.
+- Offline: nooit webcalls; scope "lokaal".
+- Elke conflictbeslissing is terug te draaien (`conflict_history`).
+
+## Tests
+`cargo test -p vortex-agents` — unit (team, rollen, json, specialist) + `tests/team.rs` (rekencheck kiest juiste kandidaat, Judge-revise/onzeker, offline lokaal bewijs, conflict-team: regel/periodes/rollback/betwist).

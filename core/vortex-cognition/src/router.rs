@@ -217,6 +217,7 @@ pub fn route(text: &str) -> Route {
 mod tests {
     use super::*;
 
+    #[derive(Debug)]
     struct Fixed(&'static str);
     #[async_trait::async_trait]
     impl crate::llm::CogLlm for Fixed {

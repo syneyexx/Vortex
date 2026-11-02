@@ -85,4 +85,10 @@ Nieuwste onderaan. Per sessie 3–5 regels: wat gedaan, wat open, volgende stap.
 - Chat gebruikt tools (toolrondes via de executor); GUI: live tool-kaarten met diff + Instellingen → Tools & skills. `config/tools.toml`.
 - Gevonden: hot-reload miste bestanden (debounce te vroeg) → naloop-debounce; diff-volgorde; `app/**`-glob. 28 tools-tests + 13 server-tests groen; Windows-check groen.
 
-**Actieve wave:** PC-verificatie W00–W08 · cloud: volgende = W09 (debatteam)
+## 2026-11-02 (W09 debatteam)
+- `vortex-agents`: rollen in `config/roles/` (10, bewerkbaar), teamsamenstelling door metacognitie, Solvers ∥ met diversiteit, Fact-checker (lokaal + web als online), Critic, Specialist (code/rekenen echt gedraaid), verifier-selectie, Judge-gate met rondes, Synthesizer-instructie, bewijsoverzicht.
+- Conflict-team: regels (gebruiker wint, periodes), team (onderzoekers, bronbeoordelaar, Judge), "betwist", rollback (migratie 0007); voorgrond in de chat + achtergrond-worker.
+- GUI: agentpaneel met het echte team, Judge in de Verdict-balk, bewijskaart onder antwoorden, conflict-team/terugdraaien in het register. Eval: set `moeilijk` + `--mode quick|deep`.
+- Schijf vol in de cloud: `target/` 16 GB → `profile.dev debug = "line-tables-only"` → 2,5 GB. Alle tests groen; Windows-check groen.
+
+**Actieve wave:** PC-verificatie W00–W09 · cloud: volgende = W10 (research + ingest)

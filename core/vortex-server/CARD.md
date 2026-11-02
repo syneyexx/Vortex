@@ -25,6 +25,8 @@
 | REST W07: `POST /api/runs/:id/steer`, `GET /api/runs/:id/workspace`, `GET/POST /api/agenda[/:id]`, `GET /api/profile` | |
 | `tools_api.rs`: hub uit config + geheugen-tools; REST `GET /api/tools`, `POST /api/tools/reload`, `POST /api/tools/:name/call` (dry_run, root), `GET/POST /api/skills…` (import, export, status, verwijderen), `GET/POST /api/skills/proposals[/:id]` | |
 | Chat met tools: kernset met schema, toolrondes (max 8) via `Executor::execute_plan`, skills automatisch geladen bij hoge score | |
+| `team_api.rs`: rol-LLM's, conflict-team (voorgrond in de chat, achtergrond-worker P3), `POST /api/memory/conflicts/:id/team`, `POST /api/memory/conflicts/:id/rollback` | |
+| Deep/moeilijk: debatteam vóór het streamen (Synthesizer); eval `--mode quick|deep` voor de W09-vergelijking | |
 | CLI: `vortex serve [--listen 127.0.0.1:7420] [--app-dist ../app/dist]`, `vortex status`, `vortex runs` | |
 
 ## Events (schrijft)
@@ -38,4 +40,4 @@
 `src/api.rs` · `src/chat.rs` · `src/cognitive.rs` · `src/observe_api.rs` · `src/sessions.rs` · `src/live.rs` · `src/main.rs` (CLI) · schema: `vortex-core/migrations/0002_sessions.sql`
 
 ## Tests
-`cargo test -p vortex-server` — `tests/api.rs` (13): chat end-to-end, resume zonder gaten, stop midden in stream (+ herladen tijdens streamen), verbinding weg, fork, prompts met versies, geheugen, eval, diep pad met plan + kritiek, persoonlijke vraag zonder geheugen, bijsturen midden in een stream, chat met tools (kaarten, preview, skill-voorstel).
+`cargo test -p vortex-server` — `tests/api.rs` (13): chat end-to-end, resume zonder gaten, stop midden in stream (+ herladen tijdens streamen), verbinding weg, fork, prompts met versies, geheugen, eval, diep pad met plan + kritiek, persoonlijke vraag zonder geheugen, bijsturen midden in een stream, diep pad met debatteam (Judge vóór het antwoord, lokaal bewijs), chat met tools (kaarten, preview, skill-voorstel).

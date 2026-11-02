@@ -60,6 +60,9 @@ enum Cmd {
         /// API van de kern.
         #[arg(long, env = "VORTEX_API", default_value = "http://127.0.0.1:7420")]
         api: String,
+        /// Modus voor alle taken: "quick" (single-agent) of "deep" (debatteam).
+        #[arg(long)]
+        mode: Option<String>,
         /// Alleen de retrieval-eval.
         #[arg(long)]
         retrieval: bool,
@@ -131,8 +134,8 @@ async fn main() -> anyhow::Result<()> {
             anyhow::ensure!(ok, "geheugen stijgt");
             Ok(())
         }
-        Cmd::Eval { suite, label, api, retrieval, leakage } => {
-            eval_cmd(api, suite, label.as_deref(), *retrieval, *leakage).await
+        Cmd::Eval { suite, label, api, retrieval, leakage, mode } => {
+            eval_cmd(api, suite, label.as_deref(), mode.as_deref(), *retrieval, *leakage).await
         }
     }
 }
@@ -162,7 +165,14 @@ async fn serve(cli: &Cli, listen: &str, app_dist: &std::path::Path) -> anyhow::R
     Ok(())
 }
 
-async fn eval_cmd(api: &str, suite: &str, label: Option<&str>, retrieval: bool, leakage: bool) -> anyhow::Result<()> {
+async fn eval_cmd(
+    api: &str,
+    suite: &str,
+    label: Option<&str>,
+    mode: Option<&str>,
+    retrieval: bool,
+    leakage: bool,
+) -> anyhow::Result<()> {
     let c = reqwest::Client::new();
     if leakage {
         let v: serde_json::Value = c.get(format!("{api}/api/eval/leakage")).send().await?.json().await?;
@@ -179,7 +189,7 @@ async fn eval_cmd(api: &str, suite: &str, label: Option<&str>, retrieval: bool, 
         before.iter().filter_map(|r| r["id"].as_str().map(String::from)).collect();
     let started: serde_json::Value = c
         .post(format!("{api}/api/eval/run"))
-        .json(&serde_json::json!({"suite": suite, "label": label}))
+        .json(&serde_json::json!({"suite": suite, "label": label, "mode": mode}))
         .send()
         .await?
         .json()

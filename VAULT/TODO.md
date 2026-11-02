@@ -8,7 +8,7 @@ generated: true
 > daarna `python tools/vault/vault.py todo`. Legenda: `[ ]` open · `[~]` bezig · `[x]` af.
 > Functionaliteiten per domein (wat Vortex *kan*): [[FUNCTIES]].
 
-**Totaal: 91/235 af.**
+**Totaal: 102/235 af.**
 
 | Wave | Status | Af | Open |
 | --- | --- | --- | --- |
@@ -21,7 +21,7 @@ generated: true
 | [[waves/W06-eval-observability\|W06 — Eval en observability]] | bezig | 11 | 2 |
 | [[waves/W07-cognitie-context\|W07 — Cognitie en context]] | af | 12 | 0 |
 | [[waves/W08-tools-skills\|W08 — Tools en skills]] | af | 15 | 0 |
-| [[waves/W09-debatteam\|W09 — Debatteam]] | open | 0 | 11 |
+| [[waves/W09-debatteam\|W09 — Debatteam]] | af | 11 | 0 |
 | [[waves/W10-research-ingest\|W10 — Research en ingest]] | open | 0 | 14 |
 | [[waves/W11-neurale-layers\|W11 — Neurale layers]] | open | 0 | 9 |
 | [[waves/W12-geheugen-gevorderd\|W12 — Geheugen gevorderd]] | open | 0 | 10 |
@@ -204,18 +204,18 @@ Bron: [[waves/W08-tools-skills]] · status: `af`
 - [x] `W08.15` Tool-kaarten in GUI live — tool-kaarten live per run (status, duur, doel; klik = invoer, diff, uitvoer/fout) + beheer in Instellingen → Tools & skills
 
 ## W09 — Debatteam
-Bron: [[waves/W09-debatteam]] · status: `open`
-- [ ] `W09.01` Rollen met prompts in `config/roles/` (bewerkbaar in Instellingen)
-- [ ] `W09.02` Dynamische teamsamenstelling door metacognitie
-- [ ] `W09.03` Solvers met diversiteit (hoek, temperatuur, evt. model)
-- [ ] `W09.04` Fact-checker: claims splitsen (1060), bewijs lokaal; connectiviteitscheck → webcheck online, label offline
-- [ ] `W09.05` Critic, Specialist (code-reviewer draait tests), verifier-guided candidate selection
-- [ ] `W09.06` Judge-gate: antwoord pas na vertrouwen; max rondes; anders eerlijk onzeker/vraag
-- [ ] `W09.07` Synthesizer in gebruikersstijl
-- [ ] `W09.08` Bewijsoverzicht per conclusie
-- [ ] `W09.09` Conflict-team (2 onderzoekers, bronbeoordelaar, judge, memory writer), voorgrond/achtergrond, geldigheidsperiodes, "betwist", rollback
-- [ ] `W09.10` Agent collaboration-paneel + Verdict-balk live; voortgang gescheiden van antwoord
-- [ ] `W09.11` Parallel onderzoek / subagents met geïsoleerde contexten, overdracht via verwijzingen
+Bron: [[waves/W09-debatteam]] · status: `af`
+- [x] `W09.01` Rollen met prompts in `config/roles/` (bewerkbaar in Instellingen) — 10 rollen in `config/roles/*.md` (frontmatter temperature/model_role); standaarden ingebouwd + bij start weggeschreven; bewerkbaar in Instellingen (prompts & rollen, met versies)
+- [x] `W09.02` Dynamische teamsamenstelling door metacognitie — `team::compose(route, strategy, modus)`: eenvoudig → geen team; moeilijk → Planner/Solvers (2–3)/Fact-checker/Critic/Specialist/Judge, rondes 2–3
+- [x] `W09.03` Solvers met diversiteit (hoek, temperatuur, evt. model) — 4 invalshoeken, temperatuur per solver, optioneel extra modellen (`DebateDeps::extra`)
+- [x] `W09.04` Fact-checker: claims splitsen (1060), bewijs lokaal; connectiviteitscheck → webcheck online, label offline — claims splitsen op het extract-model (1060) met terugval; bewijs uit geheugen (altijd) + web_search als online (`Connectivity`, 60 s cache); offline → scope "lokaal" en label "lokaal geverifieerd"
+- [x] `W09.05` Critic, Specialist (code-reviewer draait tests), verifier-guided candidate selection — Critic per kandidaat; Specialist code (Python-blokken echt draaien) en reken (sandbox rekent na); verifier-score (objectieve checks > critic > claims) kiest de kandidaat
+- [x] `W09.06` Judge-gate: antwoord pas na vertrouwen; max rondes; anders eerlijk onzeker/vraag — Judge (JSON verdict/confidence); accept ≥ 0,6 = vertrouwd; revise → herziening met feedback; na max rondes → Synthesizer moet eerlijk onzeker zijn / vraag stellen. Antwoord streamt pas ná het oordeel (test)
+- [x] `W09.07` Synthesizer in gebruikersstijl — `synthesizer_guidance`: rolprompt + goedgekeurd concept + tegengesproken claims weglaten + gebruikersprofiel via de assembler
+- [x] `W09.08` Bewijsoverzicht per conclusie — event `agent.evidence.compiled` (bewering, label, bron, datum, scope) → bewijskaart onder het antwoord
+- [x] `W09.09` Conflict-team (2 onderzoekers, bronbeoordelaar, judge, memory writer), voorgrond/achtergrond, geldigheidsperiodes, "betwist", rollback — `conflict::resolve`: regels (gebruiker wint; nieuwere eigen uitspraak = periodes) of team (2 onderzoekers ∥, bronbeoordelaar + regels, Judge); één webpagina wint niet automatisch → betwist; `apply_resolution` + `rollback_conflict` (migratie 0007); voorgrond in de chat, achtergrond-worker (P3), knoppen in het conflictregister
+- [x] `W09.10` Agent collaboration-paneel + Verdict-balk live; voortgang gescheiden van antwoord — `agent.team.composed` / `agent.role.{started,completed}` / `agent.judge.verdict` → paneel toont het echte team; Verdict-balk toont het Judge-oordeel; voortgang los van het antwoord
+- [x] `W09.11` Parallel onderzoek / subagents met geïsoleerde contexten, overdracht via verwijzingen — Solvers parallel (`join_all`) met geïsoleerde contexten (`assemble_for_role`); kandidaten als hypotheses in de Global Workspace, overdracht via kandidaat-ID
 
 ## W10 — Research en ingest
 Bron: [[waves/W10-research-ingest]] · status: `open`

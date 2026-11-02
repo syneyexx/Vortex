@@ -97,6 +97,7 @@ pub fn router(state: AppState, static_dir: Option<PathBuf>) -> Router {
         .merge(crate::eval_api::routes())
         .merge(crate::observe_api::routes())
         .merge(crate::tools_api::routes())
+        .merge(crate::team_api::routes())
         .with_state(state);
     match static_dir {
         Some(d) if d.join("index.html").exists() => api.fallback_service(
@@ -400,6 +401,11 @@ pub fn build_state(kernel: Kernel) -> anyhow::Result<AppState> {
     let mut chat = ChatEngine::new(kernel.clone(), Some(memory.clone()));
     let tools = crate::tools_api::build(&kernel, Some(memory.clone()));
     chat.tools = Some(tools.clone());
+    chat.online = Arc::new(vortex_agents::connectivity::Connectivity::new(tools.cfg.searxng_url.clone()));
+    if let Err(e) = vortex_agents::roles::ensure_defaults(kernel.config().dir()) {
+        tracing::warn!(error = %e, "standaardrollen schrijven");
+    }
+    crate::team_api::spawn_conflict_worker(chat.clone(), kernel.shutdown_token().child_token());
     if let Ok(n) = chat.sessions().repair_streaming(kernel.runs())
         && n > 0
     {

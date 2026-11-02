@@ -190,6 +190,18 @@ pub struct Retrieved {
     pub counter_evidence: bool,
 }
 
+/// Beslissing van het conflict-team.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum Resolution {
+    /// Eén wint; de ander wordt historie (valid_to = nu, lagere confidence, afgeleiden verouderd).
+    Winner { winner: MemoryId, reason: String },
+    /// Beide waar, elk in een eigen periode (A tot `a_until`, B vanaf `b_from`).
+    Periods { a_until: String, b_from: String, reason: String },
+    /// Niet te beslissen: zichtbaar als betwist.
+    Disputed { reason: String },
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Conflict {
     pub id: String,

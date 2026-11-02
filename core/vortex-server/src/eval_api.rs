@@ -17,11 +17,13 @@ use crate::api::{ApiError, AppState};
 use crate::chat::Mode;
 
 /// Waves waarvan de functies in deze build aanwezig zijn (voor `requires` in eval-taken).
-pub const FEATURES: &[&str] = &["W01", "W02", "W03", "W04", "W05", "W06", "W07", "W08"];
+pub const FEATURES: &[&str] = &["W01", "W02", "W03", "W04", "W05", "W06", "W07", "W08", "W09"];
 
 #[derive(Debug)]
 pub struct VortexSubject {
     pub state: AppState,
+    /// Modus voor álle taken (bv. "quick" = single-agent vs "deep" = debatteam, W09-gate).
+    pub mode_override: Option<String>,
 }
 
 #[async_trait::async_trait]
@@ -46,7 +48,11 @@ impl Subject for VortexSubject {
     async fn answer(&self, ws: &str, prompt: &str, mode: Option<&str>) -> Result<String, String> {
         self.state
             .chat
-            .answer_once(prompt, Mode::parse(mode.unwrap_or("adaptive")), Some(ws.to_string()))
+            .answer_once(
+                prompt,
+                Mode::parse(self.mode_override.as_deref().or(mode).unwrap_or("adaptive")),
+                Some(ws.to_string()),
+            )
             .await
             .map_err(|e| e.to_string())
     }
@@ -103,6 +109,9 @@ struct RunBody {
     suite: Option<String>,
     #[serde(default)]
     label: Option<String>,
+    /// "quick" (single-agent) of "deep" (debatteam) voor alle taken.
+    #[serde(default)]
+    mode: Option<String>,
 }
 
 /// Start een eval op de achtergrond (P2 via de Dirigent); voortgang via events.
@@ -116,10 +125,15 @@ async fn run(State(s): State<AppState>, Json(b): Json<RunBody>) -> Result<Json<V
     let names: Vec<String> = chosen.iter().map(|x| x.name.clone()).collect();
     let st = s.clone();
     tokio::spawn(async move {
-        let subject = VortexSubject { state: st.clone() };
+        let subject = VortexSubject { state: st.clone(), mode_override: b.mode.clone() };
         let runner = Runner { log: st.kernel.events(), subject: &subject, python: python() };
         for suite in chosen {
-            match runner.run_suite(&suite, b.label.as_deref()).await {
+            let label = match (&b.label, &b.mode) {
+                (Some(l), _) => Some(l.clone()),
+                (None, Some(m)) => Some(format!("modus {m}")),
+                _ => None,
+            };
+            match runner.run_suite(&suite, label.as_deref()).await {
                 Ok(r) => tracing::info!(suite = %r.suite, score = ?r.score, "eval klaar"),
                 Err(e) => tracing::error!(error = %e, "eval mislukt"),
             }

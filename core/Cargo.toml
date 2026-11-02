@@ -71,6 +71,13 @@ unwrap_used = "warn"
 expect_used = "warn"
 dbg_macro = "deny"
 
+# Kleinere debug-builds (backtraces met regelnummers blijven); scheelt vele GB's in target/.
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false
+
 [profile.release]
 lto = "thin"
 codegen-units = 1

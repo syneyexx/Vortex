@@ -11,6 +11,6 @@ pub struct GenOpts {
 }
 
 #[async_trait::async_trait]
-pub trait CogLlm: Send + Sync {
+pub trait CogLlm: Send + Sync + std::fmt::Debug {
     async fn complete(&self, messages: Vec<Message>, opts: GenOpts) -> Result<String, String>;
 }

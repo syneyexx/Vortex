@@ -330,7 +330,55 @@ impl ChatEngine {
             }
             let llm = BackendLlm { backend: backend.clone(), cancel: ctx.token().child_token() };
             let _gpu = ctx.gpu(Priority::P0).await?;
-            if strategy.path != Path::Fast && strategy.prediction != Prediction::AskUser {
+            let w09 = crate::eval_api::FEATURES.contains(&"W09");
+            // Conflict-team op de voorgrond: botsing in wat we net ophaalden → eerst beslissen (W09.09).
+            if w09
+                && conflicts > 0
+                && let Some(mem) = &self.memory
+            {
+                let ids: Vec<String> = mems.iter().map(|m| m.id.clone()).collect();
+                let open: Vec<vortex_memory::Conflict> = mem
+                    .store
+                    .conflicts(Some("open"))
+                    .unwrap_or_default()
+                    .into_iter()
+                    .filter(|c| ids.contains(&c.a.to_string()) || ids.contains(&c.b.to_string()))
+                    .take(2)
+                    .collect();
+                let deps = vortex_agents::conflict::ConflictDeps {
+                    llm: Arc::new(BackendLlm { backend: backend.clone(), cancel: ctx.token().child_token() }),
+                    roles: vortex_agents::Roles::from_snapshot(ctx.config()),
+                    reporter: vortex_agents::Reporter::new(Some(log.clone()), Some(run_id), trace),
+                };
+                for c in &open {
+                    if let Ok(Ok(r)) = tokio::time::timeout(Duration::from_secs(120), vortex_agents::conflict::resolve(&deps, &mem.store, c)).await {
+                        guidance.push(format!("Een tegenstrijdigheid in het geheugen is net door het conflict-team beslist: {}", serde_json::to_string(&r).unwrap_or_default()));
+                    }
+                }
+            }
+            let team = if w09 && strategy.prediction != Prediction::AskUser { vortex_agents::compose(&route, &strategy, mode.as_str()) } else { None };
+            if let Some(t) = &team {
+                // Debatteam (W09): pas antwoorden als de Judge het vertrouwt; daarna streamt de Synthesizer.
+                let mut material: Vec<String> = mems.iter().map(|m| format!("[{} {}] {}", m.kind, m.date, m.text)).collect();
+                material.extend(guidance.iter().cloned());
+                let deps = vortex_agents::DebateDeps {
+                    main: Arc::new(BackendLlm { backend: backend.clone(), cancel: ctx.token().child_token() }),
+                    aux: self.role_llm(ctx.config(), "extract", ctx.token().child_token()),
+                    extra: vec![],
+                    memory: self.memory.as_ref().map(|m| (m.store.clone(), m.reranker.clone())),
+                    tools: self.tools.clone(),
+                    online: self.online.online().await,
+                    roles: vortex_agents::Roles::from_snapshot(ctx.config()),
+                    reporter: vortex_agents::Reporter::new(Some(log.clone()), Some(run_id), trace),
+                    exec: ExecOptions { run: Some(run_id), trace, cancel: ctx.token().child_token(), ..Default::default() },
+                    workspace: Some(ws.clone()),
+                    material,
+                };
+                let out = vortex_agents::debate::run(&deps, &question, t).await;
+                let _ = ctx.checkpoint(&serde_json::json!({"team": t.roles(), "judge": out.verdict, "trusted": out.trusted}));
+                guidance.push(vortex_agents::debate::synthesizer_guidance(&deps.roles, &out));
+                deps.reporter.started("Synthesizer", "eindantwoord in jouw stijl");
+            } else if strategy.path != Path::Fast && strategy.prediction != Prediction::AskUser {
                 // System 2: plan → stappen (geïsoleerde contexten) → evt. kritiek.
                 let plan = make_plan(&llm, &ws, &question, &mems.iter().map(|m| m.text.clone()).collect::<Vec<_>>().join("\n")).await;
                 let _ = log.append(Event::new(EventKind::PlanCreated, trace, serde_json::json!({"steps": plan.steps})).for_run(run_id));
@@ -517,6 +565,9 @@ impl ChatEngine {
                         }
                     }
                 }
+            }
+            if team.is_some() {
+                vortex_agents::Reporter::new(Some(log.clone()), Some(run_id), trace).done("Synthesizer", "antwoord geschreven", serde_json::json!({"chars": text.len()}));
             }
             cyc.finish(serde_json::json!({"chars": text.len()}));
 

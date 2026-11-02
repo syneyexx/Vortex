@@ -124,7 +124,8 @@ function Conflicts() {
   if (rows.length === 0)
     return (
       <div className="empty">
-        Geen conflicten. Botsende feiten verschijnen hier (het conflict-team volgt in W09).
+        Geen conflicten. Botsende feiten verschijnen hier; het conflict-team beslist ze vanzelf (in een
+        gesprek direct, anders op de achtergrond).
       </div>
     );
   return (
@@ -164,8 +165,27 @@ function Conflicts() {
               Markeer als betwist
             </button>
           )}
+          {r.conflict.status === "open" && (
+            <button
+              className="btn primary"
+              style={{ marginTop: 8, marginLeft: 8 }}
+              onClick={() =>
+                void api
+                  .teamConflict(r.conflict.id)
+                  .then(load)
+                  .catch((e: unknown) => setError(String(e)))
+              }
+            >
+              Laat het conflict-team beslissen
+            </button>
+          )}
           {r.conflict.resolution && (
             <p style={{ color: "var(--vx-muted)", fontSize: 13 }}>{r.conflict.resolution}</p>
+          )}
+          {r.conflict.status !== "open" && (
+            <button className="btn" onClick={() => void api.rollbackConflict(r.conflict.id).then(load)}>
+              Beslissing terugdraaien
+            </button>
           )}
         </div>
       ))}

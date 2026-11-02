@@ -61,6 +61,12 @@ event_kinds! {
     ToolCallFailed => "tool.call.failed",
     ToolCallInvalid => "tool.call.invalid",
     SkillLoaded => "tool.skill.loaded",
+    // debatteam (W09)
+    TeamComposed => "agent.team.composed",
+    AgentRoleStarted => "agent.role.started",
+    AgentRoleCompleted => "agent.role.completed",
+    JudgeVerdict => "agent.judge.verdict",
+    EvidenceCompiled => "agent.evidence.compiled",
     SkillProposed => "tool.skill.proposed",
     SkillsReloaded => "tool.skills.reloaded",
     McpConnected => "tool.mcp.connected",
@@ -73,6 +79,7 @@ event_kinds! {
     MemoryStale => "memory.item.staled",
     ConflictDetected => "memory.conflict.detected",
     ConflictResolved => "memory.conflict.resolved",
+    ConflictRolledBack => "memory.conflict.rolled_back",
     IndexGenerationSwitched => "memory.index.switched",
     // debat
     DebateRoundCompleted => "debate.round.completed",

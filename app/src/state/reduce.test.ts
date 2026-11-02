@@ -56,6 +56,28 @@ describe("applyEvents", () => {
     expect(s.lastSeq).toBe(e.seq);
   });
 
+  it("volgt het debatteam per run", () => {
+    const s = applyEvents(loaded(), [
+      ev("agent.team.composed", { roles: ["Planner", "Solvers ×2", "Judge", "Synthesizer"] }, "r1"),
+      ev("agent.role.started", { role: "Planner", detail: "deelvragen" }, "r1"),
+      ev("agent.role.completed", { role: "Planner", summary: "3 stappen" }, "r1"),
+      ev("agent.judge.verdict", { verdict: { verdict: "accept", confidence: 0.8, reasons: ["ok"] } }, "r1"),
+      ev(
+        "agent.evidence.compiled",
+        {
+          checks: [{ claim: "x", label: "supported", why: "", scope: "lokaal", sources: [] }],
+          scope: "lokaal",
+        },
+        "r1",
+      ),
+    ]);
+    const c = s.cognition.r1;
+    expect(c?.team?.length).toBe(4);
+    expect(c?.roles?.Planner?.summary).toBe("3 stappen");
+    expect(c?.judge?.verdict).toBe("accept");
+    expect(c?.evidence?.checks[0]?.label).toBe("supported");
+  });
+
   it("bouwt tool-kaarten per run", () => {
     const s = applyEvents(loaded(), [
       ev("tool.call.started", { action_id: "a1", tool: "write_file", input: { path: "x" } }, "r1"),

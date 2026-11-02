@@ -174,4 +174,7 @@ export const api = {
     ),
   decideProposal: (id: string, status: string) =>
     req<{ name: string }>("POST", `/api/skills/proposals/${id}`, { status }),
+  teamConflict: (id: string) => req<{ resolution: unknown }>("POST", `/api/memory/conflicts/${id}/team`, {}),
+  rollbackConflict: (id: string) =>
+    req<{ restored: number }>("POST", `/api/memory/conflicts/${id}/rollback`, {}),
 };

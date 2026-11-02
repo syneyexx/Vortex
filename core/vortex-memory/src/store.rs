@@ -135,6 +135,9 @@ pub struct ExportRow {
     pub entities: Vec<String>,
 }
 
+/// (historie-id, herinnering, vorige valid_from, vorige valid_to, vorige confidence)
+type HistRow = (String, String, Option<String>, Option<String>, f64);
+
 impl MemoryStore {
     /// Open op een bestaande database. Laadt de actieve indexgeneratie (of maakt er één).
     pub fn open(log: EventLog, embedder: Arc<dyn Embedder>, llm: Arc<dyn MemLlm>, cfg: MemConfig) -> Result<Self> {
@@ -870,6 +873,94 @@ impl MemoryStore {
         })?;
         self.bump();
         Ok(())
+    }
+
+    /// Uitgebreide conflictbeslissing (conflict-team, W09.09). Vorige waarden gaan naar
+    /// `conflict_history` zodat [`MemoryStore::rollback_conflict`] alles terugzet.
+    pub fn apply_resolution(&self, conflict_id: &str, r: &Resolution) -> Result<()> {
+        let c = self
+            .conflicts(None)?
+            .into_iter()
+            .find(|c| c.id == conflict_id)
+            .ok_or_else(|| MemError::NotFound(conflict_id.into()))?;
+        let decision = serde_json::to_string(r)?;
+        let ts = now();
+        self.log.transact(|tx, out| {
+            let snap = |tx: &rusqlite::Transaction<'_>, id: MemoryId| -> rusqlite::Result<()> {
+                let (vf, vt, conf): (Option<String>, Option<String>, f64) = tx.query_row(
+                    "SELECT valid_from, valid_to, confidence FROM memories WHERE id = ?1",
+                    [id.to_string()],
+                    |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+                )?;
+                tx.execute(
+                    "INSERT INTO conflict_history(id, conflict_id, memory_id, prev_valid_from, prev_valid_to, prev_confidence, decision, applied_at)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                    params![EventId::new().to_string(), conflict_id, id.to_string(), vf, vt, conf, decision, ts],
+                )?;
+                Ok(())
+            };
+            snap(tx, c.a)?;
+            snap(tx, c.b)?;
+            let (status, note) = match r {
+                Resolution::Winner { winner, reason } => {
+                    let loser = if *winner == c.a { c.b } else { c.a };
+                    tx.execute(
+                        "UPDATE memories SET valid_to = ?2, confidence = confidence * 0.5, updated_at = ?2 WHERE id = ?1",
+                        params![loser.to_string(), ts],
+                    )?;
+                    ("resolved", format!("winnaar {winner}: {reason}"))
+                }
+                Resolution::Periods { a_until, b_from, reason } => {
+                    tx.execute("UPDATE memories SET valid_to = ?2, updated_at = ?3 WHERE id = ?1", params![c.a.to_string(), a_until, ts])?;
+                    tx.execute("UPDATE memories SET valid_from = ?2, updated_at = ?3 WHERE id = ?1", params![c.b.to_string(), b_from, ts])?;
+                    ("resolved", format!("beide geldig in eigen periode (tot/vanaf {a_until}/{b_from}): {reason}"))
+                }
+                Resolution::Disputed { reason } => ("disputed", format!("betwist: {reason}")),
+            };
+            tx.execute(
+                "UPDATE conflicts SET status = ?2, resolution = ?3, resolved_at = ?4 WHERE id = ?1",
+                params![conflict_id, status, note, ts],
+            )?;
+            out.emit(
+                tx,
+                Event::new(EventKind::ConflictResolved, TraceId::new(), serde_json::json!({"conflict": conflict_id, "status": status, "note": note, "decision": r})),
+            )?;
+            Ok(())
+        })?;
+        if let Resolution::Winner { winner, .. } = r {
+            let loser = if *winner == c.a { c.b } else { c.a };
+            let _ = self.mark_derived_stale(&loser.to_string(), "verloor een conflict");
+        }
+        self.bump();
+        Ok(())
+    }
+
+    /// Conflictbeslissing terugdraaien: vorige waarden terug, conflict weer open.
+    pub fn rollback_conflict(&self, conflict_id: &str) -> Result<usize> {
+        let ts = now();
+        let n = self.log.transact(|tx, out| {
+            let rows: Vec<HistRow> = {
+                let mut st = tx.prepare(
+                    "SELECT id, memory_id, prev_valid_from, prev_valid_to, prev_confidence FROM conflict_history
+                     WHERE conflict_id = ?1 AND rolled_back_at IS NULL ORDER BY applied_at DESC",
+                )?;
+                st.query_map([conflict_id], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)))?.collect::<rusqlite::Result<Vec<_>>>()?
+            };
+            for (hid, mid, vf, vt, conf) in &rows {
+                tx.execute(
+                    "UPDATE memories SET valid_from = ?2, valid_to = ?3, confidence = ?4, updated_at = ?5 WHERE id = ?1",
+                    params![mid, vf, vt, conf, ts],
+                )?;
+                tx.execute("UPDATE conflict_history SET rolled_back_at = ?2 WHERE id = ?1", params![hid, ts])?;
+            }
+            if !rows.is_empty() {
+                tx.execute("UPDATE conflicts SET status = 'open', resolution = NULL, resolved_at = NULL WHERE id = ?1", [conflict_id])?;
+                out.emit(tx, Event::new(EventKind::ConflictRolledBack, TraceId::new(), serde_json::json!({"conflict": conflict_id})))?;
+            }
+            Ok(rows.len())
+        })?;
+        self.bump();
+        Ok(n)
     }
 
     // ---------------- werkruimtes ----------------

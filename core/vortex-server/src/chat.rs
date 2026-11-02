@@ -127,6 +127,8 @@ pub struct ChatEngine {
     pub tools: Option<Arc<vortex_tools::ToolHub>>,
     /// Embeddings van skillbeschrijvingen (cache voor skillselectie).
     pub(crate) skill_vecs: Arc<Mutex<HashMap<String, Vec<f32>>>>,
+    /// Online of offline (webcheck van de Fact-checker, W09.04).
+    pub online: Arc<vortex_agents::connectivity::Connectivity>,
 }
 
 /// Maximale tijd voor geheugen-ophalen vóór een antwoord (chat wacht nooit langer).
@@ -148,6 +150,7 @@ impl ChatEngine {
             agenda,
             tools: None,
             skill_vecs: Arc::new(Mutex::new(HashMap::new())),
+            online: Arc::new(vortex_agents::connectivity::Connectivity::new(None)),
         }
     }
 
@@ -247,6 +250,44 @@ impl ChatEngine {
             if let Some((m, _)) = mem {
                 sys.push_str("\n\n");
                 sys.push_str(&m);
+            }
+            // Deep + W09: eerst het debatteam (Judge-gate), daarna de Synthesizer-instructie.
+            if mode == Mode::Deep && crate::eval_api::FEATURES.contains(&"W09") {
+                let route = vortex_cognition::route(prompt);
+                let strategy = vortex_cognition::decide(&vortex_cognition::Signals {
+                    route: route.clone(),
+                    mode: "deep".into(),
+                    best_memory: None,
+                    conflicts: 0,
+                    tools: self.tools.is_some(),
+                    research: false,
+                });
+                if let Some(team) = vortex_agents::compose(&route, &strategy, "deep") {
+                    let deps = vortex_agents::DebateDeps {
+                        main: Arc::new(crate::cognitive::BackendLlm {
+                            backend: backend.clone(),
+                            cancel: ctx.token().child_token(),
+                        }),
+                        aux: self.role_llm(ctx.config(), "extract", ctx.token().child_token()),
+                        extra: vec![],
+                        memory: self.memory.as_ref().map(|m| (m.store.clone(), m.reranker.clone())),
+                        tools: self.tools.clone(),
+                        online: self.online.online().await,
+                        roles: vortex_agents::Roles::from_snapshot(ctx.config()),
+                        reporter: vortex_agents::Reporter::new(Some(self.kernel.events().clone()), Some(run), trace),
+                        exec: vortex_tools::ExecOptions {
+                            run: Some(run),
+                            trace,
+                            cancel: ctx.token().child_token(),
+                            ..Default::default()
+                        },
+                        workspace: None,
+                        material: vec![sys.clone()],
+                    };
+                    let out = vortex_agents::debate::run(&deps, prompt, &team).await;
+                    sys.push_str("\n\n");
+                    sys.push_str(&vortex_agents::debate::synthesizer_guidance(&deps.roles, &out));
+                }
             }
             let msgs = vec![Message::system(sys), Message::user(prompt)];
             self.log_context(run, trace, &ctx, &msgs, &used, 0);

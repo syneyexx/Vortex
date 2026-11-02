@@ -9,8 +9,26 @@ export interface RunInfo {
   startedAt: number;
 }
 
+export interface RoleStatus {
+  status: "busy" | "done";
+  summary: string;
+}
+
+export interface EvidenceItem {
+  claim: string;
+  label: "supported" | "contradicted" | "unverified";
+  why: string;
+  scope: string;
+  sources: { kind: string; reference: string; date?: string | null; snippet: string }[];
+}
+
 export interface Cognition {
   phases: { phase: string; label: string; ms: number }[];
+  /** Debatteam (W09). */
+  team?: string[];
+  roles?: Record<string, RoleStatus>;
+  judge?: { verdict: string; confidence: number; reasons: string[] };
+  evidence?: { checks: EvidenceItem[]; scope: string };
   strategy?: { path: string; plan: string; prediction: string; why: string[] };
   steps: string[];
   stepsDone: number;
@@ -171,7 +189,12 @@ export function applyEvents(state: State, events: VxEvent[], now = Date.now()): 
       case "cognition.strategy.chosen":
       case "cognition.plan.created":
       case "cognition.plan.step_completed":
-      case "cognition.verify.completed": {
+      case "cognition.verify.completed":
+      case "agent.team.composed":
+      case "agent.role.started":
+      case "agent.role.completed":
+      case "agent.judge.verdict":
+      case "agent.evidence.compiled": {
         if (!e.run_id) break;
         const c: Cognition = s.cognition[e.run_id] ?? { phases: [], steps: [], stepsDone: 0 };
         let n: Cognition = c;
@@ -193,6 +216,30 @@ export function applyEvents(state: State, events: VxEvent[], now = Date.now()): 
         else if (e.kind === "cognition.plan.created")
           n = { ...c, steps: (p.steps as string[] | undefined) ?? [] };
         else if (e.kind === "cognition.plan.step_completed") n = { ...c, stepsDone: c.stepsDone + 1 };
+        else if (e.kind === "agent.team.composed")
+          n = { ...c, team: (p.roles as string[] | undefined) ?? [], roles: {} };
+        else if (e.kind === "agent.role.started" || e.kind === "agent.role.completed") {
+          const role = str(p.role);
+          const st: RoleStatus =
+            e.kind === "agent.role.started"
+              ? { status: "busy", summary: str(p.detail) }
+              : { status: "done", summary: str(p.summary) };
+          n = { ...c, roles: { ...(c.roles ?? {}), [role]: st } };
+        } else if (e.kind === "agent.judge.verdict") {
+          const v = (p.verdict ?? {}) as { verdict?: string; confidence?: number; reasons?: string[] };
+          n = {
+            ...c,
+            judge: {
+              verdict: v.verdict ?? "",
+              confidence: Number(v.confidence ?? 0),
+              reasons: v.reasons ?? [],
+            },
+          };
+        } else if (e.kind === "agent.evidence.compiled")
+          n = {
+            ...c,
+            evidence: { checks: (p.checks as EvidenceItem[] | undefined) ?? [], scope: str(p.scope) },
+          };
         else n = { ...c, verify: { ok: Boolean(p.ok), issues: (p.issues as string[] | undefined) ?? [] } };
         s = { ...s, cognition: { ...s.cognition, [e.run_id]: n } };
         break;

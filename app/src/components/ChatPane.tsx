@@ -6,6 +6,7 @@ import { getState, newSession, openSession, setError, useStore } from "../state/
 import { Composer } from "./Composer.tsx";
 import { IcClock, IcFork, IcPlus, IcUser } from "./Icons.tsx";
 import { Inspector } from "./Inspector.tsx";
+import { EvidenceCard } from "./EvidenceCard.tsx";
 import { Markdown } from "./Markdown.tsx";
 import { ToolCards } from "./ToolCards.tsx";
 import { Replay } from "./Replay.tsx";
@@ -110,6 +111,7 @@ function Assistant({ m, sessionId }: { m: ChatMessage; sessionId: string }) {
           </div>
         )}
         {!streaming && tps !== undefined && <div className="writing">{tps.toFixed(1)} tok/s</div>}
+        {!streaming && m.run_id && <EvidenceCard runId={m.run_id} />}
         {m.status === "cancelled" && <div className="msg-cancel">Gestopt.</div>}
         {m.status === "failed" && <div className="msg-error">Mislukt{m.error ? `: ${m.error}` : ""}</div>}
         {inspect && m.run_id && <Inspector runId={m.run_id} onClose={() => setInspect(false)} />}

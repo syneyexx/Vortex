@@ -186,6 +186,7 @@ mod tests {
     use std::sync::Mutex;
     use vortex_types::{RunId, TraceId};
 
+    #[derive(Debug)]
     struct Script(Mutex<Vec<String>>);
     #[async_trait::async_trait]
     impl CogLlm for Script {
