@@ -9,7 +9,7 @@ updated: 2026-11-02
 ## Overzicht
 | Verbinding | Protocol | Contract | Eigenaar | Wave |
 | --- | --- | --- | --- | --- |
-| GUI ⇄ kern | WebSocket (events) + gRPC-web/HTTP (opdrachten) | `proto/vortex/gui/v1/*.proto` | `vortex-server` | W03 |
+| GUI ⇄ kern | WebSocket `GET /api/events?from_seq=N` (frames = event-JSON uit het log) + HTTP/JSON-REST (opdrachten) — besluit 2026-11-02; `gui.proto` blijft referentie voor een latere gRPC-variant | `core/vortex-server/CARD.md` (endpoints) · `app/src/api/types.ts` | `vortex-server` | W03 |
 | kern ⇄ Python-worker | gRPC (lokaal, named pipe / localhost) | `proto/vortex/worker/v1/*.proto` | `vortex-core` | W00 skelet, W10 ingest, W13 training |
 | kern ⇄ `llama-server` | HTTP, OpenAI-compatibel | geen proto; adapter in `vortex-models` | `vortex-models` | W02 |
 | kern ⇄ sandbox | procesgroep + stdin/stdout JSON | `proto/vortex/sandbox/v1/*.proto` | `vortex-tools` | W08 |

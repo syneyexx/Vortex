@@ -43,13 +43,13 @@ fn bad(e: impl std::fmt::Display) -> CoreError {
     CoreError::Config(e.to_string())
 }
 
-fn row_session(
-    r: &rusqlite::Row<'_>,
-) -> rusqlite::Result<(String, String, Option<String>, Option<String>, String, String, i64)> {
+type SessionRow = (String, String, Option<String>, Option<String>, String, String, i64);
+
+fn row_session(r: &rusqlite::Row<'_>) -> rusqlite::Result<SessionRow> {
     Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?, r.get(6)?))
 }
 
-fn to_session(t: (String, String, Option<String>, Option<String>, String, String, i64)) -> Result<Session> {
+fn to_session(t: SessionRow) -> Result<Session> {
     Ok(Session {
         id: t.0.parse().map_err(bad)?,
         title: t.1,
@@ -69,7 +69,6 @@ const SEL_MSG: &str =
     "SELECT id, session_id, ord, role, content, reasoning, tool_calls, run_id, model, mode, config_version,
     status, metrics, created_at FROM messages";
 
-#[allow(clippy::type_complexity)]
 fn row_msg(r: &rusqlite::Row<'_>) -> rusqlite::Result<StoredMessageRow> {
     Ok(StoredMessageRow {
         id: r.get(0)?,
@@ -227,12 +226,35 @@ impl SessionStore {
         })
     }
 
+    /// Berichten van een sessie. Berichten die nog streamen worden aangevuld uit de deltas in het
+    /// event log, zodat herladen tijdens streamen niets verliest.
     pub fn messages(&self, id: SessionId) -> Result<Vec<StoredMessage>> {
-        self.log.db().read(|c| {
+        let mut msgs: Vec<StoredMessage> = self.log.db().read(|c| {
             let mut st = c.prepare(&format!("{SEL_MSG} WHERE session_id = ?1 ORDER BY ord"))?;
             let rows = st.query_map([id.to_string()], row_msg)?.collect::<rusqlite::Result<Vec<_>>>()?;
             rows.into_iter().map(StoredMessageRow::into_msg).collect()
-        })
+        })?;
+        for m in msgs.iter_mut().filter(|m| m.status == "streaming") {
+            if let Some(run) = m.run_id {
+                let (t, r) = self.deltas(run, m.id)?;
+                m.content = t;
+                m.reasoning = r;
+            }
+        }
+        Ok(msgs)
+    }
+
+    /// Tekst + redenering van een bericht uit de gecoalesceerde deltas.
+    fn deltas(&self, run: RunId, msg: MessageId) -> Result<(String, String)> {
+        let (mut text, mut reasoning) = (String::new(), String::new());
+        let id = serde_json::json!(msg);
+        for e in self.log.for_run(run)? {
+            if e.kind == EventKind::MessageDelta && e.payload["message_id"] == id {
+                text.push_str(e.payload["text"].as_str().unwrap_or_default());
+                reasoning.push_str(e.payload["reasoning"].as_str().unwrap_or_default());
+            }
+        }
+        Ok((text, reasoning))
     }
 
     pub fn message(&self, id: MessageId) -> Result<StoredMessage> {
@@ -349,13 +371,7 @@ impl SessionStore {
             if !rec.state.is_terminal() {
                 continue;
             }
-            let (mut text, mut reasoning) = (String::new(), String::new());
-            for e in self.log.for_run(run)? {
-                if e.kind == EventKind::MessageDelta && e.payload["message_id"] == serde_json::json!(m.id) {
-                    text.push_str(e.payload["text"].as_str().unwrap_or_default());
-                    reasoning.push_str(e.payload["reasoning"].as_str().unwrap_or_default());
-                }
-            }
+            let (text, reasoning) = self.deltas(run, m.id)?;
             let status = match rec.state {
                 vortex_types::RunState::Completed => "complete",
                 vortex_types::RunState::Cancelled => "cancelled",

@@ -13,7 +13,7 @@ updated: 2026-11-02
 | `vortex-types` | gedeelde ID's, event-typen, fouttypen, tijd, herkomstlabels (geen logica) | [[11-ONE-BRAIN]] | W01 | **ja** |
 | `vortex-core` | runs, state machine, scheduler (W01) + Dirigent (W04), event log + outbox, config, tracing, secrets, supervisie | [[modules/runtime-core]], [[modules/orkestrator-performance]] | W01, W04 | **ja** |
 | `vortex-models` | registry, `Backend`-trait, lifecycle, templates, toolcall-parsers, wisselen, metingen | [[modules/inference-modelbeheer]] | W02 | **ja** |
-| `vortex-server` | eventstream naar GUI, opdrachten, lokale OpenAI-API, `vortex` CLI (admin) | [[modules/gui]], [[modules/autonomie]] | W03, W15 | **ja** (CLI) |
+| `vortex-server` | eventstream naar GUI, opdrachten, lokale OpenAI-API, `vortex` CLI (admin) | [[modules/gui]], [[modules/autonomie]] | W03, W15 | **ja** (API + chat + CLI) |
 | `vortex-memory` | `MemoryStore`-trait, SQLite + LanceDB, schrijf-/ophaalpipeline, tiering | [[modules/geheugen]] | W05, W12 | skelet |
 | `vortex-eval` *(of `evals/` runner)* | eval-runner, scores per versie, lekkagecontrole | [[modules/observability-eval]] | W06 | skelet |
 | `vortex-cognition` | cyclus, Global Workspace, doelstapel, metacognitie, wereld-/zelfmodel | [[modules/cognitie]] | W07, W12 | skelet |
@@ -27,7 +27,7 @@ updated: 2026-11-02
 | Map | Inhoud | Waves | Bestaat |
 | --- | --- | --- | --- |
 | `worker/` | Python (uv): ingest, parsers, training, datasets, layer-training → ONNX | W10, W11, W13, W14 | **ja** (skelet + gRPC) |
-| `app/` | Tauri 2 + React + TS, design tokens, WebGL-vortex | W03+ | skelet |
+| `app/` | Tauri 2 + React + TS, design tokens, WebGL-vortex | W03+ | **ja** (chat-GUI) |
 | `config/` | `models.toml`, `prompts/`, `roles/`, `skills/` (hot-reload) | W00+ | **ja** |
 | `evals/` | eval-sets, fixtures, retrieval-tests | W06+ | leeg |
 | `proto/` | gRPC-contracten kern ⇄ worker ⇄ GUI ⇄ CLI — kaart: [[15-CONTRACTEN]] | W00, W03, W10 | **ja** |

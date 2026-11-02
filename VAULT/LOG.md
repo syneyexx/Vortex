@@ -49,4 +49,10 @@ Nieuwste onderaan. Per sessie 3–5 regels: wat gedaan, wat open, volgende stap.
 - GUI-referentie (`design/reference-chat.png`) naar gebruiker gestuurd.
 - Gestopt na W02-code: volgende gate (W00) vraagt de PC.
 
-**Actieve wave:** W00/W01/W02 PC-verificatie (19:00) · daarna W03 (GUI + chat)
+## 2026-11-02 (W03 GUI + chat)
+- Server: sessies/berichten (migratie 0002), chat-engine (run P0 → GPU-slot → stream → deltas in event log), WebSocket-eventstream met hervatten, REST voor sessies/stop/runs/modellen/status/prompts (versies + terugzetten). 7 integratietests.
+- GUI 1-op-1 opgebouwd: tokens, topnav/subtabs, WebGL-vortex, agent- en geheugenpaneel (eerlijk leeg tot W05/W09), chat met markdown/code/tabellen/LaTeX/Mermaid, invoerbalk met echte stop, taakbalk, statusbalk, instellingen, Lopend werk, geschiedenis/fork, notificaties. Reducer-tests (4).
+- Visuele vergelijking met Playwright vond 3 fouten (o.a. **herladen tijdens streamen verloor tekst**) — opgelost en getest.
+- Open: gate (chat met echt gpt-oss-20b) + GPU-weergave + modelwissel via ModelServer op de PC; pauzeren (W04); artefacten (W08).
+
+**Actieve wave:** PC-verificatie W00–W03 · cloud: volgende = W04 (Dirigent)

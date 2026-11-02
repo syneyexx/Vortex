@@ -1,19 +1,102 @@
-// VX:W00.12 — skelet. De echte GUI (1-op-1 volgens VAULT/design/reference-chat.png) volgt in W03.
-import { RunState } from "./gen/vortex/common/v1/common_pb.ts";
+// VX:W03.05 — app-shell en routing.
+import { useEffect, useState } from "react";
+import { ChatPane } from "./components/ChatPane.tsx";
+import { LeftColumn } from "./components/LeftColumn.tsx";
+import { StatusBar } from "./components/StatusBar.tsx";
+import { SubNav, TopNav, type Sub, type Top } from "./components/TopNav.tsx";
+import { Dashboard, ModelsPage, Placeholder, RunsPage, SettingsPage } from "./pages/Pages.tsx";
+import { connect, dismissToast, openSession, setError, useStore } from "./state/store.ts";
+
+function Toasts() {
+  const toasts = useStore((s) => s.toasts);
+  useEffect(() => {
+    // Systeemnotificatie voor achtergrondtaken (als toegestaan), anders alleen in-app. VX:W03.14
+    const t = toasts.at(-1);
+    if (t && document.hidden && "Notification" in window && Notification.permission === "granted") {
+      new Notification("Vortex", { body: t.text });
+    }
+    const timers = toasts.map((x) => setTimeout(() => dismissToast(x.id), 6000));
+    return () => timers.forEach(clearTimeout);
+  }, [toasts]);
+  return (
+    <div className="toasts">
+      {toasts.map((t) => (
+        <div key={t.id} className="toast" onClick={() => dismissToast(t.id)}>
+          {t.text}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function App() {
+  const [top, setTop] = useState<Top>("chat");
+  const [sub, setSub] = useState<Sub>("chat");
+  const error = useStore((s) => s.error);
+  const sessions = useStore((s) => s.sessions);
+  const current = useStore((s) => s.currentSession);
+
+  useEffect(() => {
+    void connect();
+    if ("Notification" in window && Notification.permission === "default")
+      void Notification.requestPermission();
+  }, []);
+  // Laatste gesprek automatisch openen.
+  useEffect(() => {
+    if (!current && sessions[0]) void openSession(sessions[0].id);
+  }, [current, sessions]);
+
+  let body;
+  if (top === "chat" && sub === "chat") {
+    body = (
+      <>
+        <LeftColumn />
+        <ChatPane />
+      </>
+    );
+  } else if (top === "chat" && sub === "dashboard") body = <Dashboard />;
+  else if (top === "chat")
+    body = <Placeholder title="Agents" wave="W09" text="Debatteam en rollen met hun prompts." />;
+  else if (top === "research")
+    body = <Placeholder title="Research" wave="W10" text="Live records, deelvragen, bronnen en rapporten." />;
+  else if (top === "memory")
+    body = (
+      <Placeholder
+        title="Memory"
+        wave="W05"
+        text="Herinneringen bekijken, bewerken, vergeten; conflictregister."
+      />
+    );
+  else if (top === "models") body = <ModelsPage />;
+  else if (top === "studio")
+    body = <Placeholder title="Studio" wave="W16" text="Beeld, audio en multimodale uitvoer." />;
+  else if (top === "settings") body = <SettingsPage />;
+  else body = <RunsPage />;
+
   return (
-    <main
-      style={{
-        fontFamily: "system-ui, sans-serif",
-        padding: 24,
-        background: "#0b0b0c",
-        color: "#e8e8e8",
-        minHeight: "100vh",
-      }}
-    >
-      <h1 style={{ letterSpacing: "0.3em" }}>VORTEX</h1>
-      <p>Skelet (W00). Contracten geladen: {Object.keys(RunState).length / 2} run-statussen.</p>
-    </main>
+    <div className="app">
+      <TopNav
+        top={top}
+        onTop={(t) => {
+          setTop(t);
+          if (t === "chat") setSub("chat");
+        }}
+      />
+      <SubNav
+        sub={sub}
+        onSub={(s) => {
+          setSub(s);
+          setTop("chat");
+        }}
+      />
+      <main className="main">{body}</main>
+      <StatusBar />
+      {error && (
+        <div className="error-banner" onClick={() => setError(null)}>
+          {error}
+        </div>
+      )}
+      <Toasts />
+    </div>
   );
 }

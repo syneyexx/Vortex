@@ -53,3 +53,6 @@ Nieuwste onderaan. Formaat: datum · besluit · waarom.
 | 2026-11-02 | `vortex` CLI (`W00.15`) en `justfile` (`W00.14`) | Debuggen + Claude kan zelf status/eval draaien |
 | 2026-11-02 | Geen rookproef-eval vanaf W00 ("testen pas als laatst"); reikwijdte voor unit-tests nog open in [[OPEN-VRAGEN]] | Gebruikerskeuze |
 | 2026-11-02 | Regel 7: kleine tests tussendoor bij elk item; grote tests (24 u soak, weekruns, volledige eval/performance-suites, ablations, fault-injection, TB-simulatie) alleen op commando van de gebruiker | Antwoord op vraag 13: fouten vroeg vangen zonder lange runs |
+| 2026-11-02 | Doorbouwen aan volgende waves terwijl PC-verificatie van W00–W02 openstaat; gates blijven pas groen na verificatie op de PC | Gebruiker: "ga maar verder" |
+| 2026-11-02 | GUI-transport: WebSocket met event-JSON (`/api/events?from_seq`) + REST, i.p.v. gRPC-web | Eén stroom = het event log zelf; hervatten op `seq`; geen extra codegen in de browser |
+| 2026-11-02 | Antwoordtekst wordt tijdens streamen alleen als gecoalesceerde deltas in het event log bewaard; het bericht krijgt zijn tekst bij afronden; lezen tijdens streamen bouwt op uit deltas | Eén bron, crash-/herlaadveilig |

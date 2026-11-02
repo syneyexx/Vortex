@@ -1,0 +1,51 @@
+// REST-client voor de kern. In de browser (geserveerd door `vortex serve`) = zelfde origin;
+// in dev/Tauri: VITE_VORTEX_API of standaard http://127.0.0.1:7420.
+import type { ChatMessage, Mode, ModelInfo, RunRecord, Session, Status } from "./types.ts";
+
+function defaultBase(): string {
+  const env = import.meta.env.VITE_VORTEX_API as string | undefined;
+  if (env) return env.replace(/\/$/, "");
+  const { protocol, host } = window.location;
+  if (protocol.startsWith("http") && !host.endsWith(":1420")) return `${protocol}//${host}`;
+  return "http://127.0.0.1:7420";
+}
+
+export const API_BASE = defaultBase();
+
+async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const r = await fetch(`${API_BASE}${path}`, {
+    method,
+    headers: body === undefined ? undefined : { "content-type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const data = (await r.json().catch(() => ({}))) as T & { error?: string };
+  if (!r.ok) throw new Error(data.error ?? `HTTP ${r.status}`);
+  return data;
+}
+
+export const api = {
+  status: () => req<Status>("GET", "/api/status"),
+  sessions: () => req<Session[]>("GET", "/api/sessions"),
+  createSession: () => req<Session>("POST", "/api/sessions"),
+  session: (id: string) => req<{ session: Session; messages: ChatMessage[] }>("GET", `/api/sessions/${id}`),
+  rename: (id: string, title: string) => req<unknown>("PATCH", `/api/sessions/${id}`, { title }),
+  archive: (id: string) => req<unknown>("DELETE", `/api/sessions/${id}`),
+  fork: (id: string, messageId: string) =>
+    req<Session>("POST", `/api/sessions/${id}/fork`, { message_id: messageId }),
+  send: (id: string, text: string, mode: Mode, model?: string) =>
+    req<{ run_id: string; user_message_id: string; assistant_message_id: string; model: string }>(
+      "POST",
+      `/api/sessions/${id}/messages`,
+      { text, mode, model },
+    ),
+  stop: (runId: string) => req<{ accepted: boolean }>("POST", `/api/runs/${runId}/stop`),
+  runs: () => req<{ active: RunRecord[]; recent: RunRecord[] }>("GET", "/api/runs"),
+  models: () => req<{ default: string; models: ModelInfo[] }>("GET", "/api/models"),
+  prompts: () =>
+    req<{ version: string; files: { path: string; content: string }[] }>("GET", "/api/settings/prompts"),
+  savePrompt: (path: string, content: string) =>
+    req<{ version: string }>("PUT", "/api/settings/prompts", { path, content }),
+  history: () => req<{ version: string; ts: string }[]>("GET", "/api/settings/history"),
+  restore: (version: string, path: string) =>
+    req<{ version: string }>("POST", "/api/settings/restore", { version, path }),
+};

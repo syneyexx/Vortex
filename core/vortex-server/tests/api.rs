@@ -209,6 +209,10 @@ async fn stop_mid_stream_really_stops() {
     let r = fx.post(&format!("/api/sessions/{sid}/messages"), json!({"text": "slow"})).await;
     let run = r["run_id"].as_str().unwrap_or_default().to_string();
     tokio::time::sleep(Duration::from_millis(300)).await;
+    // Herladen tijdens streamen: de GUI haalt de sessie opnieuw op en mag niets missen.
+    let mid = fx.get(&format!("/api/sessions/{sid}")).await["messages"][1].clone();
+    assert_eq!(mid["status"], "streaming");
+    assert!(mid["content"].as_str().unwrap_or_default().starts_with("w0 w1 "), "deeltekst uit event log: {mid}");
     let t0 = std::time::Instant::now();
     let st = fx.post(&format!("/api/runs/{run}/stop"), json!({})).await;
     assert_eq!(st["accepted"], true);

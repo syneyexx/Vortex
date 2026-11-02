@@ -1,0 +1,68 @@
+/* Design tokens — één bron voor kleur, maat, typografie, glow (VX:W03.04).
+   Afgeleid van VAULT/design/reference-chat.png. */
+:root {
+  /* achtergrond: bijna-zwart / antraciet */
+  --vx-bg: #0b0b0d;
+  --vx-bg-2: #111114;
+  --vx-panel: #16161a;
+  --vx-panel-2: #1b1b20;
+  --vx-panel-hi: #202027;
+  --vx-border: rgba(255, 255, 255, 0.075);
+  --vx-border-hi: rgba(255, 255, 255, 0.14);
+
+  /* tekst */
+  --vx-text: #ecebef;
+  --vx-text-2: #b9b8c0;
+  --vx-muted: #8b8a93;
+  --vx-faint: #5f5e66;
+
+  /* één oranje accent + groen voor voltooid */
+  --vx-accent: #ff5b1f;
+  --vx-accent-2: #ff7a3d;
+  --vx-accent-soft: rgba(255, 91, 31, 0.14);
+  --vx-accent-glow: 0 0 18px rgba(255, 91, 31, 0.45);
+  --vx-ok: #34d27a;
+  --vx-warn: #f2b33d;
+  --vx-err: #ff4d4f;
+
+  /* chroom (vortex) */
+  --vx-chrome-1: #f4f4f6;
+  --vx-chrome-2: #9c9ca6;
+
+  /* radii */
+  --vx-r-sm: 8px;
+  --vx-r-md: 12px;
+  --vx-r-lg: 16px;
+  --vx-r-pill: 999px;
+
+  /* spacing */
+  --vx-s-1: 4px;
+  --vx-s-2: 8px;
+  --vx-s-3: 12px;
+  --vx-s-4: 16px;
+  --vx-s-5: 20px;
+  --vx-s-6: 24px;
+  --vx-s-8: 32px;
+
+  /* typografie */
+  --vx-font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --vx-mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+  --vx-fs-xs: 12px;
+  --vx-fs-sm: 13px;
+  --vx-fs-md: 14px;
+  --vx-fs-lg: 16px;
+  --vx-fs-xl: 22px;
+  --vx-fs-2xl: 26px;
+  --vx-track-wide: 0.14em; /* sectiekoppen */
+  --vx-track-logo: 0.55em;
+
+  /* schaduw */
+  --vx-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+  --vx-inset: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+
+  /* maten van de layout */
+  --vx-topnav-h: 52px;
+  --vx-subnav-h: 52px;
+  --vx-status-h: 58px;
+  --vx-left-w: 576px;
+}

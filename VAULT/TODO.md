@@ -8,14 +8,14 @@ generated: true
 > daarna `python tools/vault/vault.py todo`. Legenda: `[ ]` open · `[~]` bezig · `[x]` af.
 > Functionaliteiten per domein (wat Vortex *kan*): [[FUNCTIES]].
 
-**Totaal: 25/235 af.**
+**Totaal: 35/235 af.**
 
 | Wave | Status | Af | Open |
 | --- | --- | --- | --- |
 | [[waves/W00-fundament\|W00 — Fundament]] | bezig | 5 | 15 |
 | [[waves/W01-runtime-core\|W01 — Runtime kern]] | bezig | 16 | 2 |
 | [[waves/W02-modelbeheer\|W02 — Modelbeheer]] | bezig | 4 | 12 |
-| [[waves/W03-gui-chat\|W03 — GUI en chat]] | open | 0 | 15 |
+| [[waves/W03-gui-chat\|W03 — GUI en chat]] | bezig | 10 | 5 |
 | [[waves/W04-dirigent-performance\|W04 — Dirigent en performance]] | open | 0 | 7 |
 | [[waves/W05-geheugen-kern\|W05 — Geheugen kern]] | open | 0 | 14 |
 | [[waves/W06-eval-observability\|W06 — Eval en observability]] | open | 0 | 13 |
@@ -106,26 +106,26 @@ Bron: [[waves/W02-modelbeheer]] · status: `bezig`
 - [ ] `W02.16` Specialisten geregistreerd en getest: Deep, Code, Visie (laden + readiness)
 
 ## W03 — GUI en chat
-Bron: [[waves/W03-gui-chat]] · status: `open`
+Bron: [[waves/W03-gui-chat]] · status: `bezig`
 
 **Server**
-- [ ] `W03.01` `vortex-server`: eventstream met volgnummers, snapshot + delta's, resume na reconnect
-- [ ] `W03.02` Getypeerde frames; verbinding weg ≠ taak gestopt (runpolicy)
-- [ ] `W03.03` UI-event coalescing; artefacten als referentie
+- [x] `W03.01` `vortex-server`: eventstream met volgnummers, snapshot + delta's, resume na reconnect
+- [x] `W03.02` Getypeerde frames; verbinding weg ≠ taak gestopt (runpolicy) — frames = getypeerde events uit het log (JSON over WebSocket)
+- [~] `W03.03` UI-event coalescing; artefacten als referentie — coalescing af (server 40 ms/512 tekens, client per animatieframe); artefacten als referentie volgen met tools (W08)
 
 **Frontend**
-- [ ] `W03.04` Design tokens-bestand (kleuren, radii, spacing, typografie, schaduw/glow)
-- [ ] `W03.05` Topnav + subtabs + routing voor alle pagina's (lege staten waar functie later komt — nooit nep-data)
-- [ ] `W03.06` Vortex WebGL-shader (geanimeerd, performant, pauzeert als tab inactief)
-- [ ] `W03.07` Chat: streaming berichten, markdown, codeblokken (highlighting, kopiëren, diff), tabellen, LaTeX, Mermaid
-- [ ] `W03.08` Invoerbalk: bijlage, Quick/Deep/Research/Adaptive, modelkiezer, strategie, stopknop (echte cancellation)
-- [ ] `W03.09` Tool-kaarten en Agent collaboration-paneel aangesloten op events (vult zich vanaf W08/W09)
-- [ ] `W03.10` Achtergrondtaak-balk + Lopend werk-pagina (pauzeren/stoppen)
-- [ ] `W03.11` Statusbalk: gezondheid per subsysteem, beide GPU's live VRAM, actief model, tok/s sparkline
-- [ ] `W03.12` Instellingen: system prompt + rol-prompts, live vanaf volgend bericht, "nu toepassen", versiegeschiedenis + terugzetten; paden; modellen; gedrag
-- [ ] `W03.13` Sessies: opslaan/herstellen, branching/forking, nieuwe chat, geschiedenis
-- [ ] `W03.14` Notificaties voor achtergrondtaken
-- [ ] `W03.15` Visuele vergelijking met referentie (screenshot naast elkaar)
+- [x] `W03.04` Design tokens-bestand (kleuren, radii, spacing, typografie, schaduw/glow)
+- [x] `W03.05` Topnav + subtabs + routing voor alle pagina's (lege staten waar functie later komt — nooit nep-data)
+- [x] `W03.06` Vortex WebGL-shader (geanimeerd, performant, pauzeert als tab inactief)
+- [x] `W03.07` Chat: streaming berichten, markdown, codeblokken (highlighting, kopiëren, diff), tabellen, LaTeX, Mermaid
+- [~] `W03.08` Invoerbalk: bijlage, Quick/Deep/Research/Adaptive, modelkiezer, strategie, stopknop (echte cancellation) — alles af incl. echte stop; bijlagen = tekstbestanden ≤ 200 kB; modelkiezer stuurt het model mee, **echt wisselen via `ModelServer` op de PC koppelen**
+- [x] `W03.09` Tool-kaarten en Agent collaboration-paneel aangesloten op events (vult zich vanaf W08/W09)
+- [~] `W03.10` Achtergrondtaak-balk + Lopend werk-pagina (pauzeren/stoppen) — balk + Lopend werk-pagina met stoppen af; **pauzeren** komt met preemption (W04)
+- [~] `W03.11` Statusbalk: gezondheid per subsysteem, beide GPU's live VRAM, actief model, tok/s sparkline — af; GPU-balken lezen nvidia-smi — **verifiëren op de PC**
+- [~] `W03.12` Instellingen: system prompt + rol-prompts, live vanaf volgend bericht, "nu toepassen", versiegeschiedenis + terugzetten; paden; modellen; gedrag — system prompt + rol-prompts live, versies, terugzetten af; paden/modellen/gedrag nog via `config/*.toml` (formulieren later)
+- [x] `W03.13` Sessies: opslaan/herstellen, branching/forking, nieuwe chat, geschiedenis
+- [x] `W03.14` Notificaties voor achtergrondtaken
+- [x] `W03.15` Visuele vergelijking met referentie (screenshot naast elkaar) — Playwright-screenshot naast referentie; gevonden en opgelost: herladen tijdens streamen verloor tekst, kolom-overflow, shader-naad. **Herhalen met echte GPU-data op de PC**
 
 ## W04 — Dirigent en performance
 Bron: [[waves/W04-dirigent-performance]] · status: `open`
