@@ -9,6 +9,14 @@ export interface RunInfo {
   startedAt: number;
 }
 
+export interface Cognition {
+  phases: { phase: string; label: string; ms: number }[];
+  strategy?: { path: string; plan: string; prediction: string; why: string[] };
+  steps: string[];
+  stepsDone: number;
+  verify?: { ok: boolean; issues: string[] };
+}
+
 export interface Toast {
   id: number;
   text: string;
@@ -26,6 +34,8 @@ export interface State {
   runs: Record<string, RunInfo>;
   streamStats: Record<string, StreamStat>;
   toasts: Toast[];
+  /** Cognitieve cyclus per run (Agent collaboration-paneel). */
+  cognition: Record<string, Cognition>;
   /** Opgehaalde herinneringen per run (Retrieved memory-paneel). */
   retrievals: Record<string, RetrievalItem[]>;
   /** Sessies waarvan de server-versie opnieuw opgehaald moet worden (metingen e.d.). */
@@ -40,6 +50,7 @@ export const initialState: State = {
   runs: {},
   streamStats: {},
   retrievals: {},
+  cognition: {},
   toasts: [],
   dirty: [],
   lastSeq: 0,
@@ -138,6 +149,36 @@ export function applyEvents(state: State, events: VxEvent[], now = Date.now()): 
         if (sid !== s.currentSession && status === "complete") {
           s = { ...s, toasts: [...s.toasts, { id: toastId++, text: "Antwoord klaar in een andere chat" }] };
         }
+        break;
+      }
+      case "cognition.phase.completed":
+      case "cognition.strategy.chosen":
+      case "cognition.plan.created":
+      case "cognition.plan.step_completed":
+      case "cognition.verify.completed": {
+        if (!e.run_id) break;
+        const c: Cognition = s.cognition[e.run_id] ?? { phases: [], steps: [], stepsDone: 0 };
+        let n: Cognition = c;
+        if (e.kind === "cognition.phase.completed")
+          n = {
+            ...c,
+            phases: [...c.phases, { phase: str(p.phase), label: str(p.label), ms: Number(p.ms ?? 0) }],
+          };
+        else if (e.kind === "cognition.strategy.chosen")
+          n = {
+            ...c,
+            strategy: {
+              path: str(p.path),
+              plan: str(p.plan),
+              prediction: str(p.prediction),
+              why: (p.why as string[] | undefined) ?? [],
+            },
+          };
+        else if (e.kind === "cognition.plan.created")
+          n = { ...c, steps: (p.steps as string[] | undefined) ?? [] };
+        else if (e.kind === "cognition.plan.step_completed") n = { ...c, stepsDone: c.stepsDone + 1 };
+        else n = { ...c, verify: { ok: Boolean(p.ok), issues: (p.issues as string[] | undefined) ?? [] } };
+        s = { ...s, cognition: { ...s.cognition, [e.run_id]: n } };
         break;
       }
       case "memory.retrieval.performed":

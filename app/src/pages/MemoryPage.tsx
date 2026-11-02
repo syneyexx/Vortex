@@ -173,8 +173,48 @@ function Conflicts() {
   );
 }
 
+function Profile() {
+  const [p, setP] = useState<Awaited<ReturnType<typeof api.profile>> | null>(null);
+  useEffect(() => {
+    api
+      .profile()
+      .then(setP)
+      .catch((e: unknown) => setError(String(e)));
+  }, []);
+  if (!p) return null;
+  return (
+    <div className="panel card">
+      <h3>Wat Vortex over jou weet</h3>
+      <p style={{ color: "var(--vx-muted)", fontSize: 13 }}>
+        Afgeleid uit je gebruikersgeheugen en feedback; gaat mee in elke prompt (stijl en toon). Aanpassen =
+        de herinnering bewerken of vergeten.
+      </p>
+      <h4>Stijl</h4>
+      {p.profile.style.length ? (
+        p.profile.style.map((s) => <div key={s}>• {s}</div>)
+      ) : (
+        <em>Geen voorkeuren bekend. Zeg bijvoorbeeld: "Ik wil graag korte antwoorden."</em>
+      )}
+      <h4>Feiten</h4>
+      {p.profile.facts.map((s) => (
+        <div key={s}>• {s}</div>
+      ))}
+      <h4>Doelen</h4>
+      {p.profile.goals.map((s) => (
+        <div key={s}>• {s}</div>
+      ))}
+      <h4>Feedback</h4>
+      <div>
+        {Object.entries(p.profile.feedback)
+          .map(([k, v]) => `${k}: ${v}`)
+          .join(" · ")}
+      </div>
+    </div>
+  );
+}
+
 export function MemoryPage() {
-  const [tab, setTab] = useState<"list" | "search" | "conflicts">("list");
+  const [tab, setTab] = useState<"list" | "search" | "conflicts" | "profile">("list");
   const [q, setQ] = useState("");
   const [kind, setKind] = useState("");
   const [ws, setWs] = useState("");
@@ -257,9 +297,16 @@ export function MemoryPage() {
       </div>
       {msg && <p style={{ color: "var(--vx-muted)" }}>{msg}</p>}
       <div className="chat-tabs" style={{ display: "inline-flex", margin: "16px 0" }}>
-        {(["list", "search", "conflicts"] as const).map((t) => (
+        {(["list", "search", "conflicts", "profile"] as const).map((t) => (
           <button key={t} className={tab === t ? "active" : ""} onClick={() => setTab(t)}>
-            {{ list: "Bekijken", search: "Zoek als Vortex", conflicts: "Conflictregister" }[t]}
+            {
+              {
+                list: "Bekijken",
+                search: "Zoek als Vortex",
+                conflicts: "Conflictregister",
+                profile: "Over jou",
+              }[t]
+            }
           </button>
         ))}
       </div>
@@ -408,6 +455,7 @@ export function MemoryPage() {
         </div>
       )}
       {tab === "conflicts" && <Conflicts />}
+      {tab === "profile" && <Profile />}
     </div>
   );
 }

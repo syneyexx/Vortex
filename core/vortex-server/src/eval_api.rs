@@ -17,7 +17,7 @@ use crate::api::{ApiError, AppState};
 use crate::chat::Mode;
 
 /// Waves waarvan de functies in deze build aanwezig zijn (voor `requires` in eval-taken).
-pub const FEATURES: &[&str] = &["W01", "W02", "W03", "W04", "W05", "W06"];
+pub const FEATURES: &[&str] = &["W01", "W02", "W03", "W04", "W05", "W06", "W07"];
 
 #[derive(Debug)]
 pub struct VortexSubject {

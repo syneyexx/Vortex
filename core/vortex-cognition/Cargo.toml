@@ -1,6 +1,6 @@
 [package]
 name = "vortex-cognition"
-description = "Cognitieve cyclus, Global Workspace, doelstapel, metacognitie."
+description = "Cognitieve cyclus, Global Workspace, doelstapel, metacognitie, router, planning, salience, leeragenda, gebruikersmodel."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -11,6 +11,19 @@ vortex-types.workspace = true
 vortex-core.workspace = true
 vortex-context.workspace = true
 vortex-neural.workspace = true
+vortex-memory.workspace = true
+vortex-models.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+parking_lot.workspace = true
+rusqlite.workspace = true
+async-trait = "0.1"
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [lints]
 workspace = true

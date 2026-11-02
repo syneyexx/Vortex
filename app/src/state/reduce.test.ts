@@ -56,6 +56,26 @@ describe("applyEvents", () => {
     expect(s.lastSeq).toBe(e.seq);
   });
 
+  it("volgt de cognitieve cyclus per run", () => {
+    const s = applyEvents(loaded(), [
+      ev(
+        "cognition.strategy.chosen",
+        { path: "deliberate", plan: "plan_execute", prediction: "answer", why: ["x"] },
+        "r1",
+      ),
+      ev("cognition.plan.created", { steps: ["a", "b"] }, "r1"),
+      ev("cognition.plan.step_completed", { i: 0 }, "r1"),
+      ev("cognition.phase.completed", { phase: "perceive", label: "Waarnemen", ms: 3 }, "r1"),
+      ev("cognition.verify.completed", { ok: false, issues: ["leeg"] }, "r1"),
+    ]);
+    const c = s.cognition.r1;
+    expect(c?.strategy?.path).toBe("deliberate");
+    expect(c?.steps).toEqual(["a", "b"]);
+    expect(c?.stepsDone).toBe(1);
+    expect(c?.phases[0]?.label).toBe("Waarnemen");
+    expect(c?.verify?.ok).toBe(false);
+  });
+
   it("onthoudt opgehaalde herinneringen per run", () => {
     const s = applyEvents(loaded(), [
       ev(

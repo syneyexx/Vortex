@@ -112,6 +112,57 @@ function RunDetail({ id }: { id: string }) {
   );
 }
 
+function Agenda() {
+  const [items, setItems] = useState<Awaited<ReturnType<typeof api.agenda>>>([]);
+  const load = useCallback(() => {
+    api
+      .agenda()
+      .then(setItems)
+      .catch(() => undefined);
+  }, []);
+  useEffect(load, [load]);
+  return (
+    <div className="panel card">
+      <h3>Leeragenda</h3>
+      <p style={{ color: "var(--vx-muted)", fontSize: 13 }}>
+        Kennisgaten en betwiste feiten die Vortex zelf gaat uitzoeken (in idle, vanaf W15).
+      </p>
+      {items.length === 0 && <div className="empty">Nog geen gaten gevonden.</div>}
+      <table className="table">
+        <tbody>
+          {items.map((i) => (
+            <tr key={i.id}>
+              <td>
+                <span className={`pill ${i.reason === "disputed" ? "err" : "run"}`}>
+                  {i.reason === "gap" ? "kennisgat" : i.reason === "disputed" ? "betwist" : i.reason}
+                </span>
+              </td>
+              <td>{i.topic}</td>
+              <td>{i.hits}×</td>
+              <td>{(i.priority * 100).toFixed(0)}%</td>
+              <td>
+                <span className="pill">{i.status}</span>
+              </td>
+              <td>
+                {i.status !== "done" && (
+                  <button className="btn" onClick={() => void api.setAgenda(i.id, "done").then(load)}>
+                    klaar
+                  </button>
+                )}
+                {i.status !== "dropped" && (
+                  <button className="btn" onClick={() => void api.setAgenda(i.id, "dropped").then(load)}>
+                    laten vallen
+                  </button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export function DashboardPage() {
   const st = useStore((s) => s.status);
   const seq = useStore((s) => s.lastSeq);
@@ -281,6 +332,7 @@ export function DashboardPage() {
         </div>
       </div>
       {sel && <RunDetail key={sel} id={sel} />}
+      <Agenda />
     </div>
   );
 }

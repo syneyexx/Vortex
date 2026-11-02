@@ -130,6 +130,10 @@ impl OpenAiBackend {
             })
             .collect();
         let mut b = json!({"model": self.model, "messages": messages, "stream": stream});
+        // Prompt caching (W07.09): llama-server hergebruikt de KV-cache van de stabiele prefix.
+        if self.caps.kv_slots {
+            b["cache_prompt"] = json!(true);
+        }
         if stream {
             b["stream_options"] = json!({"include_usage": true});
         }
@@ -247,10 +251,16 @@ impl Backend for OpenAiBackend {
         let mut rec = MetricsRecorder::start(&self.model);
         let r = self.post("/v1/chat/completions", &self.body(req, false), cancel).await?;
         rec.first_byte();
-        let v: Value = tokio::select! {
-            v = r.json() => v?,
+        let body = tokio::select! {
+            v = r.text() => v?,
             _ = cancel.cancelled() => return Err(ModelError::Cancelled),
         };
+        let v: Value = serde_json::from_str(&body).map_err(|e| {
+            ModelError::InvalidOutput(format!(
+                "geen geldige JSON van de server ({e}): {}",
+                body.chars().take(200).collect::<String>()
+            ))
+        })?;
         finite_check(&v)?;
         rec.token();
         if let Some(t) = v.get("timings") {

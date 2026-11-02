@@ -6,7 +6,7 @@ use std::time::Duration;
 use axum::Router;
 use axum::body::Body;
 use axum::extract::Json;
-use axum::response::Response;
+use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use futures::{SinkExt, StreamExt};
 use serde_json::{Value, json};
@@ -21,6 +21,18 @@ async fn fake_model() -> String {
             .and_then(|m| m["content"].as_str())
             .unwrap_or("")
             .to_string();
+        if !b["stream"].as_bool().unwrap_or(false) {
+            let schema = b["response_format"]["json_schema"]["schema"]["properties"].clone();
+            let content = if schema.get("steps").is_some() {
+                json!({"steps": ["feiten verzamelen", "vergelijken"]}).to_string()
+            } else if schema.get("verdict").is_some() {
+                json!({"verdict": "revise", "issues": ["mist een bron"]}).to_string()
+            } else {
+                "stapresultaat".to_string()
+            };
+            return axum::Json(json!({"choices":[{"message":{"content": content},"finish_reason":"stop"}],"usage":{"prompt_tokens":3,"completion_tokens":2}})).into_response();
+        }
+        let last = if last.starts_with("Bijsturing van de gebruiker") { "na-bijsturing".to_string() } else { last };
         let sys = b["messages"][0]["content"].as_str().unwrap_or("").to_string();
         let words: Vec<String> = if last == "slow" {
             (0..400).map(|i| format!("w{i} ")).collect()
@@ -265,7 +277,8 @@ async fn system_prompt_is_live_versioned_and_restorable() {
     let v1 = p["version"].as_str().unwrap_or_default().to_string();
     let sid = fx.post("/api/sessions", json!({})).await["id"].as_str().unwrap_or_default().to_string();
     fx.post(&format!("/api/sessions/{sid}/messages"), json!({"text": "welke prompt?"})).await;
-    assert_eq!(fx.wait_message(&sid, 1, "complete").await["content"], "SYS-V1");
+    let c1 = fx.wait_message(&sid, 1, "complete").await["content"].as_str().unwrap_or_default().to_string();
+    assert!(c1.starts_with("SYS-V1"), "{c1}");
     let r = fx.put("/api/settings/prompts", json!({"path": "prompts/system.md", "content": "SYS-V2"})).await;
     assert_ne!(r["version"].as_str(), Some(v1.as_str()));
     fx.post(&format!("/api/sessions/{sid}/messages"), json!({"text": "welke prompt?"})).await;
@@ -394,4 +407,78 @@ fn unsafe_env() {
     unsafe {
         std::env::set_var("VORTEX_EVALS", dir);
     }
+}
+
+async fn events_of(fx: &Fx, run: &str) -> Vec<vortex_types::Event> {
+    fx.kernel.events().for_run(run.parse().unwrap_or_default()).unwrap_or_default()
+}
+
+#[tokio::test]
+async fn deep_mode_runs_full_cognitive_cycle_with_plan_and_critique() {
+    let fx = setup().await;
+    let sid = fx.post("/api/sessions", json!({})).await["id"].as_str().unwrap_or_default().to_string();
+    let r = fx
+        .post(
+            &format!("/api/sessions/{sid}/messages"),
+            json!({"text": "Vergelijk SQLite en Postgres voor Vortex", "mode": "deep"}),
+        )
+        .await;
+    let run = r["run_id"].as_str().unwrap_or_default().to_string();
+    let m = fx.wait_message(&sid, 1, "complete").await;
+    assert_eq!(m["content"], "Hallo wereld");
+    let ev = events_of(&fx, &run).await;
+    let kinds: Vec<_> = ev.iter().map(|e| e.kind).collect();
+    use vortex_types::EventKind as K;
+    assert_eq!(kinds.iter().filter(|k| **k == K::PhaseCompleted).count(), 8, "alle 8 fasen");
+    assert!(kinds.contains(&K::StrategyChosen) && kinds.contains(&K::PlanCreated));
+    assert_eq!(kinds.iter().filter(|k| **k == K::PlanStepCompleted).count(), 2);
+    assert!(kinds.contains(&K::DecisionMade), "router-features gelogd");
+    let strat = ev.iter().find(|e| e.kind == K::StrategyChosen).map(|e| e.payload.clone()).unwrap_or_default();
+    assert_eq!(strat["path"], "deliberate");
+    let ws = fx.get(&format!("/api/runs/{run}/workspace")).await;
+    assert_eq!(ws["live"], false);
+    assert_eq!(ws["board"]["goals"].as_array().map(|g| g.len()), Some(2), "{ws}");
+}
+
+#[tokio::test]
+async fn personal_question_without_memory_is_told_not_to_guess() {
+    let fx = setup().await;
+    let sid = fx.post("/api/sessions", json!({})).await["id"].as_str().unwrap_or_default().to_string();
+    let r = fx.post(&format!("/api/sessions/{sid}/messages"), json!({"text": "Wat is de naam van mijn hond?"})).await;
+    let run = r["run_id"].as_str().unwrap_or_default().to_string();
+    fx.wait_message(&sid, 1, "complete").await;
+    let ev = events_of(&fx, &run).await;
+    let strat = ev
+        .iter()
+        .find(|e| e.kind == vortex_types::EventKind::StrategyChosen)
+        .map(|e| e.payload.clone())
+        .unwrap_or_default();
+    assert_eq!(strat["prediction"], "abstain", "{strat}");
+    let ver = ev
+        .iter()
+        .find(|e| e.kind == vortex_types::EventKind::VerificationDone)
+        .map(|e| e.payload.clone())
+        .unwrap_or_default();
+    assert_eq!(ver["ok"], false, "nep-model gokt → verificatie markeert het: {ver}");
+}
+
+#[tokio::test]
+async fn steering_mid_stream_continues_with_new_instruction() {
+    let fx = setup().await;
+    let sid = fx.post("/api/sessions", json!({})).await["id"].as_str().unwrap_or_default().to_string();
+    let r = fx.post(&format!("/api/sessions/{sid}/messages"), json!({"text": "slow", "mode": "quick"})).await;
+    let run = r["run_id"].as_str().unwrap_or_default().to_string();
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    let st = fx.post(&format!("/api/runs/{run}/steer"), json!({"text": "korter graag"})).await;
+    assert_eq!(st["accepted"], true, "{st}");
+    let m = fx.wait_message(&sid, 1, "complete").await;
+    let c = m["content"].as_str().unwrap_or_default();
+    assert!(c.starts_with("w0 "), "begin van het oorspronkelijke antwoord blijft: {c}");
+    assert!(c.ends_with("Hallo wereld"), "daarna het bijgestuurde vervolg: {c}");
+    assert!(c.len() < 400 * 4);
+    assert!(events_of(&fx, &run).await.iter().any(|e| e.kind == vortex_types::EventKind::SteerReceived));
+    let ag = fx.get("/api/agenda").await;
+    assert!(ag.is_array());
+    let pr = fx.get("/api/profile").await;
+    assert!(pr["profile"].is_object());
 }

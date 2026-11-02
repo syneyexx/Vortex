@@ -73,4 +73,10 @@ Nieuwste onderaan. Per sessie 3–5 regels: wat gedaan, wat open, volgende stap.
 - Gevonden: zoeken 17,8 ms/100k → parallel 7 ms; meldingsvloed bij eval → één samenvatting.
 - 🔒 `vortex perf` en `vortex soak` klaar, niet volledig gedraaid (regel 7).
 
-**Actieve wave:** PC-verificatie W00–W06 · cloud: volgende = W07 (cognitie + context)
+## 2026-11-02 (W07 cognitie + context)
+- `vortex-cognition`: 8-fasencyclus met events, Global Workspace + doelstapel (dead-task elimination), router (heuristiek + LM-label bij twijfel), metacognitie (snel/diep, effort, budget, selective prediction, switching), plan-and-execute + reflexion + ReAct, salience, leeragenda, user model.
+- `vortex-context::assembler`: budget per sectie, compactie bewaart exacte gegevens (gate-test), gists + sessiesamenvatting, geïsoleerde rolcontext, prompt caching (`cache_prompt`).
+- Chat = `ChatEngine::run` (cognitive.rs); bijsturen tijdens streamen. GUI: agentpaneel live (fasen/plan/verificatie), Enter = bijsturen tijdens antwoord, leeragenda op dashboard, "Over jou" op Memory-pagina.
+- Gevonden: "SQLite" werd code (substring "sql"); vragen-terug bij ≤2 woorden brak korte vragen → nu alleen sturing. 12 server-tests + 13 cognitie-tests groen.
+
+**Actieve wave:** PC-verificatie W00–W07 · cloud: volgende = W08 (tools + skills)

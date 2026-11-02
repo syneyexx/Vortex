@@ -1,16 +1,9 @@
 // Linkerkolom: vortex-hero, Agent collaboration + Verdict, Retrieved memory.
 // Toont alleen echte toestand: agents en geheugen zijn leeg tot hun wave (W09 / W05).
 import { useStore } from "../state/store.ts";
-import { IcChevronRight, IcDoc, IcNodes, IcScale, IcSearch, IcTarget } from "./Icons.tsx";
+import { AgentPanel } from "./AgentPanel.tsx";
 import { MemoryPanel } from "./MemoryPanel.tsx";
 import { VortexShader } from "./VortexShader.tsx";
-
-const ROLES = [
-  { name: "Planner", desc: "Breaks down the task", Icon: IcDoc },
-  { name: "Solvers", desc: "Searches and compares", Icon: IcNodes },
-  { name: "Critic", desc: "Checks gaps and risks", Icon: IcSearch },
-  { name: "Judge", desc: "Validates and approves", Icon: IcScale },
-];
 
 export function LeftColumn() {
   const streaming = useStore((s) =>
@@ -38,35 +31,7 @@ export function LeftColumn() {
         </div>
       </div>
 
-      <section className="panel agents">
-        <h2 className="section-title">Agent collaboration</h2>
-        <div className="agent-grid">
-          {ROLES.map(({ name, desc, Icon }) => (
-            <div key={name} style={{ display: "contents" }}>
-              <div className="agent-card">
-                <Icon size={30} />
-                <div>
-                  <div className="name">{name}</div>
-                  <div className="desc">{desc}</div>
-                </div>
-              </div>
-              <div className="agent-status">
-                <i className="dot idle" />
-                Inactief · volgt in W09
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="verdict">
-          <IcTarget size={26} color="var(--vx-accent)" />
-          <span>Verdict</span>
-          <span style={{ color: "var(--vx-muted)" }}>·</span>
-          <span style={{ color: "var(--vx-text-2)" }}>
-            {streaming ? "Single agent antwoordt" : "Geen actieve beoordeling"}
-          </span>
-          <IcChevronRight className="chev" />
-        </div>
-      </section>
+      <AgentPanel />
 
       <MemoryPanel />
     </aside>

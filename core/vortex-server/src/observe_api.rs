@@ -16,6 +16,11 @@ pub fn routes() -> Router<AppState> {
         .route("/api/runs/:id/trace", get(trace))
         .route("/api/sessions/:id/replay", get(replay))
         .route("/api/analytics", get(analytics))
+        .route("/api/runs/:id/steer", post(steer))
+        .route("/api/runs/:id/workspace", get(workspace))
+        .route("/api/agenda", get(agenda))
+        .route("/api/agenda/:id", post(agenda_status))
+        .route("/api/profile", get(profile))
 }
 
 fn bad(e: impl std::fmt::Display) -> ApiError {
@@ -150,4 +155,64 @@ async fn analytics(State(s): State<AppState>) -> Result<Json<Value>, ApiError> {
         })
         .map_err(e500)?;
     Ok(Json(v))
+}
+
+#[derive(Debug, Deserialize)]
+struct SteerBody {
+    text: String,
+}
+
+/// Bijsturen tijdens een lopende run (W07.10).
+async fn steer(
+    State(s): State<AppState>,
+    AxPath(id): AxPath<String>,
+    Json(b): Json<SteerBody>,
+) -> Result<Json<Value>, ApiError> {
+    let run: RunId = id.parse().map_err(bad)?;
+    if b.text.trim().is_empty() {
+        return Err(bad("lege bijsturing"));
+    }
+    Ok(Json(json!({"accepted": s.chat.steer(run, b.text.trim())})))
+}
+
+/// Global Workspace van een run: live, of de eindstand uit het event log.
+async fn workspace(State(s): State<AppState>, AxPath(id): AxPath<String>) -> Result<Json<Value>, ApiError> {
+    let run: RunId = id.parse().map_err(bad)?;
+    if let Some(b) = s.chat.workspace(run) {
+        return Ok(Json(json!({"live": true, "board": b})));
+    }
+    let ev = s.kernel.events().for_run(run).map_err(e500)?;
+    let fin = ev
+        .iter()
+        .rev()
+        .find(|e| e.kind == EventKind::WorkspaceUpdated && e.payload["what"] == "final")
+        .map(|e| e.payload["board"].clone());
+    Ok(Json(json!({"live": false, "board": fin})))
+}
+
+async fn agenda(State(s): State<AppState>) -> Result<Json<Value>, ApiError> {
+    Ok(Json(json!(s.chat.agenda().list(None, 200).map_err(e500)?)))
+}
+
+#[derive(Debug, Deserialize)]
+struct StatusBody {
+    status: String,
+}
+
+async fn agenda_status(
+    State(s): State<AppState>,
+    AxPath(id): AxPath<String>,
+    Json(b): Json<StatusBody>,
+) -> Result<Json<Value>, ApiError> {
+    if !matches!(b.status.as_str(), "open" | "researching" | "done" | "dropped") {
+        return Err(bad("ongeldige status"));
+    }
+    s.chat.agenda().set_status(&id, &b.status).map_err(e500)?;
+    Ok(Json(json!({"ok": true})))
+}
+
+/// Wat Vortex over de gebruiker weet (W07.12).
+async fn profile(State(s): State<AppState>) -> Result<Json<Value>, ApiError> {
+    let p = vortex_cognition::UserProfile::build(&s.memory.store, None);
+    Ok(Json(json!({"profile": p, "prompt": p.prompt_block()})))
 }

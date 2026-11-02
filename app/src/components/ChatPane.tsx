@@ -276,6 +276,9 @@ export function ChatPane() {
         onStop={async () => {
           if (activeRun) await api.stop(activeRun);
         }}
+        onSteer={async (t) => {
+          if (activeRun) await api.steer(activeRun, t);
+        }}
       />
     </section>
   );

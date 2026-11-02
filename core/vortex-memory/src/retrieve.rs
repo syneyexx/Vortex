@@ -34,6 +34,10 @@ pub struct Query {
     pub w_importance: f64,
     /// MMR: 1 = puur relevantie, 0 = puur diversiteit.
     pub mmr_lambda: f32,
+    /// Gepersonaliseerd ophalen: deze typen krijgen een kleine bonus (bv. user/project bij
+    /// persoonlijke vragen).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub prefer_kinds: Vec<MemoryKind>,
     /// Run waarvoor opgehaald wordt (komt in het retrieval-event → GUI-paneel).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub run_id: Option<vortex_types::RunId>,
@@ -50,6 +54,7 @@ impl Query {
             w_recency: 0.15,
             w_importance: 0.20,
             mmr_lambda: 0.75,
+            prefer_kinds: vec![],
             run_id: None,
         }
     }

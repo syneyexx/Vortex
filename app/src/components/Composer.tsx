@@ -13,9 +13,10 @@ interface Props {
   activeRun: string | null;
   onSend: (text: string, mode: Mode, model: string) => Promise<void>;
   onStop: () => Promise<void>;
+  onSteer: (text: string) => Promise<void>;
 }
 
-export function Composer({ models, defaultModel, activeRun, onSend, onStop }: Props) {
+export function Composer({ models, defaultModel, activeRun, onSend, onStop, onSteer }: Props) {
   const [text, setText] = useState("");
   const [mode, setMode] = useState<Mode>("adaptive");
   const [model, setModel] = useState("");
@@ -28,6 +29,19 @@ export function Composer({ models, defaultModel, activeRun, onSend, onStop }: Pr
   const submit = async () => {
     const body = text.trim();
     if (!body || busy) return;
+    if (activeRun) {
+      // Tijdens een antwoord: bijsturen i.p.v. nieuw bericht (W07.10).
+      setBusy(true);
+      try {
+        await onSteer(body);
+        setText("");
+      } catch (e) {
+        setError(String(e));
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     const full =
       attach.length === 0
         ? body
@@ -59,7 +73,7 @@ export function Composer({ models, defaultModel, activeRun, onSend, onStop }: Pr
     <div className="composer">
       <textarea
         rows={1}
-        placeholder="Ask Vortex or assign a task..."
+        placeholder={activeRun ? "Bijsturen tijdens het antwoord… (Enter)" : "Ask Vortex or assign a task..."}
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {

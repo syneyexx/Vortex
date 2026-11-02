@@ -21,17 +21,19 @@
 | `observe_api` | `/api/messages/:id/feedback`, `/api/runs/:id/trace`, `/api/sessions/:id/replay`, `/api/analytics` |
 | `ChatEngine::answer_once` | één antwoord zonder opslag (eval), P2 via Dirigent |
 | CLI: `vortex eval [--suite x] [--retrieval] [--leakage]`, 🔒 `vortex perf [--quick]`, 🔒 `vortex soak --minutes N` | |
+| `cognitive.rs`: `ChatEngine::run` — elke chat doorloopt de cognitieve cyclus (W07) | |
+| REST W07: `POST /api/runs/:id/steer`, `GET /api/runs/:id/workspace`, `GET/POST /api/agenda[/:id]`, `GET /api/profile` | |
 | CLI: `vortex serve [--listen 127.0.0.1:7420] [--app-dist ../app/dist]`, `vortex status`, `vortex runs` | |
 
 ## Events (schrijft)
-`chat.message.{received,started,delta,completed}`, `context.prompt.assembled` (Inspector), `feedback.user.given`, `eval.*`, `chat.session.{created,forked,updated}`, `settings.prompt.updated`, `model.inference.measured` + alles van `vortex-core`.
+`chat.message.{received,started,delta,completed}`, `cognition.*` (fasen, strategie, plan, stappen, verificatie, workspace, salience, agenda), `context.prompt.assembled` (Inspector), `feedback.user.given`, `eval.*`, `chat.session.{created,forked,updated}`, `settings.prompt.updated`, `model.inference.measured` + alles van `vortex-core`.
 
 ## Invarianten
 - Antwoordtekst = som van de `chat.message.delta`-events (herladen/crash verliest niets).
 - Run leeft los van de WebSocket; alleen `POST /stop` stopt.
 
 ## Ingangen
-`src/api.rs` · `src/chat.rs` · `src/sessions.rs` · `src/live.rs` · `src/main.rs` (CLI) · schema: `vortex-core/migrations/0002_sessions.sql`
+`src/api.rs` · `src/chat.rs` · `src/cognitive.rs` · `src/observe_api.rs` · `src/sessions.rs` · `src/live.rs` · `src/main.rs` (CLI) · schema: `vortex-core/migrations/0002_sessions.sql`
 
 ## Tests
-`cargo test -p vortex-server` — `tests/api.rs` (7): chat end-to-end, resume zonder gaten, stop midden in stream (+ herladen tijdens streamen), verbinding weg, fork, prompts met versies.
+`cargo test -p vortex-server` — `tests/api.rs` (12): chat end-to-end, resume zonder gaten, stop midden in stream (+ herladen tijdens streamen), verbinding weg, fork, prompts met versies, geheugen, eval, diep pad met plan + kritiek, persoonlijke vraag zonder geheugen, bijsturen midden in een stream.

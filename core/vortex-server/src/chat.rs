@@ -4,13 +4,12 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
-use futures::StreamExt;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use vortex_core::{CoreError, Kernel, RunContext, RunSpec};
-use vortex_models::backend::{Backend, ChatRequest, Message, StreamEvent};
+use vortex_models::backend::{Backend, ChatRequest, Message};
 use vortex_models::{ModelError, OpenAiBackend, Registry};
 use vortex_types::{Event, EventKind, MessageId, Priority, RunId, RunKind, SessionId};
 
@@ -45,7 +44,7 @@ impl Mode {
             _ => Mode::Adaptive,
         }
     }
-    fn reasoning_effort(self) -> &'static str {
+    pub fn reasoning_effort(self) -> &'static str {
         match self {
             Mode::Quick => "low",
             Mode::Adaptive => "medium",
@@ -115,10 +114,15 @@ impl Backends {
 
 #[derive(Debug, Clone)]
 pub struct ChatEngine {
-    kernel: Kernel,
-    sessions: SessionStore,
-    backends: Arc<Backends>,
-    memory: Option<crate::memory_api::MemoryHandle>,
+    pub(crate) kernel: Kernel,
+    pub(crate) sessions: SessionStore,
+    pub(crate) backends: Arc<Backends>,
+    pub(crate) memory: Option<crate::memory_api::MemoryHandle>,
+    /// Bijsturing tijdens een lopende run (W07.10).
+    pub(crate) steer: Arc<Mutex<HashMap<RunId, tokio::sync::mpsc::Sender<String>>>>,
+    /// Global Workspace per lopende run.
+    pub(crate) workspaces: Arc<Mutex<HashMap<RunId, vortex_cognition::Workspace>>>,
+    pub(crate) agenda: vortex_cognition::Agenda,
 }
 
 /// Maximale tijd voor geheugen-ophalen vóór een antwoord (chat wacht nooit langer).
@@ -129,12 +133,21 @@ const DEFAULT_TITLE: &str = "Nieuwe chat";
 impl ChatEngine {
     pub fn new(kernel: Kernel, memory: Option<crate::memory_api::MemoryHandle>) -> Self {
         let sessions = SessionStore::new(kernel.events().clone());
-        Self { kernel, sessions, backends: Arc::new(Backends::default()), memory }
+        let agenda = vortex_cognition::Agenda::new(kernel.events().clone());
+        Self {
+            kernel,
+            sessions,
+            backends: Arc::new(Backends::default()),
+            memory,
+            steer: Arc::new(Mutex::new(HashMap::new())),
+            workspaces: Arc::new(Mutex::new(HashMap::new())),
+            agenda,
+        }
     }
 
     /// Herinneringen ophalen voor deze vraag → tekstblok voor de system prompt.
     // VX:W05.06
-    async fn memory_context(
+    pub(crate) async fn memory_context(
         &self,
         run: RunId,
         question: &str,
@@ -181,7 +194,7 @@ impl ChatEngine {
     }
 
     /// Context Assembly Inspector: wat er in de prompt ging (en wat wegviel). VX:W06.06
-    fn log_context(
+    pub(crate) fn log_context(
         &self,
         run: RunId,
         trace: vortex_types::TraceId,
@@ -252,7 +265,7 @@ impl ChatEngine {
     }
 
     /// Na een afgerond antwoord: episodisch geheugen + persoonlijke feiten (via de policy).
-    fn remember_exchange(&self, session: SessionId, question: String, answer: String) {
+    pub(crate) fn remember_exchange(&self, session: SessionId, question: String, answer: String) {
         let Some(mem) = self.memory.clone() else { return };
         tokio::spawn(async move {
             use vortex_memory::{MemoryKind, NewMemory};
@@ -363,164 +376,5 @@ impl ChatEngine {
             me.run(ctx, backend, session, asst_id, mode).await;
         });
         Ok(SendReply { run_id, user_message_id: user_id, assistant_message_id: asst_id, model })
-    }
-
-    fn history(
-        &self,
-        ctx: &RunContext,
-        session: SessionId,
-        upto: MessageId,
-        memory: Option<String>,
-    ) -> Result<Vec<Message>, ChatError> {
-        let mut msgs = Vec::new();
-        let mut sys = ctx.config().file("prompts/system.md").map(|s| s.trim().to_string()).unwrap_or_default();
-        if let Some(m) = memory {
-            if !sys.is_empty() {
-                sys.push_str("\n\n");
-            }
-            sys.push_str(&m);
-        }
-        if !sys.is_empty() {
-            msgs.push(Message::system(sys));
-        }
-        for m in self.sessions.messages(session)? {
-            if m.id == upto {
-                break;
-            }
-            if m.content.is_empty() {
-                continue;
-            }
-            match m.role.as_str() {
-                "user" => msgs.push(Message::user(m.content)),
-                "assistant" if m.status == "complete" => msgs.push(Message::assistant(m.content)),
-                _ => {}
-            }
-        }
-        Ok(msgs)
-    }
-
-    async fn run(&self, ctx: RunContext, backend: Arc<OpenAiBackend>, session: SessionId, msg: MessageId, mode: Mode) {
-        let run_id = ctx.id();
-        let trace = ctx.trace().trace_id;
-        let log = self.kernel.events().clone();
-        let mut text = String::new();
-        let mut reasoning = String::new();
-        let outcome: Result<Option<serde_json::Value>, ChatError> = async {
-            ctx.start()?;
-            let _gpu = ctx.gpu(Priority::P0).await?;
-            let question = self
-                .sessions
-                .messages(session)?
-                .into_iter()
-                .rev()
-                .find(|m| m.role == "user")
-                .map(|m| m.content)
-                .unwrap_or_default();
-            let mem_ctx = self.memory_context(run_id, &question, None).await;
-            let used = mem_ctx.as_ref().map(|(_, u)| u.clone()).unwrap_or_default();
-            let msgs = self.history(&ctx, session, msg, mem_ctx.map(|(t, _)| t))?;
-            self.log_context(run_id, trace, &ctx, &msgs, &used, 0);
-            let mut req = ChatRequest::new(msgs);
-            if backend.capabilities().reasoning_effort {
-                req.reasoning_effort = Some(mode.reasoning_effort().into());
-            }
-            let mut stream = backend.chat_stream(&req, ctx.token().child_token()).await?;
-            let (mut buf_t, mut buf_r) = (String::new(), String::new());
-            let mut last = Instant::now();
-            let mut metrics = None;
-            let flush = |t: &mut String, r: &mut String| -> Result<(), ChatError> {
-                if t.is_empty() && r.is_empty() {
-                    return Ok(());
-                }
-                log.append(
-                    Event::new(
-                        EventKind::MessageDelta,
-                        trace,
-                        serde_json::json!({"session_id": session, "message_id": msg, "text": t, "reasoning": r}),
-                    )
-                    .for_run(run_id),
-                )?;
-                t.clear();
-                r.clear();
-                Ok(())
-            };
-            loop {
-                let next = tokio::time::timeout(Duration::from_millis(COALESCE_MS), stream.next()).await;
-                match next {
-                    Err(_) => {} // tijdvenster verstreken: flushen
-                    Ok(None) => break,
-                    Ok(Some(ev)) => match ev? {
-                        StreamEvent::Text(t) => {
-                            text.push_str(&t);
-                            buf_t.push_str(&t);
-                        }
-                        StreamEvent::Reasoning(r) => {
-                            reasoning.push_str(&r);
-                            buf_r.push_str(&r);
-                        }
-                        StreamEvent::Done { metrics: m, usage, finish_reason } => {
-                            let _ = ctx.charge_tokens(usage.completion_tokens);
-                            log.append(m.to_event(trace, Some(run_id)))?;
-                            metrics = Some(serde_json::json!({
-                                "metrics": m, "usage": usage, "finish_reason": finish_reason
-                            }));
-                        }
-                        StreamEvent::ToolCallStreaming { .. } | StreamEvent::ToolCallReady(_) => {}
-                    },
-                }
-                if last.elapsed() >= Duration::from_millis(COALESCE_MS) || buf_t.len() + buf_r.len() >= COALESCE_CHARS {
-                    flush(&mut buf_t, &mut buf_r)?;
-                    last = Instant::now();
-                }
-            }
-            flush(&mut buf_t, &mut buf_r)?;
-            Ok(metrics)
-        }
-        .await;
-
-        let cancelled = ctx.is_cancelled()
-            || matches!(
-                &outcome,
-                Err(ChatError::Model(ModelError::Cancelled)) | Err(ChatError::Core(CoreError::Cancelled))
-            );
-        let (status, err) = match &outcome {
-            Ok(_) => ("complete", None),
-            Err(_) if cancelled => ("cancelled", None),
-            Err(e) => ("failed", Some(e.to_string())),
-        };
-        let metrics = outcome.as_ref().ok().cloned().flatten();
-        let fin = log.transact(|tx, out| {
-            SessionStore::finish_tx(tx, msg, &text, &reasoning, status, metrics.as_ref())?;
-            out.emit(
-                tx,
-                Event::new(
-                    EventKind::MessageCompleted,
-                    trace,
-                    serde_json::json!({"session_id": session, "message_id": msg, "status": status, "error": err, "detail": metrics}),
-                )
-                .for_run(run_id),
-            )?;
-            Ok(())
-        });
-        if let Err(e) = fin {
-            tracing::error!(run = %run_id, error = %e, "bericht afronden mislukt");
-        }
-        if status == "complete" {
-            let q = self
-                .sessions
-                .messages(session)
-                .ok()
-                .and_then(|ms| ms.into_iter().rev().find(|m| m.role == "user").map(|m| m.content))
-                .unwrap_or_default();
-            self.remember_exchange(session, q, text.clone());
-        }
-        let r = match status {
-            "complete" => ctx.complete(serde_json::json!({"message_id": msg})).map(|_| ()),
-            "cancelled" => ctx.finish_cancelled().map(|_| ()),
-            _ => ctx.fail(err.as_deref().unwrap_or("onbekend")).map(|_| ()),
-        };
-        if let Err(e) = r {
-            tracing::warn!(run = %run_id, error = %e, "run afronden");
-        }
     }
 }

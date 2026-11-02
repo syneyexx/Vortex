@@ -4,6 +4,7 @@
 
 pub mod api;
 pub mod chat;
+pub mod cognitive;
 pub mod eval_api;
 pub mod live;
 pub mod memory_api;

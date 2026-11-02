@@ -64,3 +64,8 @@ Nieuwste onderaan. Formaat: datum · besluit · waarom.
 | 2026-11-02 | Geen inhoud in geheugen-events; belang van episodisch geheugen komt uit de gebruikersvraag | Vergeten moet echt vergeten zijn; modelantwoord mag de policy niet sturen |
 | 2026-11-02 | Eval draait via de echte chat-pipeline (`Subject`), in geïsoleerde `__eval_*`-werkruimtes die na afloop vergeten worden | Meet wat de gebruiker krijgt; geen lekkage naar het echte geheugen |
 | 2026-11-02 | Vectorzoeken parallel boven 50k vectoren (scoped threads) | Bench: 17,8 → 7,0 ms per 100k op 4 vCPU; houdt p95 < 150 ms richting miljoenen |
+| 2026-11-02 | Elke chatbeurt loopt door de cognitieve cyclus (`ChatEngine::run`); snel pad = 1 modelaanroep, diep pad = plan + stappen + kritiek vóór het antwoord | One brain: één pijplijn, events per fase |
+| 2026-11-02 | Metacognitie vraagt niet terug op korte invoer; alleen sturing "vraag kort na als het onduidelijk is" | Korte vragen ("traag", "welke prompt?") werden geblokkeerd |
+| 2026-11-02 | Router-LM-label alleen bij heuristische zekerheid < 0,65, timeout 1,5 s | Snelheid: meeste beurten geen extra modelaanroep |
+| 2026-11-02 | Bijsturen = huidige generatie annuleren, gedeeltelijk antwoord + nieuwe instructie meegeven, verder streamen in hetzelfde bericht | Geen nieuwe run; gebruiker ziet één doorlopend antwoord |
+

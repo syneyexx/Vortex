@@ -113,4 +113,24 @@ export const api = {
   evalRetrieval: () => req<Record<string, unknown>>("POST", "/api/eval/retrieval", {}),
   evalLeakage: () =>
     req<{ checked_evals: number; checked_memories: number; leaks: unknown[] }>("GET", "/api/eval/leakage"),
+  steer: (runId: string, text: string) =>
+    req<{ accepted: boolean }>("POST", `/api/runs/${runId}/steer`, { text }),
+  agenda: () =>
+    req<
+      {
+        id: string;
+        topic: string;
+        reason: string;
+        detail: string;
+        priority: number;
+        status: string;
+        hits: number;
+      }[]
+    >("GET", "/api/agenda"),
+  setAgenda: (id: string, status: string) => req<unknown>("POST", `/api/agenda/${id}`, { status }),
+  profile: () =>
+    req<{
+      profile: { style: string[]; facts: string[]; goals: string[]; feedback: Record<string, number> };
+      prompt: string | null;
+    }>("GET", "/api/profile"),
 };
