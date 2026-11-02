@@ -78,6 +78,8 @@ pub fn router(state: AppState, static_dir: Option<PathBuf>) -> Router {
         .route("/api/sessions/:id/fork", post(fork_session))
         .route("/api/runs", get(list_runs))
         .route("/api/runs/:id/stop", post(stop_run))
+        .route("/api/runs/:id/pause", post(pause_run))
+        .route("/api/runs/:id/resume", post(resume_run))
         .route("/api/models", get(models))
         .route("/api/settings/prompts", get(get_prompts).put(put_prompt))
         .route("/api/settings/history", get(config_history))
@@ -130,6 +132,7 @@ async fn status(State(s): State<AppState>) -> R<Value> {
         "tok_s": live.tok_s,
         "last_seq": s.kernel.events().last_seq()?,
         "active_runs": s.kernel.runs().active()?.len(),
+        "dirigent": s.kernel.dirigent().snapshot(),
     })))
 }
 
@@ -266,6 +269,16 @@ async fn stop_run(State(s): State<AppState>, AxPath(id): AxPath<String>) -> R<Va
     Ok(Json(json!({"accepted": s.kernel.request_stop(id)?})))
 }
 
+async fn pause_run(State(s): State<AppState>, AxPath(id): AxPath<String>) -> R<Value> {
+    s.kernel.dirigent().hold(parse(&id)?, true);
+    Ok(Json(json!({"paused": true})))
+}
+
+async fn resume_run(State(s): State<AppState>, AxPath(id): AxPath<String>) -> R<Value> {
+    s.kernel.dirigent().hold(parse(&id)?, false);
+    Ok(Json(json!({"paused": false})))
+}
+
 // ---------- modellen ----------
 
 async fn models(State(s): State<AppState>) -> R<Value> {
@@ -376,6 +389,12 @@ pub fn build_state(kernel: Kernel) -> AppState {
     }
     let live = Live::default();
     live.spawn(kernel.clone(), kernel.shutdown_token().child_token());
+    // Drukmeters + idle-detectie voeden de Dirigent (W04).
+    vortex_core::sampler::spawn(
+        kernel.dirigent().clone(),
+        vortex_core::sampler::SamplerConfig::default(),
+        kernel.shutdown_token().child_token(),
+    );
     AppState { kernel, chat, live }
 }
 

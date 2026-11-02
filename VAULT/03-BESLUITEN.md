@@ -56,3 +56,5 @@ Nieuwste onderaan. Formaat: datum · besluit · waarom.
 | 2026-11-02 | Doorbouwen aan volgende waves terwijl PC-verificatie van W00–W02 openstaat; gates blijven pas groen na verificatie op de PC | Gebruiker: "ga maar verder" |
 | 2026-11-02 | GUI-transport: WebSocket met event-JSON (`/api/events?from_seq`) + REST, i.p.v. gRPC-web | Eén stroom = het event log zelf; hervatten op `seq`; geen extra codegen in de browser |
 | 2026-11-02 | Antwoordtekst wordt tijdens streamen alleen als gecoalesceerde deltas in het event log bewaard; het bericht krijgt zijn tekst bij afronden; lezen tijdens streamen bouwt op uit deltas | Eén bron, crash-/herlaadveilig |
+| 2026-11-02 | Alle GPU-werk loopt via de Dirigent (`RunContext::gpu` → `Dirigent`); de simpele slot-scheduler blijft alleen als bouwsteen | Eén plek voor prioriteit, preemption, pauzeren en kostenmodel |
+| 2026-11-02 | Windows-code wordt in de cloud getypecheckt met `cargo check --target x86_64-pc-windows-gnu` (zig als C-compiler); gedrag verifiëren op de PC | Compileerfouten vóór de PC-sessie vangen |

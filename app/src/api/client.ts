@@ -39,6 +39,8 @@ export const api = {
       { text, mode, model },
     ),
   stop: (runId: string) => req<{ accepted: boolean }>("POST", `/api/runs/${runId}/stop`),
+  pause: (runId: string) => req<{ paused: boolean }>("POST", `/api/runs/${runId}/pause`),
+  resume: (runId: string) => req<{ paused: boolean }>("POST", `/api/runs/${runId}/resume`),
   runs: () => req<{ active: RunRecord[]; recent: RunRecord[] }>("GET", "/api/runs"),
   models: () => req<{ default: string; models: ModelInfo[] }>("GET", "/api/models"),
   prompts: () =>

@@ -8,15 +8,15 @@ generated: true
 > daarna `python tools/vault/vault.py todo`. Legenda: `[ ]` open · `[~]` bezig · `[x]` af.
 > Functionaliteiten per domein (wat Vortex *kan*): [[FUNCTIES]].
 
-**Totaal: 35/235 af.**
+**Totaal: 41/235 af.**
 
 | Wave | Status | Af | Open |
 | --- | --- | --- | --- |
 | [[waves/W00-fundament\|W00 — Fundament]] | bezig | 5 | 15 |
 | [[waves/W01-runtime-core\|W01 — Runtime kern]] | bezig | 16 | 2 |
 | [[waves/W02-modelbeheer\|W02 — Modelbeheer]] | bezig | 4 | 12 |
-| [[waves/W03-gui-chat\|W03 — GUI en chat]] | bezig | 10 | 5 |
-| [[waves/W04-dirigent-performance\|W04 — Dirigent en performance]] | open | 0 | 7 |
+| [[waves/W03-gui-chat\|W03 — GUI en chat]] | bezig | 11 | 4 |
+| [[waves/W04-dirigent-performance\|W04 — Dirigent en performance]] | bezig | 5 | 2 |
 | [[waves/W05-geheugen-kern\|W05 — Geheugen kern]] | open | 0 | 14 |
 | [[waves/W06-eval-observability\|W06 — Eval en observability]] | open | 0 | 13 |
 | [[waves/W07-cognitie-context\|W07 — Cognitie en context]] | open | 0 | 12 |
@@ -120,7 +120,7 @@ Bron: [[waves/W03-gui-chat]] · status: `bezig`
 - [x] `W03.07` Chat: streaming berichten, markdown, codeblokken (highlighting, kopiëren, diff), tabellen, LaTeX, Mermaid
 - [~] `W03.08` Invoerbalk: bijlage, Quick/Deep/Research/Adaptive, modelkiezer, strategie, stopknop (echte cancellation) — alles af incl. echte stop; bijlagen = tekstbestanden ≤ 200 kB; modelkiezer stuurt het model mee, **echt wisselen via `ModelServer` op de PC koppelen**
 - [x] `W03.09` Tool-kaarten en Agent collaboration-paneel aangesloten op events (vult zich vanaf W08/W09)
-- [~] `W03.10` Achtergrondtaak-balk + Lopend werk-pagina (pauzeren/stoppen) — balk + Lopend werk-pagina met stoppen af; **pauzeren** komt met preemption (W04)
+- [x] `W03.10` Achtergrondtaak-balk + Lopend werk-pagina (pauzeren/stoppen) — **af:** pauzeren/hervatten via Dirigent (`/api/runs/:id/pause|resume`), stoppen, Dirigent-kaart op Lopend werk
 - [~] `W03.11` Statusbalk: gezondheid per subsysteem, beide GPU's live VRAM, actief model, tok/s sparkline — af; GPU-balken lezen nvidia-smi — **verifiëren op de PC**
 - [~] `W03.12` Instellingen: system prompt + rol-prompts, live vanaf volgend bericht, "nu toepassen", versiegeschiedenis + terugzetten; paden; modellen; gedrag — system prompt + rol-prompts live, versies, terugzetten af; paden/modellen/gedrag nog via `config/*.toml` (formulieren later)
 - [x] `W03.13` Sessies: opslaan/herstellen, branching/forking, nieuwe chat, geschiedenis
@@ -128,14 +128,14 @@ Bron: [[waves/W03-gui-chat]] · status: `bezig`
 - [x] `W03.15` Visuele vergelijking met referentie (screenshot naast elkaar) — Playwright-screenshot naast referentie; gevonden en opgelost: herladen tijdens streamen verloor tekst, kolom-overflow, shader-naad. **Herhalen met echte GPU-data op de PC**
 
 ## W04 — Dirigent en performance
-Bron: [[waves/W04-dirigent-performance]] · status: `open`
-- [ ] `W04.01` Dirigent volgens [[modules/orkestrator-performance]]: taakaanmelding met middelenvraag, P0–P3, admission control per middel, preemption op veilige punten, priority inheritance, model-affiniteit, pipelining, bulkheads, backpressure, drukmeters, idle-detectie
-- [ ] `W04.02` Twee tokio-runtimes (CCD0 interactief / CCD1 achtergrond) + CPU-affiniteit en Windows-prioriteit per proces
-- [ ] `W04.03` RAM-budget per modus + harde caps (Job Objects) + nette herstart na checkpoint
-- [ ] `W04.04` HDD: één I/O-wachtrij, gesorteerd, sequentieel
-- [ ] `W04.05` Circuit breakers + bulkheads
-- [ ] `W04.06` Stall/livelock- en retry-amplification-detectie (signalen + events)
-- [ ] `W04.07` Single-flight + negative caching utilities
+Bron: [[waves/W04-dirigent-performance]] · status: `bezig`
+- [x] `W04.01` Dirigent volgens [[modules/orkestrator-performance]]: taakaanmelding met middelenvraag, P0–P3, admission control per middel, preemption op veilige punten, priority inheritance, model-affiniteit, pipelining, bulkheads, backpressure, drukmeters, idle-detectie — **af:** `vortex-core::dirigent` (12 tests) + `sampler` (drukmeters, idle, externe GPU-last) + pauzeren/hervatten (`hold`); RunContext::gpu loopt via de Dirigent. Idle-tijd op Windows (GetLastInputInfo) typecheckt — gedrag **verifiëren op de PC**
+- [~] `W04.02` Twee tokio-runtimes (CCD0 interactief / CCD1 achtergrond) + CPU-affiniteit en Windows-prioriteit per proces — twee runtimes met core-pinning + CCD-indeling (Windows- en Linux-nummering) + `place_process` af en getest op Linux; Windows-affiniteit/prioriteit typecheckt — **verifiëren op de PC**
+- [~] `W04.03` RAM-budget per modus + harde caps (Job Objects) + nette herstart na checkpoint — RAM-budget per modus + RSS-bewaking met event/callback af en getest; harde cap via Job Object (Windows) typecheckt — **verifiëren op de PC**
+- [x] `W04.04` HDD: één I/O-wachtrij, gesorteerd, sequentieel
+- [x] `W04.05` Circuit breakers + bulkheads
+- [x] `W04.06` Stall/livelock- en retry-amplification-detectie (signalen + events)
+- [x] `W04.07` Single-flight + negative caching utilities
 
 ## W05 — Geheugen kern
 Bron: [[waves/W05-geheugen-kern]] · status: `open`

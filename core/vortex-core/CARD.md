@@ -1,7 +1,7 @@
 # CARD — `vortex-core`
 
 **Doel:** runtime kern — eigenaar van runs, statussen, stoppen, budgetten, checkpoints, resources, config, secrets, processen en de GPU-slot-scheduler.
-**VAULT-module:** VAULT/modules/runtime-core.md · **Waves:** W01 (af), W04 (Dirigent bouwt hierop)
+**VAULT-module:** VAULT/modules/runtime-core.md · **Waves:** W01, W04
 
 ## Publieke API
 | Item | Doet |
@@ -22,7 +22,16 @@
 | `ConfigManager` / `ConfigSnapshot` | versies, hot-reload, geschiedenis |
 | `SecretBroker` / `Secret` | OS-keystore, nooit in logs |
 | `Supervisor` / `ProcessSpec` | procesgroep, outputlimiet, boom stoppen |
-| `SlotScheduler` | één taak tegelijk op hoofd-GPU, P0 eerst |
+| `SlotScheduler` | eenvoudige slot-wachtrij (bouwsteen) |
+| `Dirigent` / `TaskSpec` / `Demand` / `Lease` | **alle taken**: P0–P3, admission, preemption (`should_yield`/`yield_now`), boost, affiniteit, bulkheads, condities, `hold` (pauze), kostenmodel; `RunContext::{gpu, admit}` |
+| `sampler::spawn` | drukmeters + idle + externe GPU-last → `Dirigent::set_conditions` |
+| `runtimes::{Runtimes, CpuLayout, place_process}` | CCD0 interactief / CCD1 achtergrond, core-pinning, procesplaatsing |
+| `platform` | Windows: Job Object-cap, affiniteit, prioriteit, idle-tijd (unsafe, alleen hier) |
+| `memwatch::{RamBudget, watch_process}` | RAM-budget per modus + RSS-bewaking |
+| `HddQueue` | één I/O-thread, elevator-sortering |
+| `CircuitBreaker`, `Bulkhead` | resilience |
+| `StallDetector`, `RetryBudget` | livelock / retry-amplification → events |
+| `SingleFlight`, `NegativeCache` | dedupe + korte TTL voor fouten |
 | `telemetry::{init, TraceCtx}` | tracing met trace/span/run-ID's |
 
 ## Afhankelijk van
@@ -42,13 +51,14 @@
 | Bestand | Waarom |
 | --- | --- |
 | `src/kernel.rs` | begin hier: Kernel + RunContext |
+| `src/dirigent.rs` | planning van alle taken |
 | `src/runs.rs` | overgangstabel + voorwaarden |
 | `src/events.rs` | event log, outbox, dispatcher |
 | `src/recovery.rs` | crash-rapport |
 | `migrations/0001_core.sql` | schema |
 
 ## Tests
-`cargo test -p vortex-core` — unit (49) + `tests/kernel.rs` (stopketen < 500 ms, budget, config-versie, GPU-slot) + `tests/crash.rs` (W01-gate: kill -9 → exact herstel).
+`cargo test -p vortex-core` — unit (81) + `tests/kernel.rs` (stopketen < 500 ms, budget, config-versie, GPU-slot) + `tests/crash.rs` (W01-gate: kill -9 → exact herstel).
 
 ## One-brain-check
 - [x] event log · [ ] workspace (W07) · [ ] geheugen (W05) · [x] metacog/neural (feature-logging `DecisionRecord`) · [ ] GUI (W03)

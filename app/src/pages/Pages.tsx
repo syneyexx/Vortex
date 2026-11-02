@@ -116,9 +116,7 @@ export function RunsPage() {
           Alles stoppen
         </button>
       </div>
-      <p style={{ color: "var(--vx-muted)" }}>
-        Pauzeren (preemption op een veilig punt) komt met de Dirigent in W04.
-      </p>
+      <DirigentCard />
       <div className="panel card">
         <h3>Actief</h3>
         <table className="table">
@@ -134,6 +132,50 @@ export function RunsPage() {
       </div>
     </div>
   );
+}
+
+function DirigentCard() {
+  const d = useStore((s) => (s.status as unknown as { dirigent?: DirigentSnap } | null)?.dirigent);
+  if (!d) return null;
+  const bar = (used: number, cap: number) => `${used} / ${cap}`;
+  return (
+    <div className="panel card">
+      <h3>Dirigent</h3>
+      <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
+        <span className="pill">hoofd-GPU {bar(d.used.main_gpu, d.capacity.main_gpu)}</span>
+        <span className="pill">1060 {bar(d.used.aux_gpu_mib, d.capacity.aux_gpu_mib)} MiB</span>
+        <span className="pill">cores {bar(d.used.cores, d.capacity.cores)}</span>
+        <span className="pill">RAM {bar(d.used.ram_mib, d.capacity.ram_mib)} MiB</span>
+        <span className={`pill ${d.conditions.user_idle ? "ok" : ""}`}>
+          gebruiker {d.conditions.user_idle ? "idle" : "actief"}
+        </span>
+        <span className={`pill ${d.conditions.external_gpu_load ? "err" : ""}`}>
+          externe GPU-last {d.conditions.external_gpu_load ? "ja" : "nee"}
+        </span>
+        <span className={`pill ${d.conditions.pressure ? "err" : "ok"}`}>
+          druk {["normaal", "hoog", "kritiek"][d.conditions.pressure]}
+        </span>
+      </div>
+      <p style={{ color: "var(--vx-muted)", fontSize: 13 }}>
+        Lopend: {d.running.map((r) => `${r[0]} (${r[2]})`).join(", ") || "—"} · Wachtend:{" "}
+        {d.waiting.map((r) => `${r[0]} (${r[2]})`).join(", ") || "—"}
+      </p>
+    </div>
+  );
+}
+
+interface DemandSnap {
+  main_gpu: number;
+  aux_gpu_mib: number;
+  cores: number;
+  ram_mib: number;
+}
+interface DirigentSnap {
+  capacity: DemandSnap;
+  used: DemandSnap;
+  conditions: { user_idle: boolean; external_gpu_load: boolean; pressure: number };
+  running: [string, string, string][];
+  waiting: [string, string, string][];
 }
 
 export function ModelsPage() {

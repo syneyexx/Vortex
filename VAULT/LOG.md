@@ -55,4 +55,10 @@ Nieuwste onderaan. Per sessie 3–5 regels: wat gedaan, wat open, volgende stap.
 - Visuele vergelijking met Playwright vond 3 fouten (o.a. **herladen tijdens streamen verloor tekst**) — opgelost en getest.
 - Open: gate (chat met echt gpt-oss-20b) + GPU-weergave + modelwissel via ModelServer op de PC; pauzeren (W04); artefacten (W08).
 
-**Actieve wave:** PC-verificatie W00–W03 · cloud: volgende = W04 (Dirigent)
+## 2026-11-02 (W04 Dirigent + performance)
+- `dirigent`: P0–P3, admission control per middel, preemption op veilige punten (`Lease::should_yield/yield_now`), priority inheritance, model-affiniteit, bulkheads, backpressure, condities (idle/game/druk), kostenmodel, pauzeren. Bug gevonden: bulkhead-wachtende blokkeerde andere soorten — opgelost.
+- Ook: `sampler` (drukmeters), `runtimes` (CCD0/CCD1 + pinning), `platform` (Windows Job Objects/affiniteit/prioriteit/idle), `memwatch` (RAM-budget + RSS-bewaking), `hddqueue` (elevator), `resilience` (circuit breaker, bulkhead), `stall` (livelock + retry-amplification), `cache` (single-flight, negative cache).
+- Windows-typecheck in de cloud (zig) vond 1 fout (feature Win32_Security) — opgelost. 89 kern-tests groen.
+- Open (PC): Windows-affiniteit/prioriteit/Job Objects/idle-tijd echt testen.
+
+**Actieve wave:** PC-verificatie W00–W04 · cloud: volgende = W05 (geheugen)

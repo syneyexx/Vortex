@@ -1,3 +1,4 @@
+#![cfg_attr(not(unix), allow(unused_imports))]
 //! Integratietests van de kern: levenscyclus, stopketen, budget, config-versie per run.
 
 use std::time::{Duration, Instant};

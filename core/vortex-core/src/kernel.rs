@@ -14,13 +14,14 @@ use crate::budget::{Budget, BudgetTracker, Deadline};
 use crate::checkpoint::{Checkpoint, Checkpoints, EffectKind};
 use crate::config::{ConfigManager, ConfigSnapshot};
 use crate::db::{CORE_MIGRATIONS, Db};
+use crate::dirigent::{Demand, Dirigent, DirigentConfig, Lease, TaskSpec};
 use crate::error::{CoreError, Result};
 use crate::events::{Dispatcher, EventLog};
 use crate::process::{ProcessOutcome, ProcessSpec, Supervisor};
 use crate::recovery::{CrashReport, RunningMarker, recover};
 use crate::resources::ResourceRegistry;
 use crate::runs::{RunRecord, RunSpec, RunStore, TransitionData};
-use crate::scheduler::{SlotPermit, SlotScheduler};
+use crate::scheduler::SlotScheduler;
 use crate::scope::DetachedTasks;
 use crate::secrets::SecretBroker;
 use crate::telemetry::TraceCtx;
@@ -35,6 +36,8 @@ pub struct KernelOptions {
     pub secrets: SecretBroker,
     /// Config hot-reload aan.
     pub watch_config: bool,
+    /// Capaciteit/bulkheads van de Dirigent.
+    pub dirigent: DirigentConfig,
 }
 
 impl KernelOptions {
@@ -45,6 +48,7 @@ impl KernelOptions {
             main_gpu_slots: 1,
             secrets: SecretBroker::os(),
             watch_config: true,
+            dirigent: DirigentConfig::default(),
         }
     }
 }
@@ -65,6 +69,7 @@ struct Inner {
     secrets: SecretBroker,
     supervisor: Supervisor,
     main_gpu: SlotScheduler,
+    dirigent: Dirigent,
     detached: DetachedTasks,
     root: CancellationToken,
     active: Mutex<HashMap<RunId, ActiveRun>>,
@@ -88,6 +93,9 @@ impl Kernel {
         let config = ConfigManager::load(&opts.config_dir, log.clone())?;
         let supervisor = Supervisor::new(log.clone(), resources.clone());
         let main_gpu = SlotScheduler::new("gpu.main", opts.main_gpu_slots, log.clone(), resources.clone());
+        let mut dcfg = opts.dirigent.clone();
+        dcfg.capacity.main_gpu = opts.main_gpu_slots as u32;
+        let dirigent = Dirigent::new(dcfg, log.clone());
         let root = CancellationToken::new();
         let detached = DetachedTasks::new();
         if opts.watch_config {
@@ -111,6 +119,7 @@ impl Kernel {
             secrets: opts.secrets,
             supervisor,
             main_gpu,
+            dirigent,
             detached,
             root,
             active: Mutex::new(HashMap::new()),
@@ -148,6 +157,10 @@ impl Kernel {
     }
     pub fn main_gpu(&self) -> &SlotScheduler {
         &self.0.main_gpu
+    }
+    /// De Dirigent: alle taken lopen hierlangs.
+    pub fn dirigent(&self) -> &Dirigent {
+        &self.0.dirigent
     }
     pub fn detached(&self) -> &DetachedTasks {
         &self.0.detached
@@ -418,17 +431,28 @@ impl RunContext {
         r
     }
 
-    /// Wacht op het GPU-slot (status waiting zolang er gewacht wordt).
-    pub async fn gpu(&self, priority: Priority) -> Result<SlotPermit> {
-        let sched = self.kernel.main_gpu().clone();
-        let id = self.id();
-        if sched.queue_len() > 0 {
-            self.wait("wacht op GPU-slot")?;
-            let p = sched.acquire(id, priority, &self.token).await;
-            self.resume()?;
-            return p;
+    /// Hoofd-GPU via de Dirigent (status `waiting` zolang er gewacht wordt).
+    pub async fn gpu(&self, priority: Priority) -> Result<Lease> {
+        self.admit(Demand::main_gpu(), priority, None).await
+    }
+
+    /// Middelen aanvragen bij de Dirigent voor deze run.
+    pub async fn admit(&self, demand: Demand, priority: Priority, model: Option<String>) -> Result<Lease> {
+        let kind = self.record.lock().kind.as_str().to_string();
+        let mut spec = TaskSpec::new(&format!("{kind}:{}", self.id()), &kind, priority, demand);
+        spec.run_id = Some(self.id());
+        spec.model = model;
+        let ticket = self.kernel.dirigent().submit(spec)?;
+        let snap_waiting = !self.kernel.dirigent().snapshot().waiting.is_empty();
+        if snap_waiting && self.state() == RunState::Running {
+            self.wait("wacht op middelen (Dirigent)")?;
+            let r = ticket.admitted(&self.token).await;
+            if r.is_ok() {
+                self.resume()?;
+            }
+            return r;
         }
-        sched.acquire(id, priority, &self.token).await
+        ticket.admitted(&self.token).await
     }
 
     /// Proces starten onder supervisie (stopt mee met deze run).

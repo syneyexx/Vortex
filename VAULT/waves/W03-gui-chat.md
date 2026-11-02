@@ -18,7 +18,7 @@ Zie [[modules/gui]], `design/reference-chat.png`.
 - [x] `W03.07` Chat: streaming berichten, markdown, codeblokken (highlighting, kopiëren, diff), tabellen, LaTeX, Mermaid
 - [~] `W03.08` Invoerbalk: bijlage, Quick/Deep/Research/Adaptive, modelkiezer, strategie, stopknop (echte cancellation) — alles af incl. echte stop; bijlagen = tekstbestanden ≤ 200 kB; modelkiezer stuurt het model mee, **echt wisselen via `ModelServer` op de PC koppelen**
 - [x] `W03.09` Tool-kaarten en Agent collaboration-paneel aangesloten op events (vult zich vanaf W08/W09)
-- [~] `W03.10` Achtergrondtaak-balk + Lopend werk-pagina (pauzeren/stoppen) — balk + Lopend werk-pagina met stoppen af; **pauzeren** komt met preemption (W04)
+- [x] `W03.10` Achtergrondtaak-balk + Lopend werk-pagina (pauzeren/stoppen) — **af:** pauzeren/hervatten via Dirigent (`/api/runs/:id/pause|resume`), stoppen, Dirigent-kaart op Lopend werk
 - [~] `W03.11` Statusbalk: gezondheid per subsysteem, beide GPU's live VRAM, actief model, tok/s sparkline — af; GPU-balken lezen nvidia-smi — **verifiëren op de PC**
 - [~] `W03.12` Instellingen: system prompt + rol-prompts, live vanaf volgend bericht, "nu toepassen", versiegeschiedenis + terugzetten; paden; modellen; gedrag — system prompt + rol-prompts live, versies, terugzetten af; paden/modellen/gedrag nog via `config/*.toml` (formulieren later)
 - [x] `W03.13` Sessies: opslaan/herstellen, branching/forking, nieuwe chat, geschiedenis

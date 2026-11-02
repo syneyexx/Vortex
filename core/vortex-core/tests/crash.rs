@@ -1,3 +1,4 @@
+#![cfg_attr(not(unix), allow(unused_imports))]
 //! W01-gate: kill -9 midden in een run → herstart toont exact de juiste status en hervat.
 //!
 //! De test start zichzelf als kindproces (`crash_child_entry`), dat een kern opent, drie runs
