@@ -1,6 +1,6 @@
 [package]
 name = "vortex-eval"
-description = "Eval-runner, scores per versie, lekkagecontrole."
+description = "Eval-runner, eval-sets, scoring, retrieval-eval, lekkagecontrole, performance-harnas."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,7 +9,21 @@ publish.workspace = true
 [dependencies]
 vortex-types.workspace = true
 vortex-core.workspace = true
+vortex-memory.workspace = true
 vortex-agents.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+tracing.workspace = true
+rusqlite.workspace = true
+async-trait = "0.1"
+regex = "1"
+
+[dev-dependencies]
+tempfile.workspace = true
+async-trait = "0.1"
 
 [lints]
 workspace = true

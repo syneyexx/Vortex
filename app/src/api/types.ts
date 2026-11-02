@@ -158,3 +158,42 @@ export interface ConflictRow {
   a: Memory | null;
   b: Memory | null;
 }
+
+export interface EvalRun {
+  id: string;
+  suite: string;
+  version: string;
+  label: string | null;
+  started_at: string;
+  finished_at: string | null;
+  n: number;
+  passed: number;
+  skipped: number;
+  score: number | null;
+}
+
+export interface EvalResult {
+  task_id: string;
+  status: string;
+  score: number;
+  latency_ms: number;
+  output: string;
+  detail: string;
+}
+
+export interface EvalComparison {
+  suite: string;
+  current: EvalRun;
+  previous: EvalRun | null;
+  delta: number | null;
+  regressions: string[];
+  improvements: string[];
+  verdict: string;
+}
+
+export interface TraceResp {
+  run: RunRecord;
+  spans: { wait_ms: number | null; execute_ms: number | null; total_ms: number };
+  inference: Record<string, number | null>[];
+  events: { seq: number; t_ms: number; kind: string; payload: Record<string, unknown> }[];
+}

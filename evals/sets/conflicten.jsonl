@@ -1,0 +1,3 @@
+// Vortex eval-set: conflicten.jsonl — één taak per regel (JSON). Zie VAULT/modules/observability-eval.md
+{"id": "k01", "memory": ["Syneye woont in Amsterdam.", "Syneye woont in Utrecht."], "prompt": "Waar woon ik?", "checks": [{"type": "conflicts_at_least", "n": 1}, {"type": "contains_any", "any": ["tegenstrijdig", "niet zeker", "twee", "beide", "amsterdam en utrecht", "utrecht of amsterdam", "amsterdam of utrecht"]}]}
+{"id": "k02", "memory": ["De vergadering is op dinsdag.", "De vergadering is op vrijdag."], "prompt": "Op welke dag is de vergadering?", "checks": [{"type": "conflicts_at_least", "n": 1}]}

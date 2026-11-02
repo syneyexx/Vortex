@@ -69,7 +69,7 @@ export function MemoryPanel() {
       <div>
         <h2 className="section-title">Retrieved memory</h2>
         {top.length === 0 && (
-          <div className="mem-row" style={{ color: "var(--vx-muted)" }}>
+          <div style={{ color: "var(--vx-muted)", fontSize: 13, padding: "4px 0" }}>
             Nog niets opgehaald voor dit gesprek.
           </div>
         )}

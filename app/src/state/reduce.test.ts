@@ -67,6 +67,14 @@ describe("applyEvents", () => {
     expect(s.retrievals.r1?.[0]?.id).toBe("mem_1");
   });
 
+  it("eval-taken geven geen meldingsvloed, wel één samenvatting", () => {
+    let s = applyEvents(loaded(), [ev("run.lifecycle.created", { kind: "eval" }, "e1")]);
+    s = applyEvents(s, [ev("run.state.changed", { to: "failed" }, "e1")]);
+    expect(s.toasts.length).toBe(0);
+    s = applyEvents(s, [ev("eval.run.completed", { suite: "redeneren", score: 0.75 })]);
+    expect(s.toasts.at(-1)?.text).toBe("Eval redeneren klaar: 75%");
+  });
+
   it("houdt actieve runs bij en meldt afgeronde achtergrondtaken", () => {
     let s = applyEvents(loaded(), [ev("run.lifecycle.created", { kind: "ingest" }, "r9")]);
     expect(Object.keys(s.runs)).toEqual(["r9"]);

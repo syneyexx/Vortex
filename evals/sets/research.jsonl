@@ -1,0 +1,2 @@
+// Vortex eval-set: research.jsonl — één taak per regel (JSON). Zie VAULT/modules/observability-eval.md
+{"id": "s01", "requires": "W10", "prompt": "Zoek op welke CUDA-versies de GTX 1060 (Pascal, sm_61) nog ondersteunen en geef je bronnen.", "checks": [{"type": "contains_any", "any": ["12.8", "12.9", "cuda 12"]}, {"type": "cites_source", "any": ["nvidia", "http"]}]}

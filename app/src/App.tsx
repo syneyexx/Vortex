@@ -2,10 +2,11 @@
 import { useEffect, useState } from "react";
 import { ChatPane } from "./components/ChatPane.tsx";
 import { LeftColumn } from "./components/LeftColumn.tsx";
+import { DashboardPage } from "./pages/DashboardPage.tsx";
 import { MemoryPage } from "./pages/MemoryPage.tsx";
 import { StatusBar } from "./components/StatusBar.tsx";
 import { SubNav, TopNav, type Sub, type Top } from "./components/TopNav.tsx";
-import { Dashboard, ModelsPage, Placeholder, RunsPage, SettingsPage } from "./pages/Pages.tsx";
+import { ModelsPage, Placeholder, RunsPage, SettingsPage } from "./pages/Pages.tsx";
 import { connect, dismissToast, openSession, setError, useStore } from "./state/store.ts";
 
 function Toasts() {
@@ -55,7 +56,7 @@ export function App() {
         <ChatPane />
       </>
     );
-  } else if (top === "chat" && sub === "dashboard") body = <Dashboard />;
+  } else if (top === "chat" && sub === "dashboard") body = <DashboardPage />;
   else if (top === "chat")
     body = <Placeholder title="Agents" wave="W09" text="Debatteam en rollen met hun prompts." />;
   else if (top === "research")

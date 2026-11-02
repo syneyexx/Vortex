@@ -92,6 +92,8 @@ pub fn router(state: AppState, static_dir: Option<PathBuf>) -> Router {
         .route("/api/settings/history", get(config_history))
         .route("/api/settings/restore", post(restore_prompt))
         .merge(crate::memory_api::routes())
+        .merge(crate::eval_api::routes())
+        .merge(crate::observe_api::routes())
         .with_state(state);
     match static_dir {
         Some(d) if d.join("index.html").exists() => api.fallback_service(
@@ -132,6 +134,7 @@ async fn status(State(s): State<AppState>) -> R<Value> {
     ];
     Ok(Json(json!({
         "version": env!("CARGO_PKG_VERSION"),
+        "pid": std::process::id(),
         "subsystems": subsystems,
         "gpus": live.gpus,
         "gpu_detail": live.gpu_detail,

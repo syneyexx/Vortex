@@ -24,6 +24,12 @@ keyring = { version = "3", features = ["windows-native", "apple-native", "linux-
 sysinfo = { version = "0.32", default-features = false, features = ["system"] }
 core_affinity = "0.8"
 
+tracing-tracy = { version = "0.11", optional = true }
+
+[features]
+# Profiling met Tracy (https://github.com/wolfpld/tracy): `cargo run --features tracy`.
+tracy = ["dep:tracing-tracy"]
+
 [target.'cfg(unix)'.dependencies]
 nix = { version = "0.29", features = ["signal", "process", "sched"] }
 
@@ -38,8 +44,13 @@ windows-sys = { version = "0.59", features = [
 ] }
 
 [dev-dependencies]
+criterion = { version = "0.5", default-features = false }
 tempfile.workspace = true
 tokio = { workspace = true, features = ["test-util"] }
+
+[[bench]]
+name = "events"
+harness = false
 
 [lints]
 workspace = true

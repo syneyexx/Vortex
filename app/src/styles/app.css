@@ -1104,3 +1104,67 @@ a {
 .chat {
   grid-template-columns: minmax(0, 1fr);
 }
+
+/* Inspector / replay (W06) */
+.modal-back {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: grid;
+  place-items: center;
+  z-index: 80;
+}
+.modal {
+  width: min(980px, 92vw);
+  max-height: 88vh;
+  overflow: auto;
+  padding: 20px 22px;
+}
+.trace-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 260px;
+  gap: 10px;
+  align-items: center;
+  font-size: 12px;
+  padding: 3px 0;
+}
+.trace-t {
+  color: var(--vx-muted);
+  text-align: right;
+  font-family: var(--vx-mono);
+}
+.trace-bar {
+  position: relative;
+  height: 6px;
+  background: #22222a;
+  border-radius: 4px;
+}
+.trace-bar i {
+  position: absolute;
+  top: -2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--vx-accent);
+  box-shadow: var(--vx-accent-glow);
+}
+.trace-k {
+  font-family: var(--vx-mono);
+  color: var(--vx-text-2);
+}
+.msg-actions {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: 8px;
+}
+.msg-actions button {
+  font-size: 12px;
+  color: var(--vx-muted);
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.msg-actions button:hover,
+.msg-actions button.on {
+  color: var(--vx-text);
+  background: var(--vx-panel-hi);
+}

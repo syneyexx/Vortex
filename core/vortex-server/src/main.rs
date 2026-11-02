@@ -14,6 +14,7 @@ use clap::{Parser, Subcommand};
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc; // VX:W01.10
 
+mod bench_cli;
 mod status;
 
 #[derive(Debug, Parser)]
@@ -48,6 +49,37 @@ enum Cmd {
         /// Uitvoer als JSON.
         #[arg(long)]
         json: bool,
+    },
+    /// Eval draaien via de draaiende kern en vergelijken met de vorige run (W06).
+    Eval {
+        /// Suite (bestandsnaam zonder .jsonl) of "all".
+        #[arg(long, default_value = "all")]
+        suite: String,
+        #[arg(long)]
+        label: Option<String>,
+        /// API van de kern.
+        #[arg(long, env = "VORTEX_API", default_value = "http://127.0.0.1:7420")]
+        api: String,
+        /// Alleen de retrieval-eval.
+        #[arg(long)]
+        retrieval: bool,
+        /// Alleen de lekkagecontrole.
+        #[arg(long)]
+        leakage: bool,
+    },
+    /// 🔒 Prestatiedoelen meten (alleen op commando; --quick = korte harnas-check).
+    Perf {
+        #[arg(long, env = "VORTEX_API", default_value = "http://127.0.0.1:7420")]
+        api: String,
+        #[arg(long)]
+        quick: bool,
+    },
+    /// 🔒 Soak-test (24 u alleen op commando): gesimuleerd gebruik + RSS-trend.
+    Soak {
+        #[arg(long, env = "VORTEX_API", default_value = "http://127.0.0.1:7420")]
+        api: String,
+        #[arg(long, default_value_t = 1440)]
+        minutes: u64,
     },
     /// Toon runs.
     Runs {
@@ -89,6 +121,19 @@ async fn main() -> anyhow::Result<()> {
         Cmd::Serve { listen, app_dist } => serve(&cli, listen, app_dist).await,
         Cmd::Status { json } => status::run(&cli.config, &data_dir(&cli), *json).await,
         Cmd::Runs { all, limit } => runs(&cli, *all, *limit),
+        Cmd::Perf { api, quick } => {
+            let ok = bench_cli::perf(api, *quick).await?;
+            anyhow::ensure!(ok, "prestatiedoel(en) niet gehaald");
+            Ok(())
+        }
+        Cmd::Soak { api, minutes } => {
+            let ok = bench_cli::soak(api, *minutes, &data_dir(&cli).join("soak")).await?;
+            anyhow::ensure!(ok, "geheugen stijgt");
+            Ok(())
+        }
+        Cmd::Eval { suite, label, api, retrieval, leakage } => {
+            eval_cmd(api, suite, label.as_deref(), *retrieval, *leakage).await
+        }
     }
 }
 
@@ -114,6 +159,57 @@ async fn serve(cli: &Cli, listen: &str, app_dist: &std::path::Path) -> anyhow::R
     kernel.shutdown(Duration::from_secs(5)).await?;
     let _ = disp.await;
     let _ = server.await;
+    Ok(())
+}
+
+async fn eval_cmd(api: &str, suite: &str, label: Option<&str>, retrieval: bool, leakage: bool) -> anyhow::Result<()> {
+    let c = reqwest::Client::new();
+    if leakage {
+        let v: serde_json::Value = c.get(format!("{api}/api/eval/leakage")).send().await?.json().await?;
+        println!("{}", serde_json::to_string_pretty(&v)?);
+        return Ok(());
+    }
+    if retrieval {
+        let v: serde_json::Value = c.post(format!("{api}/api/eval/retrieval")).send().await?.json().await?;
+        println!("{}", serde_json::to_string_pretty(&v)?);
+        return Ok(());
+    }
+    let before: Vec<serde_json::Value> = c.get(format!("{api}/api/eval/runs")).send().await?.json().await?;
+    let known: std::collections::HashSet<String> =
+        before.iter().filter_map(|r| r["id"].as_str().map(String::from)).collect();
+    let started: serde_json::Value = c
+        .post(format!("{api}/api/eval/run"))
+        .json(&serde_json::json!({"suite": suite, "label": label}))
+        .send()
+        .await?
+        .json()
+        .await?;
+    let names: Vec<String> =
+        started["started"].as_array().into_iter().flatten().filter_map(|x| x.as_str().map(String::from)).collect();
+    anyhow::ensure!(!names.is_empty(), "{started}");
+    println!("Gestart: {}", names.join(", "));
+    let mut done = std::collections::HashSet::new();
+    while done.len() < names.len() {
+        tokio::time::sleep(Duration::from_secs(2)).await;
+        let runs: Vec<serde_json::Value> = c.get(format!("{api}/api/eval/runs")).send().await?.json().await?;
+        for r in runs.iter().filter(|r| !known.contains(r["id"].as_str().unwrap_or("")) && !r["finished_at"].is_null())
+        {
+            let id = r["id"].as_str().unwrap_or("").to_string();
+            if done.insert(id.clone()) {
+                let d: serde_json::Value = c.get(format!("{api}/api/eval/runs/{id}")).send().await?.json().await?;
+                let cmp = &d["comparison"];
+                println!(
+                    "{:<12} {}/{} geslaagd ({} overgeslagen) · score {} · {}",
+                    r["suite"].as_str().unwrap_or(""),
+                    r["passed"],
+                    r["n"],
+                    r["skipped"],
+                    r["score"].as_f64().map(|x| format!("{:.0}%", x * 100.0)).unwrap_or("—".into()),
+                    cmp["verdict"].as_str().unwrap_or("")
+                );
+            }
+        }
+    }
     Ok(())
 }
 

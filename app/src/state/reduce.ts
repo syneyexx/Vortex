@@ -148,6 +148,11 @@ export function applyEvents(state: State, events: VxEvent[], now = Date.now()): 
           };
         }
         break;
+      case "eval.run.completed": {
+        const score = typeof p.score === "number" ? `${Math.round(p.score * 100)}%` : "—";
+        s = { ...s, toasts: [...s.toasts, { id: toastId++, text: `Eval ${str(p.suite)} klaar: ${score}` }] };
+        break;
+      }
       case "run.lifecycle.created":
         if (e.run_id)
           s = {
@@ -168,7 +173,7 @@ export function applyEvents(state: State, events: VxEvent[], now = Date.now()): 
         if (TERMINAL.has(to)) {
           runs = Object.fromEntries(Object.entries(runs).filter(([k]) => k !== rid));
           // notificatie voor achtergrondwerk (geen chat)
-          if (prev.kind !== "chat" && prev.kind !== "?") {
+          if (prev.kind !== "chat" && prev.kind !== "eval" && prev.kind !== "?") {
             s = {
               ...s,
               toasts: [...s.toasts, { id: toastId++, text: `Achtergrondtaak ${prev.kind}: ${to}` }],

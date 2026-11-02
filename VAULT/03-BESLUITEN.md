@@ -62,3 +62,5 @@ Nieuwste onderaan. Formaat: datum · besluit · waarom.
 | 2026-11-02 | Geheugen-traits (`Embedder`, `MemLlm`, `Reranker`) in `vortex-memory`; model-adapters in `vortex-context` | Lagenregel: memory en models zitten in dezelfde laag |
 | 2026-11-02 | 1060-team = drie llama-server-processen (embed 8081, rerank 8082, router 8083) | llama-server laadt één model per proces |
 | 2026-11-02 | Geen inhoud in geheugen-events; belang van episodisch geheugen komt uit de gebruikersvraag | Vergeten moet echt vergeten zijn; modelantwoord mag de policy niet sturen |
+| 2026-11-02 | Eval draait via de echte chat-pipeline (`Subject`), in geïsoleerde `__eval_*`-werkruimtes die na afloop vergeten worden | Meet wat de gebruiker krijgt; geen lekkage naar het echte geheugen |
+| 2026-11-02 | Vectorzoeken parallel boven 50k vectoren (scoped threads) | Bench: 17,8 → 7,0 ms per 100k op 4 vCPU; houdt p95 < 150 ms richting miljoenen |

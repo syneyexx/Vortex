@@ -184,6 +184,11 @@ impl MemoryStore {
         &self.cfg
     }
 
+    /// Het embeddingmodel van dit geheugen (bv. voor retrieval-eval met hetzelfde model).
+    pub fn embedder(&self) -> Arc<dyn Embedder> {
+        self.embedder.clone()
+    }
+
     pub fn cache_generation(&self) -> u64 {
         self.cache_gen.load(Ordering::Relaxed)
     }

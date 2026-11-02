@@ -334,3 +334,64 @@ async fn chat_writes_memory_and_uses_it_next_time() {
     let stats = fx.get("/api/memory/stats").await;
     assert!(stats["memories"].as_i64().is_some());
 }
+
+#[tokio::test]
+async fn eval_feedback_trace_replay_analytics() {
+    let fx = setup().await;
+    // SAFETY van de test: evals-map uit de repo.
+    unsafe_env();
+    let suites = fx.get("/api/eval/suites").await;
+    assert!(suites.as_array().is_some_and(|a| a.len() >= 5), "{suites}");
+    let st = fx.post("/api/eval/run", json!({"suite": "eerlijkheid", "label": "test"})).await;
+    assert_eq!(st["started"][0], "eerlijkheid");
+    let mut run = Value::Null;
+    for _ in 0..200 {
+        let rs = fx.get("/api/eval/runs?suite=eerlijkheid").await;
+        if rs[0]["finished_at"].is_string() {
+            run = rs[0].clone();
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(30)).await;
+    }
+    assert_eq!(run["n"], 3, "{run}");
+    let d = fx.get(&format!("/api/eval/runs/{}", run["id"].as_str().unwrap_or(""))).await;
+    assert_eq!(d["comparison"]["verdict"], "eerste meting");
+    assert_eq!(d["results"].as_array().map(|a| a.len()), Some(3));
+    // eval-runs liepen als P2 via de Dirigent en lieten geen geheugen achter
+    let mem = fx.get("/api/memory?limit=500").await;
+    assert!(
+        mem.as_array().is_some_and(|a| a.iter().all(|m| !m["workspace"].as_str().unwrap_or("").starts_with("__eval")))
+    );
+    // retrieval-eval + lekkage
+    let r = fx.post("/api/eval/retrieval", json!({})).await;
+    assert!(r["recall_at_5"].as_f64().unwrap_or(0.0) > 0.5, "{r}");
+    let l = fx.get("/api/eval/leakage").await;
+    assert!(l["leaks"].is_array(), "{l}");
+    // chat + feedback + trace + replay + analytics
+    let sid = fx.post("/api/sessions", json!({})).await["id"].as_str().unwrap_or_default().to_string();
+    fx.post(&format!("/api/sessions/{sid}/messages"), json!({"text": "hoi daar"})).await;
+    let m = fx.wait_message(&sid, 1, "complete").await;
+    let fb = fx
+        .post(
+            &format!("/api/messages/{}/feedback", m["id"].as_str().unwrap_or("")),
+            json!({"rating": "correction", "correction": "Mijn naam is Syneye."}),
+        )
+        .await;
+    assert_eq!(fb["ok"], true, "{fb}");
+    let tr = fx.get(&format!("/api/runs/{}/trace", m["run_id"].as_str().unwrap_or(""))).await;
+    assert!(tr["events"].as_array().is_some_and(|e| e.iter().any(|x| x["kind"] == "context.prompt.assembled")), "{tr}");
+    assert!(tr["spans"]["wait_ms"].is_i64());
+    let rp = fx.get(&format!("/api/sessions/{sid}/replay")).await;
+    assert!(rp["events"].as_array().is_some_and(|e| e.len() > 3));
+    let an = fx.get("/api/analytics").await;
+    assert!(an["feedback"].as_array().is_some_and(|f| !f.is_empty()), "{an}");
+}
+
+fn unsafe_env() {
+    let dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../evals");
+    // Tests draaien in hetzelfde proces; alle tests gebruiken dezelfde waarde.
+    #[allow(unsafe_code)]
+    unsafe {
+        std::env::set_var("VORTEX_EVALS", dir);
+    }
+}

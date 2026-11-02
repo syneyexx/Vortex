@@ -67,6 +67,10 @@ event_kinds! {
     VerdictGiven => "debate.verdict.given",
     // feedback / versies
     FeedbackGiven => "feedback.user.given",
+    ContextAssembled => "context.prompt.assembled",
+    EvalRunStarted => "eval.run.started",
+    EvalTaskScored => "eval.task.scored",
+    EvalRunCompleted => "eval.run.completed",
     ModelVersionUsed => "model.version.used",
     PromptVersionUsed => "prompt.version.used",
     // modellen (W02)

@@ -3,6 +3,9 @@
 import type {
   ChatMessage,
   ConflictRow,
+  EvalComparison,
+  EvalResult,
+  EvalRun,
   Memory,
   Mode,
   ModelInfo,
@@ -10,6 +13,8 @@ import type {
   RunRecord,
   Session,
   Status,
+  TraceResp,
+  VxEvent,
 } from "./types.ts";
 
 function defaultBase(): string {
@@ -94,4 +99,18 @@ export const api = {
     return (await r.json()) as { imported?: number; error?: string };
   },
   exportUrl: () => `${API_BASE}/api/memory/export`,
+  feedback: (messageId: string, rating: "good" | "bad" | "correction", correction?: string) =>
+    req<{ ok: boolean }>("POST", `/api/messages/${messageId}/feedback`, { rating, correction }),
+  trace: (runId: string) => req<TraceResp>("GET", `/api/runs/${runId}/trace`),
+  replay: (sessionId: string) => req<{ events: VxEvent[] }>("GET", `/api/sessions/${sessionId}/replay`),
+  analytics: () => req<Record<string, unknown>>("GET", "/api/analytics"),
+  evalSuites: () => req<{ name: string; tasks: number }[]>("GET", "/api/eval/suites"),
+  evalRun: (suite: string, label?: string) =>
+    req<{ started: string[] }>("POST", "/api/eval/run", { suite, label }),
+  evalRuns: (suite?: string) => req<EvalRun[]>("GET", `/api/eval/runs${suite ? `?suite=${suite}` : ""}`),
+  evalRunDetail: (id: string) =>
+    req<{ comparison: EvalComparison; results: EvalResult[] }>("GET", `/api/eval/runs/${id}`),
+  evalRetrieval: () => req<Record<string, unknown>>("POST", "/api/eval/retrieval", {}),
+  evalLeakage: () =>
+    req<{ checked_evals: number; checked_memories: number; leaks: unknown[] }>("GET", "/api/eval/leakage"),
 };

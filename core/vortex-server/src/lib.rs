@@ -4,6 +4,8 @@
 
 pub mod api;
 pub mod chat;
+pub mod eval_api;
 pub mod live;
 pub mod memory_api;
+pub mod observe_api;
 pub mod sessions;

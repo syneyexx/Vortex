@@ -16,10 +16,15 @@
 | `chat::ChatEngine` | bericht → run P0 → GPU-slot → stream → deltas (40 ms/512 tekens) → afronden (outbox) |
 | `sessions::SessionStore` | opslaan/ophalen/forken/archiveren, `repair_streaming` |
 | `live::Live` | achtergrondpoller voor de statusbalk |
+| `memory_api` | `/api/memory*`: lijst/zoek/bewerk/vergeet/conflicten/werkruimtes/export/import/backup/stats |
+| `eval_api` (`VortexSubject`) | `/api/eval/{suites,run,runs,runs/:id,retrieval,leakage}` |
+| `observe_api` | `/api/messages/:id/feedback`, `/api/runs/:id/trace`, `/api/sessions/:id/replay`, `/api/analytics` |
+| `ChatEngine::answer_once` | één antwoord zonder opslag (eval), P2 via Dirigent |
+| CLI: `vortex eval [--suite x] [--retrieval] [--leakage]`, 🔒 `vortex perf [--quick]`, 🔒 `vortex soak --minutes N` | |
 | CLI: `vortex serve [--listen 127.0.0.1:7420] [--app-dist ../app/dist]`, `vortex status`, `vortex runs` | |
 
 ## Events (schrijft)
-`chat.message.{received,started,delta,completed}`, `chat.session.{created,forked,updated}`, `settings.prompt.updated`, `model.inference.measured` + alles van `vortex-core`.
+`chat.message.{received,started,delta,completed}`, `context.prompt.assembled` (Inspector), `feedback.user.given`, `eval.*`, `chat.session.{created,forked,updated}`, `settings.prompt.updated`, `model.inference.measured` + alles van `vortex-core`.
 
 ## Invarianten
 - Antwoordtekst = som van de `chat.message.delta`-events (herladen/crash verliest niets).

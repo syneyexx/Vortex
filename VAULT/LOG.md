@@ -67,4 +67,10 @@ Nieuwste onderaan. Per sessie 3–5 regels: wat gedaan, wat open, volgende stap.
 - W05-gate groen met hash-embedder: recall@3 ≥ 9/10, vergeten overal, backup/restore. Gevonden: policy keek naar het modelantwoord ("remember") → opgelost.
 - 1060-config gesplitst in drie servers. Open: LanceDB-vraag + "vergeten" in event log (OPEN-VRAGEN); echte embedder op PC.
 
-**Actieve wave:** PC-verificatie W00–W05 · cloud: volgende = W06 (eval + observability)
+## 2026-11-02 (W06 eval + observability)
+- `vortex-eval`: sets (7 suites, NL) + retrieval-set, 10 checktypes, runner per versie in DB, vergelijken (ROOD/GROEN), retrieval-eval, lekkagecontrole, perf-harnas. CLI `vortex eval`.
+- Server: eval-API (`VortexSubject`), feedback (correctie → gebruikersfeit), trace per run (wachten vs uitvoeren, inference), replay, analytics, context-event (Inspector). GUI: dashboard "Hoe slim is Vortex?", eval-runner, Inspector (context + trace), replay, feedbackknoppen.
+- Gevonden: zoeken 17,8 ms/100k → parallel 7 ms; meldingsvloed bij eval → één samenvatting.
+- 🔒 `vortex perf` en `vortex soak` klaar, niet volledig gedraaid (regel 7).
+
+**Actieve wave:** PC-verificatie W00–W06 · cloud: volgende = W07 (cognitie + context)

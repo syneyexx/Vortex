@@ -1,0 +1,168 @@
+{
+ "corpus": [
+  {
+   "id": "d01",
+   "text": "De RTX 5060 Ti heeft 16 GB GDDR7-geheugen en een geheugenbandbreedte van 448 GB/s."
+  },
+  {
+   "id": "d02",
+   "text": "De GTX 1060 is een Pascal-kaart (sm_61) met 6 GB geheugen; FP16 is traag, int8 via DP4A is snel."
+  },
+  {
+   "id": "d03",
+   "text": "SQLite in WAL-modus staat één schrijver en veel gelijktijdige lezers toe."
+  },
+  {
+   "id": "d04",
+   "text": "FTS5 is de volledige-tekstzoekmodule van SQLite en rangschikt met BM25."
+  },
+  {
+   "id": "d05",
+   "text": "Reciprocal Rank Fusion combineert ranglijsten door 1/(60+rang) op te tellen."
+  },
+  {
+   "id": "d06",
+   "text": "Maximal Marginal Relevance kiest resultaten die relevant zijn maar onderling verschillen."
+  },
+  {
+   "id": "d07",
+   "text": "De Ryzen 9 5950X heeft 16 cores en 32 threads verdeeld over twee CCD's van elk acht cores."
+  },
+  {
+   "id": "d08",
+   "text": "Tauri bouwt desktop-apps met een webfrontend en een Rust-backend, met WebView2 op Windows."
+  },
+  {
+   "id": "d09",
+   "text": "QLoRA traint low-rank adapters bovenop een 4-bit gekwantiseerd basismodel."
+  },
+  {
+   "id": "d10",
+   "text": "DPO leert voorkeuren direct uit paren van gekozen en verworpen antwoorden, zonder apart beloningsmodel."
+  },
+  {
+   "id": "d11",
+   "text": "gpt-oss-20b is een mixture-of-experts-model met ongeveer 3,6 miljard actieve parameters per token."
+  },
+  {
+   "id": "d12",
+   "text": "Speculative decoding laat een klein draftmodel tokens voorstellen die het grote model in één keer controleert."
+  },
+  {
+   "id": "d13",
+   "text": "De Dirigent geeft chat (P0) voorrang en laat achtergrondtaken op een veilig punt wijken."
+  },
+  {
+   "id": "d14",
+   "text": "Een circuit breaker stopt tijdelijk met aanroepen van een falende dienst en probeert later één keer opnieuw."
+  },
+  {
+   "id": "d15",
+   "text": "Matryoshka-embeddings mogen worden ingekort tot minder dimensies, gevolgd door hernormaliseren."
+  }
+ ],
+ "questions": [
+  {
+   "q": "Hoeveel geheugen heeft de 5060 Ti?",
+   "relevant": [
+    "d01"
+   ]
+  },
+  {
+   "q": "Waarom int8 op de 1060 in plaats van FP16?",
+   "relevant": [
+    "d02"
+   ]
+  },
+  {
+   "q": "Hoeveel schrijvers tegelijk in SQLite WAL?",
+   "relevant": [
+    "d03"
+   ]
+  },
+  {
+   "q": "Welke rangschikking gebruikt FTS5?",
+   "relevant": [
+    "d04"
+   ]
+  },
+  {
+   "q": "Hoe werkt RRF?",
+   "relevant": [
+    "d05"
+   ]
+  },
+  {
+   "q": "Hoe zorg je voor diverse zoekresultaten?",
+   "relevant": [
+    "d06"
+   ]
+  },
+  {
+   "q": "Hoeveel threads heeft de processor?",
+   "relevant": [
+    "d07"
+   ]
+  },
+  {
+   "q": "Welk framework gebruikt WebView2 voor de desktop-app?",
+   "relevant": [
+    "d08"
+   ]
+  },
+  {
+   "q": "Wat is QLoRA?",
+   "relevant": [
+    "d09"
+   ]
+  },
+  {
+   "q": "Leren uit gekozen en verworpen antwoorden",
+   "relevant": [
+    "d10"
+   ]
+  },
+  {
+   "q": "Hoeveel actieve parameters heeft gpt-oss-20b?",
+   "relevant": [
+    "d11"
+   ]
+  },
+  {
+   "q": "Draftmodel dat tokens voorstelt",
+   "relevant": [
+    "d12"
+   ]
+  },
+  {
+   "q": "Wie krijgt voorrang, chat of achtergrond?",
+   "relevant": [
+    "d13"
+   ]
+  },
+  {
+   "q": "Wat doet een circuit breaker?",
+   "relevant": [
+    "d14"
+   ]
+  },
+  {
+   "q": "Mag je embeddings inkorten?",
+   "relevant": [
+    "d15"
+   ]
+  },
+  {
+   "q": "Wat is het recept voor appeltaart?",
+   "no_answer": true
+  },
+  {
+   "q": "Wie won het WK voetbal in 1974?",
+   "no_answer": true
+  },
+  {
+   "q": "Hoe hoog is de Mount Everest?",
+   "no_answer": true
+  }
+ ]
+}

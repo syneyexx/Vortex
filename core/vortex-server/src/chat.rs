@@ -28,7 +28,7 @@ pub enum Mode {
 }
 
 impl Mode {
-    fn as_str(self) -> &'static str {
+    pub fn as_str(self) -> &'static str {
         match self {
             Mode::Adaptive => "adaptive",
             Mode::Quick => "quick",
@@ -37,6 +37,14 @@ impl Mode {
         }
     }
     /// Redeneerniveau (gpt-oss). Metacognitie (W07) neemt dit later over in Adaptive.
+    pub fn parse(s: &str) -> Self {
+        match s {
+            "quick" => Mode::Quick,
+            "deep" => Mode::Deep,
+            "research" => Mode::Research,
+            _ => Mode::Adaptive,
+        }
+    }
     fn reasoning_effort(self) -> &'static str {
         match self {
             Mode::Quick => "low",
@@ -126,11 +134,17 @@ impl ChatEngine {
 
     /// Herinneringen ophalen voor deze vraag → tekstblok voor de system prompt.
     // VX:W05.06
-    async fn memory_context(&self, run: RunId, question: &str) -> Option<String> {
+    async fn memory_context(
+        &self,
+        run: RunId,
+        question: &str,
+        workspace: Option<String>,
+    ) -> Option<(String, Vec<serde_json::Value>)> {
         let mem = self.memory.as_ref()?;
         let mut q = vortex_memory::Query::new(question);
         q.k = 6;
         q.run_id = Some(run);
+        q.filters.workspace = workspace;
         let r = tokio::time::timeout(
             Duration::from_millis(MEMORY_TIMEOUT_MS),
             mem.store.retrieve(&q, mem.reranker.as_ref()),
@@ -145,6 +159,10 @@ impl ChatEngine {
             _ => return None,
         };
         let mut out = String::from("Relevante herinneringen (eigen geheugen; noem ze als je ze gebruikt):\n");
+        let used: Vec<serde_json::Value> = items
+            .iter()
+            .map(|it| serde_json::json!({"id": it.memory.id, "kind": it.memory.kind, "score": it.score.final_score, "counter": it.counter_evidence}))
+            .collect();
         for it in items {
             let m = &it.memory;
             let src = m.source_uri.as_deref().unwrap_or(m.provenance.origin.as_deref().unwrap_or("geheugen"));
@@ -159,7 +177,78 @@ impl ChatEngine {
                 out.push_str(&format!("- [{}] ({src}, {date}): {text}\n", m.kind.as_str()));
             }
         }
-        Some(out)
+        Some((out, used))
+    }
+
+    /// Context Assembly Inspector: wat er in de prompt ging (en wat wegviel). VX:W06.06
+    fn log_context(
+        &self,
+        run: RunId,
+        trace: vortex_types::TraceId,
+        ctx: &RunContext,
+        msgs: &[Message],
+        memory: &[serde_json::Value],
+        dropped: usize,
+    ) {
+        let chars: usize = msgs.iter().map(|m| m.content.len()).sum();
+        let _ = self.kernel.events().append(
+            Event::new(
+                EventKind::ContextAssembled,
+                trace,
+                serde_json::json!({
+                    "config_version": ctx.config().version,
+                    "system_prompt_chars": msgs.first().filter(|m| m.role == vortex_models::Role::System).map(|m| m.content.len()),
+                    "messages": msgs.len(),
+                    "history_messages": msgs.iter().filter(|m| m.role != vortex_models::Role::System).count(),
+                    "memories": memory,
+                    "approx_tokens": chars / 4,
+                    "dropped_messages": dropped,
+                }),
+            )
+            .for_run(run),
+        );
+    }
+
+    /// Eén antwoord zonder sessie of opslag (eval). Loopt via de Dirigent als P2-run.
+    // VX:W06.01
+    pub async fn answer_once(&self, prompt: &str, mode: Mode, workspace: Option<String>) -> Result<String, ChatError> {
+        let reg = self.registry()?;
+        let backend = self.backends.for_model(&reg, &reg.default)?;
+        let mut spec = RunSpec::new(RunKind::Eval, Priority::P2);
+        spec.input = serde_json::json!({"mode": mode.as_str(), "eval": true});
+        let ctx = self.kernel.start_run(spec)?;
+        ctx.start()?;
+        let run = ctx.id();
+        let trace = ctx.trace().trace_id;
+        let r: Result<String, ChatError> = async {
+            let _gpu = ctx.gpu(Priority::P2).await?;
+            let mem = self.memory_context(run, prompt, workspace).await;
+            let mut sys = ctx.config().file("prompts/system.md").map(|s| s.trim().to_string()).unwrap_or_default();
+            let used = mem.as_ref().map(|(_, u)| u.clone()).unwrap_or_default();
+            if let Some((m, _)) = mem {
+                sys.push_str("\n\n");
+                sys.push_str(&m);
+            }
+            let msgs = vec![Message::system(sys), Message::user(prompt)];
+            self.log_context(run, trace, &ctx, &msgs, &used, 0);
+            let mut req = ChatRequest::new(msgs);
+            if backend.capabilities().reasoning_effort {
+                req.reasoning_effort = Some(mode.reasoning_effort().into());
+            }
+            let resp = backend.chat(&req, ctx.token()).await?;
+            let _ = self.kernel.events().append(resp.metrics.to_event(trace, Some(run)));
+            Ok(resp.content)
+        }
+        .await;
+        match &r {
+            Ok(t) => {
+                let _ = ctx.complete(serde_json::json!({"chars": t.len()}));
+            }
+            Err(e) => {
+                let _ = ctx.fail(&e.to_string());
+            }
+        }
+        r
     }
 
     /// Na een afgerond antwoord: episodisch geheugen + persoonlijke feiten (via de policy).
@@ -327,8 +416,11 @@ impl ChatEngine {
                 .find(|m| m.role == "user")
                 .map(|m| m.content)
                 .unwrap_or_default();
-            let mem_ctx = self.memory_context(run_id, &question).await;
-            let mut req = ChatRequest::new(self.history(&ctx, session, msg, mem_ctx)?);
+            let mem_ctx = self.memory_context(run_id, &question, None).await;
+            let used = mem_ctx.as_ref().map(|(_, u)| u.clone()).unwrap_or_default();
+            let msgs = self.history(&ctx, session, msg, mem_ctx.map(|(t, _)| t))?;
+            self.log_context(run_id, trace, &ctx, &msgs, &used, 0);
+            let mut req = ChatRequest::new(msgs);
             if backend.capabilities().reasoning_effort {
                 req.reasoning_effort = Some(mode.reasoning_effort().into());
             }

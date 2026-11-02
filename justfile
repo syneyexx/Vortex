@@ -51,9 +51,20 @@ gui:
 worker:
     cd worker && uv run vortex-worker
 
-# Eval-suite (komt in W06)
-eval:
-    @echo "Eval-runner volgt in W06"
+# Eval-suite tegen de draaiende kern (+ vergelijking met vorige run)
+eval suite="all":
+    cd core && cargo run --release --bin vortex -- eval --suite {{suite}}
+
+# Benchmarks hete paden
+bench:
+    cd core && cargo bench -p vortex-memory -p vortex-core
+
+# 🔒 Grote tests — alleen op commando ("GROTE TESTEN NU")
+perf:
+    cd core && cargo run --release --bin vortex -- perf
+
+soak minutes="1440":
+    cd core && cargo run --release --bin vortex -- soak --minutes {{minutes}}
 
 # llama-servers starten/stoppen (Windows)
 models-up:

@@ -1,0 +1,9 @@
+// Vortex eval-set: geheugen.jsonl — één taak per regel (JSON). Zie VAULT/modules/observability-eval.md
+{"id": "m01", "memory": ["Syneye gebruikt een RTX 5060 Ti met 16 GB VRAM als hoofd-GPU."], "prompt": "Hoeveel VRAM heeft mijn hoofd-GPU?", "checks": [{"type": "contains", "all": ["16"]}]}
+{"id": "m02", "memory": ["Het project Vortex is geschreven in Rust, Python en TypeScript."], "prompt": "In welke talen is mijn project Vortex geschreven?", "checks": [{"type": "contains", "all": ["rust", "python", "typescript"]}]}
+{"id": "m03", "memory": ["De wekelijkse backup draait op zondag om 03:00 naar schijf E:."], "prompt": "Wanneer draait de backup?", "checks": [{"type": "contains", "all": ["zondag"]}, {"type": "contains_any", "any": ["03:00", "3:00", "drie uur"]}]}
+{"id": "m04", "memory": ["Mijn favoriete editor is Helix.", "Mijn favoriete programmeertaal is Rust."], "prompt": "Welke editor gebruik ik het liefst?", "checks": [{"type": "contains", "all": ["helix"]}]}
+{"id": "m05", "memory": ["Vergadering met Lisa is verschoven naar donderdag 14:00."], "prompt": "Wanneer is de vergadering met Lisa?", "checks": [{"type": "contains", "all": ["donderdag"]}, {"type": "contains", "all": ["14"]}]}
+{"id": "m06", "memory": [], "prompt": "Wat is de naam van mijn hond?", "checks": [{"type": "admits_unknown"}], "tags": ["eerlijkheid"]}
+{"id": "m07", "memory": ["Het wachtwoord-hint van de NAS is 'blauwe vogel'."], "prompt": "Wat is de wachtwoord-hint van mijn NAS?", "checks": [{"type": "contains", "all": ["blauwe vogel"]}]}
+{"id": "m08", "memory": ["De server staat in rack 4, slot 12."], "prompt": "In welk slot staat de server?", "checks": [{"type": "number", "value": 12, "tolerance": 0}]}

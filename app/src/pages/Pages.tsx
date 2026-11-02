@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client.ts";
 import type { ModelInfo, RunRecord } from "../api/types.ts";
+import { Inspector } from "../components/Inspector.tsx";
 import { setError, useStore } from "../state/store.ts";
 
 export function Placeholder({ title, wave, text }: { title: string; wave: string; text: string }) {
@@ -18,55 +19,9 @@ export function Placeholder({ title, wave, text }: { title: string; wave: string
   );
 }
 
-export function Dashboard() {
-  const st = useStore((s) => s.status);
-  const sessions = useStore((s) => s.sessions);
-  return (
-    <div className="page">
-      <h1>Dashboard</h1>
-      <div className="panel card">
-        <table className="table">
-          <tbody>
-            <tr>
-              <th>Versie</th>
-              <td>{st?.version ?? "—"}</td>
-            </tr>
-            <tr>
-              <th>Gesprekken</th>
-              <td>{sessions.length}</td>
-            </tr>
-            <tr>
-              <th>Actieve runs</th>
-              <td>{st?.active_runs ?? "—"}</td>
-            </tr>
-            <tr>
-              <th>Events in log</th>
-              <td>{st?.last_seq ?? "—"}</td>
-            </tr>
-            <tr>
-              <th>Subsystemen</th>
-              <td>
-                {st?.subsystems.map((s) => (
-                  <span key={s.name} className={`pill ${s.ok ? "ok" : "err"}`} style={{ marginRight: 6 }}>
-                    {s.name}: {s.detail}
-                  </span>
-                ))}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <Placeholder
-        title=""
-        wave="W06 / W15"
-        text="'Hoe slim is Vortex': eval-scores per maand en taaktype."
-      />
-    </div>
-  );
-}
-
 export function RunsPage() {
   const [runs, setRuns] = useState<{ active: RunRecord[]; recent: RunRecord[] } | null>(null);
+  const [insp, setInsp] = useState<string | null>(null);
   const live = useStore((s) => s.lastSeq);
   useEffect(() => {
     api
@@ -80,7 +35,9 @@ export function RunsPage() {
   const row = (r: RunRecord, stop: boolean) => (
     <tr key={r.id}>
       <td>
-        <code>{r.id.slice(0, 14)}…</code>
+        <button className="fork" title="Trace" onClick={() => setInsp(r.id)}>
+          <code>{r.id.slice(0, 14)}…</code>
+        </button>
       </td>
       <td>{r.kind}</td>
       <td>
@@ -117,6 +74,7 @@ export function RunsPage() {
         </button>
       </div>
       <DirigentCard />
+      {insp && <Inspector runId={insp} onClose={() => setInsp(null)} />}
       <div className="panel card">
         <h3>Actief</h3>
         <table className="table">

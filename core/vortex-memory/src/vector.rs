@@ -55,6 +55,38 @@ struct Flat {
     pos: HashMap<MemoryId, usize>,
 }
 
+/// Vanaf zoveel vectoren wordt parallel gezocht.
+const PAR_THRESHOLD: usize = 50_000;
+
+#[allow(clippy::too_many_arguments)]
+fn topk_range(
+    f: &Flat,
+    dims: usize,
+    q: &[i8],
+    qs: f32,
+    k: usize,
+    from: usize,
+    to: usize,
+    allow: &dyn Fn(&MemoryId) -> bool,
+) -> Vec<(f32, usize)> {
+    // Ruimere top-k per deel als er gefilterd wordt (parallel pad filtert pas achteraf).
+    let mut heap: Vec<(f32, usize)> = Vec::with_capacity(k + 1);
+    let kk = k * 4;
+    for i in from..to {
+        let chunk = &f.data[i * dims..(i + 1) * dims];
+        let s = dot_i8(q, chunk) as f32 * qs * f.scales[i];
+        if heap.len() < kk || s > heap[heap.len() - 1].0 {
+            if !allow(&f.ids[i]) {
+                continue;
+            }
+            let at = heap.partition_point(|(x, _)| *x >= s);
+            heap.insert(at, (s, i));
+            heap.truncate(kk);
+        }
+    }
+    heap
+}
+
 /// Exacte int8-index (alles in één aaneengesloten buffer: cache-vriendelijk).
 #[derive(Debug)]
 pub struct FlatI8Index {
@@ -118,19 +150,34 @@ impl VectorIndex for FlatI8Index {
         }
         let (q, qs) = quantize(query);
         let f = self.inner.read();
-        let mut heap: Vec<(f32, usize)> = Vec::with_capacity(k + 1);
-        for (i, chunk) in f.data.chunks_exact(self.dims).enumerate() {
-            let s = dot_i8(&q, chunk) as f32 * qs * f.scales[i];
-            if heap.len() < k || s > heap[heap.len() - 1].0 {
-                if !allow(&f.ids[i]) {
-                    continue;
-                }
-                let at = heap.partition_point(|(x, _)| *x >= s);
-                heap.insert(at, (s, i));
-                heap.truncate(k);
+        let n = f.ids.len();
+        // Groot genoeg → parallel over de cores (elke thread eigen top-k, daarna samenvoegen).
+        let threads = std::thread::available_parallelism().map(|x| x.get()).unwrap_or(1).min(16);
+        let heap = if n >= PAR_THRESHOLD && threads > 1 {
+            let per = n.div_ceil(threads);
+            let parts: Vec<Vec<(f32, usize)>> = std::thread::scope(|sc| {
+                let hs: Vec<_> = (0..threads)
+                    .map(|t| {
+                        let (from, to) = (t * per, ((t + 1) * per).min(n));
+                        let (q, f) = (&q, &*f);
+                        sc.spawn(move || topk_range(f, self.dims, q, qs, k, from, to, &|_| true))
+                    })
+                    .collect();
+                hs.into_iter().filter_map(|h| h.join().ok()).collect()
+            });
+            // `allow` is mogelijk niet thread-safe: filter na het samenvoegen, met ruime marge.
+            let mut all: Vec<(f32, usize)> = parts.into_iter().flatten().collect();
+            all.sort_by(|a, b| b.0.total_cmp(&a.0));
+            let mut out: Vec<(f32, usize)> = all.into_iter().filter(|(_, i)| allow(&f.ids[*i])).take(k).collect();
+            if out.len() < k {
+                // Te veel weggefilterd: alsnog exact (sequentieel) met filter.
+                out = topk_range(&f, self.dims, &q, qs, k, 0, n, allow);
             }
-        }
-        heap.into_iter().map(|(s, i)| (f.ids[i], s)).collect()
+            out
+        } else {
+            topk_range(&f, self.dims, &q, qs, k, 0, n, allow)
+        };
+        heap.into_iter().take(k).map(|(s, i)| (f.ids[i], s)).collect()
     }
 
     fn len(&self) -> usize {
@@ -185,6 +232,25 @@ mod tests {
         assert_ne!(idx.search(&v(42, 64), 1, &|_| true)[0].0, ids[42]);
         // na swap-remove nog steeds correct:
         assert_eq!(idx.search(&v(199, 64), 1, &|_| true)[0].0, ids[199]);
+    }
+
+    #[test]
+    fn returns_exactly_k_sequential_and_parallel() {
+        for n in [100usize, 60_000] {
+            let idx = FlatI8Index::new(16);
+            let ids: Vec<MemoryId> = (0..n).map(|_| MemoryId::new()).collect();
+            for (i, id) in ids.iter().enumerate() {
+                let (q, s) = quantize(&v(i as u64, 16));
+                idx.upsert(*id, q, s);
+            }
+            let hit = idx.search(&v(77, 16), 5, &|_| true);
+            assert_eq!(hit.len(), 5, "n={n}");
+            assert_eq!(hit[0].0, ids[77], "n={n}");
+            assert!(hit.windows(2).all(|w| w[0].1 >= w[1].1));
+            // filter werkt ook op het parallelle pad
+            let hit = idx.search(&v(77, 16), 5, &|id| *id != ids[77]);
+            assert!(hit.iter().all(|(id, _)| *id != ids[77]));
+        }
     }
 
     #[test]

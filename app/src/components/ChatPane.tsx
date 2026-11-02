@@ -5,7 +5,9 @@ import type { ChatMessage, Mode, ModelInfo } from "../api/types.ts";
 import { getState, newSession, openSession, setError, useStore } from "../state/store.ts";
 import { Composer } from "./Composer.tsx";
 import { IcCheck, IcClock, IcFork, IcPlus, IcUser } from "./Icons.tsx";
+import { Inspector } from "./Inspector.tsx";
 import { Markdown } from "./Markdown.tsx";
+import { Replay } from "./Replay.tsx";
 import { TaskBar } from "./TaskBar.tsx";
 import { VortexMark } from "./VortexShader.tsx";
 
@@ -18,7 +20,38 @@ function time(ts: string): string {
   return today ? `Vandaag ${hm}` : `${d.toLocaleDateString("nl-NL")} ${hm}`;
 }
 
+function Feedback({ m }: { m: ChatMessage }) {
+  const [given, setGiven] = useState<string | null>(null);
+  const send = async (rating: "good" | "bad" | "correction") => {
+    let correction: string | undefined;
+    if (rating === "correction") {
+      correction = prompt("Wat is het juiste antwoord? (wordt als feit onthouden)") ?? undefined;
+      if (!correction) return;
+    }
+    await api.feedback(m.id, rating, correction);
+    setGiven(rating);
+  };
+  return (
+    <span className="msg-actions">
+      <button className={given === "good" ? "on" : ""} title="Goed" onClick={() => void send("good")}>
+        👍
+      </button>
+      <button className={given === "bad" ? "on" : ""} title="Fout" onClick={() => void send("bad")}>
+        👎
+      </button>
+      <button
+        className={given === "correction" ? "on" : ""}
+        title="Correctie"
+        onClick={() => void send("correction")}
+      >
+        ✎
+      </button>
+    </span>
+  );
+}
+
 function Assistant({ m, sessionId }: { m: ChatMessage; sessionId: string }) {
+  const [inspect, setInspect] = useState(false);
   const stat = useStore((s) => s.streamStats[m.id]);
   const streaming = m.status === "streaming";
   const tps = m.metrics?.metrics?.decode_tps;
@@ -38,6 +71,17 @@ function Assistant({ m, sessionId }: { m: ChatMessage; sessionId: string }) {
           <span className="who">Vortex</span>
           <span className="when">{time(m.created_at)}</span>
           {m.model && <span className="when">· {m.model}</span>}
+          {!streaming && <Feedback m={m} />}
+          {!streaming && m.run_id && (
+            <button
+              className="fork"
+              style={{ marginLeft: 6 }}
+              title="Context + trace"
+              onClick={() => setInspect(true)}
+            >
+              inspector
+            </button>
+          )}
           {!streaming && (
             <button className="fork" title="Gesprek vanaf hier forken" onClick={() => void fork()}>
               <IcFork size={14} /> fork
@@ -76,6 +120,7 @@ function Assistant({ m, sessionId }: { m: ChatMessage; sessionId: string }) {
         {!streaming && tps !== undefined && <div className="writing">{tps.toFixed(1)} tok/s</div>}
         {m.status === "cancelled" && <div className="msg-cancel">Gestopt.</div>}
         {m.status === "failed" && <div className="msg-error">Mislukt{m.error ? `: ${m.error}` : ""}</div>}
+        {inspect && m.run_id && <Inspector runId={m.run_id} onClose={() => setInspect(false)} />}
       </div>
     </div>
   );
@@ -113,6 +158,7 @@ export function ChatPane() {
   const messages = useStore((s) => (s.currentSession ? s.messages[s.currentSession] : undefined) ?? EMPTY);
   const [tab, setTab] = useState<"conversation" | "sources" | "artifacts">("conversation");
   const [showHistory, setShowHistory] = useState(false);
+  const [replay, setReplay] = useState(false);
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [defaultModel, setDefaultModel] = useState("");
   const scroller = useRef<HTMLDivElement>(null);
@@ -165,6 +211,14 @@ export function ChatPane() {
             Artifacts<span className="badge">0</span>
           </button>
           <div className="divider" />
+          <button
+            className="icon-btn"
+            title="Replay van dit gesprek"
+            disabled={!current}
+            onClick={() => setReplay(true)}
+          >
+            ⟲
+          </button>
           <button className="icon-btn" title="Geschiedenis" onClick={() => setShowHistory((v) => !v)}>
             <IcClock size={22} />
           </button>
@@ -174,6 +228,7 @@ export function ChatPane() {
         </button>
       </header>
       {showHistory && <History onClose={() => setShowHistory(false)} />}
+      {replay && current && <Replay sessionId={current} onClose={() => setReplay(false)} />}
 
       {tab === "conversation" ? (
         <div

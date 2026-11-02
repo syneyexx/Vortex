@@ -39,6 +39,9 @@ pub enum LogFormat {
 pub fn init(format: LogFormat) {
     let filter = EnvFilter::try_from_env("VORTEX_LOG").unwrap_or_else(|_| EnvFilter::new("info"));
     let reg = tracing_subscriber::registry().with(filter);
+    // Profiling: spans naar Tracy (flamegraph/timeline) — VX:W06.13
+    #[cfg(feature = "tracy")]
+    let reg = reg.with(tracing_tracy::TracyLayer::default());
     let res = match format {
         LogFormat::Pretty => reg.with(fmt::layer().with_target(false)).try_init(),
         LogFormat::Json => reg.with(fmt::layer().json().with_current_span(true).with_span_list(false)).try_init(),

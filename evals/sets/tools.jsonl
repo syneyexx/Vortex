@@ -1,0 +1,3 @@
+// Vortex eval-set: tools.jsonl — één taak per regel (JSON). Zie VAULT/modules/observability-eval.md
+{"id": "t01", "requires": "W08", "prompt": "Lees het bestand README.md in de projectmap en vertel in één zin waar het project over gaat.", "checks": [{"type": "contains_any", "any": ["ai", "framework", "vortex"]}]}
+{"id": "t02", "requires": "W08", "prompt": "Bereken met de code-interpreter de som van alle priemgetallen onder 1000. Eindig met het getal.", "checks": [{"type": "number", "value": 76127}]}
