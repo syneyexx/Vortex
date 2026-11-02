@@ -136,6 +136,6 @@ Nieuwste onderaan. Per sessie 3–5 regels: wat gedaan, wat open, volgende stap.
 - Record/replay voor tools, semantische cache (strikt, stampede, invalidatie), varianten → schaduw-runs, A/B (gepaarde statistiek), metamorf + counterfactual, positionele tests, compressie-experiment (MPO vs int8, alleen eigen layers).
 - Fault-proxy + kleine fault-tests; 🔒 `vortex faults` en 🔒 `vortex ablate` gebouwd, niet gedraaid. Speculative decoding alleen bij gemeten winst (`vortex specbench`), logprob-diagnostiek, CSE/stapcache/VOI/kostengebaseerde planning.
 - Programmatic tool calling, git/repo-tools + repo-indexering, browser (Playwright, getest), computer use (PC), cloud-escalatie (standaard uit), visuele UI-controle → 2 echte GUI-bugs gevonden en opgelost.
-- Gebruiker: daarna `install.bat` + `start_vortex.bat`.
+- Gebruiker: daarna `install.bat` + `start_vortex.bat` → gemaakt (+ `stop_vortex.bat`), logica in `scripts/{install,start,stop}.ps1` (UTF-8 met BOM voor Windows PowerShell 5.1). Niet op Windows uitgevoerd (cloud = Linux) → eerste keer op de PC controleren.
 
 **Actieve wave:** PC-verificatie W00–W17 · cloud: volgende = W18 (frontier)

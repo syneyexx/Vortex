@@ -1,4 +1,4 @@
-# Start beide llama-servers (W00.20). Gebruik: pwsh scripts/models-up.ps1
+﻿# Start beide llama-servers (W00.20). Gebruik: pwsh scripts/models-up.ps1
 # Leest paden uit config/paths.toml en config/models.toml niet automatisch: pas onderstaande waarden aan
 # of geef ze mee: -LlamaServer C:\tools\llama.cpp\llama-server.exe -ModelsDir D:\vortex-models
 param(

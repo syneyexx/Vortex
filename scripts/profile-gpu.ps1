@@ -1,4 +1,4 @@
-# W17.10 — GPU-profiling vóór eigen kernels. Regel: alleen een eigen kernel (Triton-prototype →
+﻿# W17.10 — GPU-profiling vóór eigen kernels. Regel: alleen een eigen kernel (Triton-prototype →
 # CUDA C++ via cudarc of PyTorch-extensie) als Nsight een hotspot aanwijst, met correctheidstest
 # t.o.v. de referentie + benchmark, en alleen houden bij gemeten winst. Builds: sm_120 (5060 Ti)
 # en sm_61 (1060).
