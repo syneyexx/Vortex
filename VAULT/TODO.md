@@ -8,7 +8,7 @@ generated: true
 > daarna `python tools/vault/vault.py todo`. Legenda: `[ ]` open · `[~]` bezig · `[x]` af.
 > Functionaliteiten per domein (wat Vortex *kan*): [[FUNCTIES]].
 
-**Totaal: 160/235 af.**
+**Totaal: 174/235 af.**
 
 | Wave | Status | Af | Open |
 | --- | --- | --- | --- |
@@ -29,7 +29,7 @@ generated: true
 | [[waves/W14-wereldkennis\|W14 — Wereldkennis]] | af | 7 | 2 |
 | [[waves/W15-autonomie\|W15 — Autonomie]] | af | 9 | 1 |
 | [[waves/W16-multimodaal\|W16 — Multimodaal]] | af | 3 | 5 |
-| [[waves/W17-kwaliteit-performance\|W17 — Kwaliteit en performance]] | open | 0 | 17 |
+| [[waves/W17-kwaliteit-performance\|W17 — Kwaliteit en performance]] | af | 14 | 3 |
 | [[waves/W18-frontier\|W18 — Frontier]] | open | 0 | 8 |
 | [[waves/W19-ethics-security\|W19 — Ethics & security layer]] | geparkeerd | 0 | 0 |
 | [[waves/W20-trading\|W20 — Trading]] | geparkeerd | 0 | 0 |
@@ -308,24 +308,24 @@ Bron: [[waves/W16-multimodaal]] · status: `af`
 - [x] `W16.08` Meerdere modaliteiten combineren in één vraag; multimodale output (beeld, audio, bestanden) — meerdere bijlagen per bericht (uploads; ook afbeeldingen via de OpenAI-API) worden vóór de cyclus verwerkt en samen in de prompt gezet; uitvoer: beeld (`/beeld`, markdown-afbeelding), spraak (TTS), bestanden (tools); event `chat.attachments.processed`
 
 ## W17 — Kwaliteit en performance
-Bron: [[waves/W17-kwaliteit-performance]] · status: `open`
-- [ ] `W17.01` Record/replay voor tooltests (simulatie vs live)
-- [ ] `W17.02` Ablation tests per component; overbodige complexiteit verwijderen — **🔒 GROTE TEST: alleen op commando** (zie [[01-REGELS]] regel 7)
-- [ ] `W17.03` Shadow execution van nieuwe configs
-- [ ] `W17.04` Metamorfische + counterfactual tests
-- [ ] `W17.05` A/B van prompts, modellen, strategieën
-- [ ] `W17.06` Fault injection (crash, volle schijf, verbinding weg, trage tool, kapotte uitvoer, OOM) — **🔒 GROTE TEST: alleen op commando** (zie [[01-REGELS]] regel 7) (kleine fault-tests per component mogen wel)
-- [ ] `W17.07` Positionele contexttests per model
-- [ ] `W17.08` Speculative decoding (alleen bij gemeten winst), chunked prefill/continuous batching bij eigen backend, logprob-diagnostiek
-- [ ] `W17.09` Eigen llama.cpp-bindings indien nodig (KV, logits, LoRA-hotswap)
-- [ ] `W17.10` Eigen GPU-kernels, alleen waar profiling (Nsight Systems/Compute) een hotspot aanwijst: gefuseerde kernels voor neurale layers, GPU-scoring voor vector search/rerank, batch-embedding-pre/postprocessing. Prototype in Triton (Python), productie in CUDA C++ aangeroepen vanuit Rust (cudarc) of als PyTorch-extensie. Elke kernel: correctheidstest t.o.v. referentie + benchmark; alleen houden bij gemeten winst. Twee builds: sm_120 (5060 Ti) en sm_61 (1060)
-- [ ] `W17.11` Semantische antwoordcache (strikte checks, nooit voor acties), cache-stampede-preventie
-- [ ] `W17.12` Incremental recomputation, common subexpression elimination, value-of-information planning, cost-based plan selection (kosten uit eigen metingen)
-- [ ] `W17.13` Programmatic tool calling
-- [ ] `W17.14` Browser automation, git/repo-tools, computer use, repo-niveau codebegrip
-- [ ] `W17.15` **Experiment (gebruiker wil testen):** quantum-inspired tensor-netwerk-compressie (MPO, CompactifAI-achtig: SVD per gewichtenmatrix + korte "healing"-training) — **alleen op eigen neurale layers en hulpmodellen (router/extractie), NOOIT op het redeneermodel** (besluit 2026-11-01: redeneren gaat aantoonbaar omlaag). Vergelijken met gewone quantisatie op kwaliteit × snelheid × VRAM
-- [ ] `W17.16` Visuele UI-controle (screenshot vs referentie)
-- [ ] `W17.17` Optionele cloud-escalatie (alleen als gebruiker aanzet)
+Bron: [[waves/W17-kwaliteit-performance]] · status: `af`
+- [x] `W17.01` Record/replay voor tooltests (simulatie vs live) — `vortex_tools::Tape` (JSONL): opnemen live → afspelen als simulatie (geen bijwerkingen, zelfde resultaat), strikt (niet opgenomen = fout) of `ReplayOrLive`; via `ExecOptions.tape`
+- [x] `W17.02` Ablation tests per component; overbodige complexiteit verwijderen — **🔒 GROTE TEST: alleen op commando** (zie [[01-REGELS]] regel 7) — harnas klaar: `Variant.ablate` (memory, debate, system_prompt, reasoning), gepaarde A/B per component met oordeel (draagt bij / geen effect → vereenvoudigen / schaadt → schrappen); `vortex ablate` + GUI-knop, alleen met `confirm = "GROTE TESTEN NU"` — **niet gedraaid**
+- [x] `W17.03` Shadow execution van nieuwe configs — kandidaat (systeemprompt, model, temperatuur) draait in de schaduw op recente echte vragen (geen persoonlijke); blinde Judge met wisselende volgorde → winstpercentage + advies; niets bereikt de gebruiker
+- [x] `W17.04` Metamorfische + counterfactual tests — afgeleide suite (ruis, opmaak, beleefdheid, irrelevante context) → consistentie + kwetsbare taken; counterfactuals in de eval-set (`counterfactual`, o.a. 4 in redeneren) moeten wél van antwoord veranderen
+- [x] `W17.05` A/B van prompts, modellen, strategieën — varianten op alle eval-suites, gepaard per taak: verschil, bootstrap-95%-interval (vaste seed), tekentoets, oordeel A/B/geen verschil
+- [x] `W17.06` Fault injection (crash, volle schijf, verbinding weg, trage tool, kapotte uitvoer, OOM) — **🔒 GROTE TEST: alleen op commando** (zie [[01-REGELS]] regel 7) (kleine fault-tests per component mogen wel) — `vortex_core::faults::FaultProxy` (weigeren, vertragen, afkappen, verminken); kleine tests: model weg/afgekapt/verminkt/traag → bericht netjes afgerond, geen hangende run; 🔒 `vortex faults` (echte modellen via proxy, onbruikbare schijf bij backup, crash + herstart) — **niet gedraaid**; OOM: Dirigent-druk (W04)
+- [x] `W17.07` Positionele contexttests per model — naald op 0/25/50/75/100 % in contexten van instelbare lengte, per model (variant) → raster + zwakste positie ("lost in the middle")
+- [~] `W17.08` Speculative decoding (alleen bij gemeten winst), chunked prefill/continuous batching bij eigen backend, logprob-diagnostiek — `draft` in models.toml wordt alleen gebruikt als `spec_gain` ≥ 1,05 (meten: `vortex specbench --model …` op de PC); geen eigen backend → continuous batching/chunked prefill doet llama-server; logprob-diagnostiek (perplexiteit, entropie, onzekere stukken + alternatieven) in API + GUI
+- [x] `W17.09` Eigen llama.cpp-bindings indien nodig (KV, logits, LoRA-hotswap) — **niet nodig** (besluit): KV via `--slot-save-path`/slots, logits via logprobs, LoRA-hotswap via `/lora-adapters`; alles via llama-server
+- [~] `W17.10` Eigen GPU-kernels, alleen waar profiling (Nsight Systems/Compute) een hotspot aanwijst: gefuseerde kernels voor neurale layers, GPU-scoring voor vector search/rerank, batch-embedding-pre/postprocessing. Prototype in Triton (Python), productie in CUDA C++ aangeroepen vanuit Rust (cudarc) of als PyTorch-extensie. Elke kernel: correctheidstest t.o.v. referentie + benchmark; alleen houden bij gemeten winst. Twee builds: sm_120 (5060 Ti) en sm_61 (1060) — `scripts/profile-gpu.ps1` (nsys/ncu); **eerst profileren op de PC**: zonder gemeten hotspot geen kernel (zo staat het in dit item)
+- [x] `W17.11` Semantische antwoordcache (strikte checks, nooit voor acties), cache-stampede-preventie — alleen informatief (niet persoonlijk/tijdgevoelig/research/planning, geen bijlagen, geen tools); geldig bij zelfde model + configversie + kennisgeneratie; treffer = zelfde vraag of cosinus ≥ 0,97 én woordoverlap ≥ 0,8; claim per vraag (stampede); slechte feedback → weg
+- [x] `W17.12` Incremental recomputation, common subexpression elimination, value-of-information planning, cost-based plan selection (kosten uit eigen metingen) — dubbele planstappen samengevoegd, stapcache (zelfde stap + invoer → hergebruik), opzoekstappen overgeslagen bij hoge geheugenzekerheid, diep → snel als metingen (runduur per pad/taaktype) en zelfmodel zeggen dat diep niets oplevert
+- [x] `W17.13` Programmatic tool calling — tool `tool_program`: Python met `vx.call("tool", …)` via een lokale socket naar de registry (schema, capabilities; alleen Read/Local), lussen/filters in code, aantal aanroepen begrensd
+- [~] `W17.14` Browser automation, git/repo-tools, computer use, repo-niveau codebegrip — `browser` (Playwright in de worker; getest met echte Chromium), `git` (veilige subcommando's, geen netwerk), `repo_map` (talen + top-level symbolen), `repo_search`, repo-indexering naar werkruimte `repo:<naam>`; `computer` (mss + pyautogui) → **op de PC** (bureaublad nodig)
+- [x] `W17.15` **Experiment (gebruiker wil testen):** quantum-inspired tensor-netwerk-compressie (MPO, CompactifAI-achtig: SVD per gewichtenmatrix + korte "healing"-training) — **alleen op eigen neurale layers en hulpmodellen (router/extractie), NOOIT op het redeneermodel** (besluit 2026-11-01: redeneren gaat aantoonbaar omlaag). Vergelijken met gewone quantisatie op kwaliteit × snelheid × VRAM — worker `compress.py` (MPO met bond-dimensie χ + healing vs int8: testnauwkeurigheid, grootte, snelheid, advies); experiment alleen voor layers uit de spec-lijst (redeneermodel niet te kiezen)
+- [x] `W17.16` Visuele UI-controle (screenshot vs referentie) — `tools/visual/visual_check.py` (gebouwde GUI, nep-API, 6 pagina's, pixeldiff + diff-beeld, JS-fouten = fout, `--update`); vond meteen 2 echte bugs (render-lus AgentPanel, crash StatusBar) → opgelost
+- [x] `W17.17` Optionele cloud-escalatie (alleen als gebruiker aanzet) — `config/cloud.toml` standaard uit; aan → model "cloud" (of automatisch bij moeilijk + zwak taaktype als `auto`), sleutel uit de secret-opslag, elke escalatie gelogd, daglimiet
 
 ## W18 — Frontier
 Bron: [[waves/W18-frontier]] · status: `open`

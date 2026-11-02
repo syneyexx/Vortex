@@ -73,6 +73,27 @@ pub struct SendReply {
     pub model: String,
 }
 
+/// Variant voor experimenten (W17.02/03/05).
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct Variant {
+    #[serde(default)]
+    pub name: String,
+    /// Vervangt `prompts/system.md`.
+    #[serde(default)]
+    pub system_prompt: Option<String>,
+    #[serde(default)]
+    pub model: Option<String>,
+    #[serde(default)]
+    pub mode: Option<String>,
+    #[serde(default)]
+    pub temperature: Option<f32>,
+    /// Componenten uit voor ablations: memory, debate, system_prompt, reasoning.
+    #[serde(default)]
+    pub ablate: Vec<String>,
+}
+
+pub const ABLATABLE: &[&str] = &["memory", "debate", "system_prompt", "reasoning"];
+
 /// Tijdsvenster/grootte voor het samenvoegen van deltas (UI-event coalescing).
 // VX:W03.03
 pub const COALESCE_MS: u64 = 40;
@@ -138,6 +159,11 @@ pub struct ChatEngine {
     pub(crate) attachments: crate::media::AttachMap,
     /// GPU-bewaker (W15.01): beheerde llama-servers; chat laadt hiermee een vrijgegeven model.
     pub(crate) gpu_guard: Arc<crate::autonomy::gpu::GpuGuard>,
+    /// Stapresultaten (incrementeel herberekenen, W17.12) en gemeten plankosten.
+    pub(crate) step_cache: Arc<vortex_cognition::planning::StepCache>,
+    pub(crate) costs: Arc<Mutex<Option<(std::time::Instant, vortex_cognition::cost::PlanCosts)>>>,
+    /// Semantische antwoordcache (W17.11).
+    pub(crate) semcache: Arc<crate::semcache::SemCache>,
     /// Wereldmonitor (W14), lui aangemaakt.
     pub(crate) world: Arc<Mutex<Option<Arc<vortex_crawler::world::WorldMonitor>>>>,
     /// Neurale layers (W11): scorer voor router/salience + registry.
@@ -170,6 +196,9 @@ impl ChatEngine {
             online: Arc::new(vortex_agents::connectivity::Connectivity::new(None)),
             crawler: Arc::new(Mutex::new(None)),
             world: Arc::new(Mutex::new(None)),
+            semcache: Arc::new(crate::semcache::SemCache::default()),
+            step_cache: Arc::new(vortex_cognition::planning::StepCache::default()),
+            costs: Arc::new(Mutex::new(None)),
             attachments: Arc::new(Mutex::new(HashMap::new())),
             gpu_guard: Arc::new(crate::autonomy::gpu::GpuGuard::new(log.clone())),
             scorer: None,
@@ -255,11 +284,65 @@ impl ChatEngine {
         );
     }
 
+    /// Gemiddelde runduur per (pad, taaktype) uit eigen metingen (10 min gecachet, W17.12).
+    pub(crate) fn plan_costs(&self) -> vortex_cognition::cost::PlanCosts {
+        if let Some((t, c)) = self.costs.lock().as_ref()
+            && t.elapsed() < std::time::Duration::from_secs(600)
+        {
+            return c.clone();
+        }
+        let rows: Vec<(String, String, f64)> = self
+            .kernel
+            .events()
+            .db()
+            .read(|c| {
+                let mut st = c.prepare(
+                    "SELECT json_extract(e.payload, '$.choice.path'), json_extract(e.payload, '$.choice.task'), (julianday(r.updated_at) - julianday(r.created_at)) * 86400000.0
+                     FROM events e JOIN runs r ON r.id = e.run_id
+                     WHERE e.kind = 'decision.made' AND json_extract(e.payload, '$.decider') = 'router+metacog' AND r.state = 'completed'
+                     ORDER BY e.seq DESC LIMIT 2000",
+                )?;
+                let v = st.query_map([], |r| Ok((r.get::<_, Option<String>>(0)?.unwrap_or_default(), r.get::<_, Option<String>>(1)?.unwrap_or_default(), r.get::<_, Option<f64>>(2)?.unwrap_or(0.0))))?.collect::<rusqlite::Result<Vec<_>>>()?;
+                Ok(v)
+            })
+            .unwrap_or_default();
+        let mut pc = vortex_cognition::cost::PlanCosts::default();
+        let cap = |s: &str| {
+            s.chars().next().map(|c| c.to_uppercase().collect::<String>() + &s[c.len_utf8()..]).unwrap_or_default()
+        };
+        for (path, task, ms) in rows {
+            // Sleutel zoals `{:?}` van Path/TaskType (snake_case → CamelCase).
+            let k = format!("{}/{}", cap(&path), cap(&task));
+            *pc.ms.entry(k.clone()).or_default() += ms;
+            *pc.n.entry(k).or_default() += 1;
+        }
+        for (k, v) in pc.ms.iter_mut() {
+            *v /= pc.n.get(k).copied().unwrap_or(1).max(1) as f64;
+        }
+        *self.costs.lock() = Some((std::time::Instant::now(), pc.clone()));
+        pc
+    }
+
     /// Eén antwoord zonder sessie of opslag (eval). Loopt via de Dirigent als P2-run.
     // VX:W06.01
     pub async fn answer_once(&self, prompt: &str, mode: Mode, workspace: Option<String>) -> Result<String, ChatError> {
+        self.answer_variant(prompt, mode, workspace, None).await
+    }
+
+    /// Antwoord met een variant (W17.03/05: andere systeemprompt, model, temperatuur, of
+    /// componenten uitgezet voor ablations W17.02).
+    pub async fn answer_variant(
+        &self,
+        prompt: &str,
+        mode: Mode,
+        workspace: Option<String>,
+        variant: Option<&Variant>,
+    ) -> Result<String, ChatError> {
         let reg = self.registry()?;
-        let backend = self.backends.for_model(&reg, &reg.default)?;
+        let off = |c: &str| variant.is_some_and(|v| v.ablate.iter().any(|x| x == c));
+        let mode = variant.and_then(|v| v.mode.as_deref()).map(Mode::parse).unwrap_or(mode);
+        let model_name = variant.and_then(|v| v.model.clone()).unwrap_or_else(|| reg.default.clone());
+        let backend = self.backends.for_model(&reg, &model_name)?;
         let mut spec = RunSpec::new(RunKind::Eval, Priority::P2);
         spec.input = serde_json::json!({"mode": mode.as_str(), "eval": true});
         let ctx = self.kernel.start_run(spec)?;
@@ -268,15 +351,19 @@ impl ChatEngine {
         let trace = ctx.trace().trace_id;
         let r: Result<String, ChatError> = async {
             let _gpu = ctx.gpu(Priority::P2).await?;
-            let mem = self.memory_context(run, prompt, workspace).await;
-            let mut sys = ctx.config().file("prompts/system.md").map(|s| s.trim().to_string()).unwrap_or_default();
+            let mem = if off("memory") { None } else { self.memory_context(run, prompt, workspace).await };
+            let mut sys = match variant.and_then(|v| v.system_prompt.clone()) {
+                Some(p) => p,
+                None if off("system_prompt") => String::new(),
+                None => ctx.config().file("prompts/system.md").map(|s| s.trim().to_string()).unwrap_or_default(),
+            };
             let used = mem.as_ref().map(|(_, u)| u.clone()).unwrap_or_default();
             if let Some((m, _)) = mem {
                 sys.push_str("\n\n");
                 sys.push_str(&m);
             }
             // Deep + W09: eerst het debatteam (Judge-gate), daarna de Synthesizer-instructie.
-            if mode == Mode::Deep && crate::eval_api::FEATURES.contains(&"W09") {
+            if mode == Mode::Deep && crate::eval_api::FEATURES.contains(&"W09") && !off("debate") {
                 let route = vortex_cognition::route(prompt);
                 let strategy = vortex_cognition::decide(&vortex_cognition::Signals {
                     route: route.clone(),
@@ -320,7 +407,11 @@ impl ChatEngine {
             self.log_context(run, trace, &ctx, &msgs, &used, 0);
             let mut req = ChatRequest::new(msgs);
             if backend.capabilities().reasoning_effort {
-                req.reasoning_effort = Some(mode.reasoning_effort().into());
+                req.reasoning_effort =
+                    Some(if off("reasoning") { "low".into() } else { mode.reasoning_effort().into() });
+            }
+            if let Some(t) = variant.and_then(|v| v.temperature) {
+                req.temperature = Some(t);
             }
             let resp = backend.chat(&req, ctx.token()).await?;
             let _ = self.kernel.events().append(resp.metrics.to_event(trace, Some(run)));
@@ -393,8 +484,17 @@ impl ChatEngine {
         }
         let sess = self.sessions.get(session)?;
         let reg = self.registry()?;
-        let model = req.model.clone().unwrap_or_else(|| reg.default.clone());
-        let backend = self.backends.for_model(&reg, &model)?;
+        // Cloud-escalatie (W17.17, standaard uit): expliciet "cloud" of automatisch.
+        let auto_cloud = if req.model.is_none() { self.cloud_auto(&text) } else { None };
+        let (model, backend) = if req.model.as_deref() == Some("cloud") || auto_cloud.is_some() {
+            let b = self.cloud_backend()?;
+            self.log_cloud(auto_cloud.as_deref().unwrap_or("gekozen door de gebruiker"), text.len());
+            (format!("cloud:{}", b.model_name()), b)
+        } else {
+            let model = req.model.clone().unwrap_or_else(|| reg.default.clone());
+            let b = self.backends.for_model(&reg, &model)?;
+            (model, b)
+        };
         let mut spec = RunSpec::new(RunKind::Chat, Priority::P0);
         spec.input = serde_json::json!({"session_id": session, "mode": req.mode.as_str(), "model": model});
         let ctx = self.kernel.start_run(spec)?;

@@ -599,7 +599,7 @@ pub async fn gate(state: &AppState, id: &str) -> Result<Value, String> {
     set_adapter_scale(chat, id, 1.0).await?;
     // Geen eval-sets of geen basislijn → niets aantoonbaar → afwijzen (veilig).
     let sets = vortex_eval::load_dir(&crate::eval_api::evals_dir().join("sets")).unwrap_or_default();
-    let subject = crate::eval_api::VortexSubject { state: state.clone(), mode_override: None };
+    let subject = crate::eval_api::VortexSubject { state: state.clone(), mode_override: None, variant: None };
     let runner = vortex_eval::Runner { log: &log, subject: &subject, python: crate::eval_api::python() };
     let mut scores = serde_json::Map::new();
     let mut regressions = Vec::new();

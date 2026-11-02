@@ -494,38 +494,45 @@ impl ChatEngine {
         job: &str,
         toml: String,
     ) -> Result<(String, std::collections::HashMap<String, f64>), String> {
-        let addr: String = self
-            .kernel
-            .config()
-            .current()
-            .get::<String>("paths.worker_address")
-            .ok()
-            .flatten()
-            .unwrap_or_else(|| "127.0.0.1:50061".into());
-        let ep = tonic::transport::Endpoint::from_shared(format!("http://{addr}"))
-            .map_err(|e| e.to_string())?
-            .connect_timeout(Duration::from_secs(2));
-        let ch =
-            ep.connect().await.map_err(|_| format!("Python-worker niet bereikbaar op {addr} (start: just worker)"))?;
-        let mut client = WorkerServiceClient::new(ch);
-        let req = TrainRequest {
-            trace: Some(TraceContext { trace_id: TraceId::new().to_string(), ..Default::default() }),
-            job_kind: job.into(),
-            config_toml: toml,
-            dataset: None,
-        };
-        let mut stream = client.train(req).await.map_err(|e| e.message().to_string())?.into_inner();
-        let (mut path, mut metrics) = (None, std::collections::HashMap::new());
-        while let Some(u) = stream.message().await.map_err(|e| e.message().to_string())? {
-            metrics.extend(u.metrics.clone());
-            match u.update {
-                Some(Update::Artifact(a)) => path = Some(a.path),
-                Some(Update::Error(e)) => return Err(e),
-                _ => {}
-            }
-        }
-        path.map(|p| (p, metrics)).ok_or_else(|| "worker gaf geen resultaat".into())
+        worker_job(&self.kernel, job, toml).await
     }
+}
+
+/// Eén job op de Python-worker (gRPC `Train` met `job_kind`): resultaat = artefactpad.
+pub(crate) async fn worker_job(
+    kernel: &vortex_core::Kernel,
+    job: &str,
+    toml: String,
+) -> Result<(String, std::collections::HashMap<String, f64>), String> {
+    let addr: String = kernel
+        .config()
+        .current()
+        .get::<String>("paths.worker_address")
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| "127.0.0.1:50061".into());
+    let ep = tonic::transport::Endpoint::from_shared(format!("http://{addr}"))
+        .map_err(|e| e.to_string())?
+        .connect_timeout(Duration::from_secs(2));
+    let ch = ep.connect().await.map_err(|_| format!("Python-worker niet bereikbaar op {addr} (start: just worker)"))?;
+    let mut client = WorkerServiceClient::new(ch);
+    let req = TrainRequest {
+        trace: Some(TraceContext { trace_id: TraceId::new().to_string(), ..Default::default() }),
+        job_kind: job.into(),
+        config_toml: toml,
+        dataset: None,
+    };
+    let mut stream = client.train(req).await.map_err(|e| e.message().to_string())?.into_inner();
+    let (mut path, mut metrics) = (None, std::collections::HashMap::new());
+    while let Some(u) = stream.message().await.map_err(|e| e.message().to_string())? {
+        metrics.extend(u.metrics.clone());
+        match u.update {
+            Some(Update::Artifact(a)) => path = Some(a.path),
+            Some(Update::Error(e)) => return Err(e),
+            _ => {}
+        }
+    }
+    path.map(|p| (p, metrics)).ok_or_else(|| "worker gaf geen resultaat".into())
 }
 
 pub(crate) fn toml_kv(v: &Value) -> String {

@@ -42,6 +42,9 @@ pub fn build(kernel: &Kernel, memory: Option<MemoryHandle>) -> Arc<ToolHub> {
         hub.registry.register(Arc::new(MemoryWrite::new(m.clone())));
         hub.registry.register(Arc::new(MemoryForget::new(m)));
     }
+    // W17.14: browser en computer use via de worker.
+    hub.registry.register(Arc::new(crate::automation::Browser::new(kernel.clone())));
+    hub.registry.register(Arc::new(crate::automation::Computer::new(kernel.clone())));
     if !hub.cfg.mcp.servers.is_empty() {
         let h = hub.clone();
         tokio::spawn(async move {

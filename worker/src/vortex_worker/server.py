@@ -109,6 +109,12 @@ class WorkerService(worker_pb2_grpc.WorkerServiceServicer):
         if request.job_kind.startswith("lora:"):
             yield from self._train_lora(request, tomllib.loads(request.config_toml or ""))
             return
+        if request.job_kind == "experiment:compression":
+            yield from _compression_updates(request, tomllib.loads(request.config_toml or ""))
+            return
+        if request.job_kind.startswith("browser:") or request.job_kind.startswith("desktop:"):
+            yield from _automation_updates(request, tomllib.loads(request.config_toml or ""))
+            return
         if request.job_kind.startswith("media:"):
             yield from _media_updates(request, tomllib.loads(request.config_toml or ""))
             return
@@ -185,6 +191,53 @@ def _dataset_updates(request, cfg: dict):
     except Exception as e:
         yield worker_pb2.TrainUpdate(error=f"{type(e).__name__}: {e}")
     yield worker_pb2.TrainUpdate(done=True, progress=common_pb2.Progress(trace=trace, fraction=1.0, stage="klaar"))
+
+
+def _compression_updates(request, cfg: dict):
+    """W17.15: MPO vs int8 op een layer-dataset (alleen eigen layers/hulpmodellen)."""
+    from vortex_worker import compress
+
+    try:
+        res = compress.run(
+            cfg["train"],
+            cfg["test"],
+            int(cfg.get("classes", 1)),
+            int(cfg.get("hidden", 16)),
+            cfg.get("chis", [2, 4, 8]),
+        )
+        out = Path(cfg["result"])
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(res, ensure_ascii=False), encoding="utf-8")
+        yield worker_pb2.TrainUpdate(
+            artifact=common_pb2.ArtifactRef(artifact_id="compression", path=str(out), media_type="application/json")
+        )
+    except Exception as e:
+        yield worker_pb2.TrainUpdate(error=f"{type(e).__name__}: {e}")
+    yield worker_pb2.TrainUpdate(done=True)
+
+
+def _automation_updates(request, cfg: dict):
+    """W17.14: `browser:run` (stappen als JSON in `steps`) en `desktop:<op>` → JSON-artefact."""
+    try:
+        if request.job_kind == "browser:run":
+            from vortex_worker import browser
+
+            res = browser.run(
+                json.loads(cfg["steps"]), cfg["out_dir"], cfg.get("executable"), bool(cfg.get("headless", True))
+            )
+        else:
+            from vortex_worker import desktop
+
+            res = desktop.act(request.job_kind.split(":", 1)[1], cfg)
+        out = Path(cfg["result"])
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(res, ensure_ascii=False), encoding="utf-8")
+        yield worker_pb2.TrainUpdate(
+            artifact=common_pb2.ArtifactRef(artifact_id="auto", path=str(out), media_type="application/json")
+        )
+    except Exception as e:
+        yield worker_pb2.TrainUpdate(error=f"{type(e).__name__}: {e}")
+    yield worker_pb2.TrainUpdate(done=True)
 
 
 def _media_updates(request, cfg: dict):

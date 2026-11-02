@@ -472,3 +472,124 @@ async fn read_tool_results_are_cached() {
     assert!(r.output.unwrap().data["input_schema"]["required"].as_array().unwrap().contains(&json!("old")));
     assert!(h.core_set().contains(&"read_file".to_string()));
 }
+
+/// W17.01: opnemen (live) → afspelen als simulatie (geen bijwerking, zelfde resultaat), strikt
+/// (niet opgenomen = fout) of met terugval op live.
+#[tokio::test]
+async fn record_then_replay_tools() {
+    let d = tempfile::tempdir().unwrap();
+    let (h, _) = hub(d.path());
+    let tape_path = d.path().join("tape.jsonl");
+    let rec = Arc::new(vortex_tools::Tape::record(Some(tape_path.clone())));
+    let o = ExecOptions { tape: Some(rec.clone()), ..opts(d.path()) };
+    let w = h.executor.call("w1", "write_file", json!({"path": "a.txt", "content": "live\n"}), &o).await;
+    assert!(w.ok, "{w:?}");
+    let r = h.executor.call("r1", "read_file", json!({"path": "a.txt"}), &o).await;
+    assert!(r.output.as_ref().unwrap().text.contains("live"));
+    assert_eq!(rec.entries().len(), 2);
+    // Bestand weg: afspelen geeft toch het opgenomen resultaat en schrijft niets.
+    std::fs::remove_file(d.path().join("a.txt")).unwrap();
+    let play = Arc::new(vortex_tools::Tape::load(&tape_path, vortex_tools::TapeMode::Replay).unwrap());
+    let p = ExecOptions { tape: Some(play.clone()), ..opts(d.path()) };
+    let w2 = h.executor.call("w2", "write_file", json!({"path": "a.txt", "content": "live\n"}), &p).await;
+    assert!(w2.ok && w2.replayed);
+    assert!(!d.path().join("a.txt").exists(), "simulatie: geen bijwerking");
+    let r2 = h.executor.call("r2", "read_file", json!({"path": "a.txt"}), &p).await;
+    assert_eq!(r2.output, r.output);
+    // Niet opgenomen → strikt fout; ReplayOrLive → echt uitvoeren.
+    let miss = h.executor.call("r3", "read_file", json!({"path": "b.txt"}), &p).await;
+    assert!(!miss.ok && play.misses().len() == 1);
+    std::fs::write(d.path().join("b.txt"), "echt").unwrap();
+    let mixed = Arc::new(vortex_tools::Tape::load(&tape_path, vortex_tools::TapeMode::ReplayOrLive).unwrap());
+    let m = ExecOptions { tape: Some(mixed), ..opts(d.path()) };
+    assert!(
+        h.executor.call("r4", "read_file", json!({"path": "b.txt"}), &m).await.output.unwrap().text.contains("echt")
+    );
+}
+
+/// W17.13: één programma roept meerdere tools aan (lus + filter) via `vx.call`.
+#[tokio::test]
+async fn program_calls_tools_in_a_loop() {
+    let d = tempfile::tempdir().unwrap();
+    let (h, _) = hub(d.path());
+    for i in 0..5 {
+        std::fs::write(
+            d.path().join(format!("f{i}.txt")),
+            format!("regel {i}\n{}", if i % 2 == 0 { "BELANGRIJK" } else { "-" }),
+        )
+        .unwrap();
+    }
+    let code = r#"
+hits = []
+for i in range(5):
+    t = vx.call("read_file", path=f"f{i}.txt")
+    text = t if isinstance(t, str) else t.get("content", "")
+    if "BELANGRIJK" in str(text):
+        hits.append(i)
+vx.call("write_file", path="samenvatting.txt", content=",".join(map(str, hits)))
+print("gevonden:", hits)
+"#;
+    let r = h.executor.call("p1", "tool_program", json!({"code": code}), &opts(d.path())).await;
+    assert!(r.ok, "{r:?}");
+    let out = r.output.unwrap();
+    assert!(out.text.contains("gevonden: [0, 2, 4]") && out.text.contains("6 toolaanroep"), "{}", out.text);
+    assert_eq!(std::fs::read_to_string(d.path().join("samenvatting.txt")).unwrap(), "0,2,4");
+    // Fout in een geneste aanroep komt als traceback terug.
+    let bad =
+        h.executor.call("p2", "tool_program", json!({"code": "vx.call(\"bestaat_niet\")"}), &opts(d.path())).await;
+    assert!(!bad.ok && bad.error.unwrap().message.contains("bestaat niet"));
+}
+
+/// W17.14: git binnen de werkmap, repo-kaart met symbolen, zoeken met regelnummers.
+#[tokio::test]
+async fn git_and_repo_tools() {
+    let d = tempfile::tempdir().unwrap();
+    let (h, _) = hub(d.path());
+    let o = opts(d.path());
+    std::fs::create_dir_all(d.path().join("src")).unwrap();
+    std::fs::write(
+        d.path().join("src/lib.rs"),
+        "pub struct Motor;\n\npub fn start() -> u32 {\n    42\n}\n\nfn helper() {}\n",
+    )
+    .unwrap();
+    std::fs::write(
+        d.path().join("app.py"),
+        "class Vortex:\n    def run(self):\n        pass\n\ndef main():\n    Vortex().run()\n",
+    )
+    .unwrap();
+    let ok = |r: &vortex_tools::ActionResult| assert!(r.ok, "{r:?}");
+    assert!(!h.executor.call("g1", "git", json!({"args": ["init", "-q"]}), &o).await.ok, "init staat niet in de lijst");
+    let _ = std::process::Command::new("git").current_dir(d.path()).args(["init", "-q"]).status();
+    for (k, a) in [
+        ("g2", json!(["add", "."])),
+        ("g3", json!(["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "eerste"])),
+    ] {
+        let r = h.executor.call(k, "git", json!({"args": a}), &o).await;
+        if k == "g3" {
+            assert!(!r.ok, "opties vóór subcommando worden geweigerd");
+        } else {
+            ok(&r);
+        }
+    }
+    let _ = std::process::Command::new("git")
+        .current_dir(d.path())
+        .args(["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "eerste"])
+        .status();
+    let log = h.executor.call("g4", "git", json!({"args": ["log", "--oneline"]}), &o).await;
+    assert!(log.output.unwrap().text.contains("eerste"));
+    assert!(!h.executor.call("g5", "git", json!({"args": ["push"]}), &o).await.ok, "geen netwerk-subcommando's");
+    let m = h.executor.call("m1", "repo_map", json!({}), &o).await;
+    let t = m.output.unwrap().text;
+    assert!(
+        t.contains("src/lib.rs (rust")
+            && t.contains("struct Motor")
+            && t.contains("fn start")
+            && t.contains("class Vortex")
+            && t.contains("def main"),
+        "{t}"
+    );
+    assert!(!t.contains("def run"), "alleen top-level");
+    let s = h.executor.call("s1", "repo_search", json!({"pattern": r"fn \w+\(", "lang": "rust"}), &o).await;
+    let st = s.output.unwrap().text;
+    assert!(st.contains("src/lib.rs:3: pub fn start") && st.contains("src/lib.rs:7"), "{st}");
+}

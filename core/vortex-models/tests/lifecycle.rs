@@ -75,6 +75,9 @@ fn entry(fx: &Fx, name: &str, content: &str, roles: &[&str]) -> ModelEntry {
         extra_args: vec![],
         loras: vec![],
         mmproj: None,
+        draft: None,
+        draft_max: None,
+        spec_gain: None,
     }
 }
 

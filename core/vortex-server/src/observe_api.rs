@@ -66,6 +66,10 @@ async fn feedback(
             Ok(())
         })
         .map_err(e500)?;
+    // Slecht/correctie → antwoord nooit meer uit de semantische cache (W17.11).
+    if b.rating != "good" {
+        s.chat.semcache.invalidate_message(s.kernel.events(), &mid.to_string());
+    }
     // Correctie = gebruiker heeft gelijk → als gebruikersfeit in het geheugen (hoog belang).
     if let (Some(c), "correction") = (&b.correction, b.rating.as_str()) {
         let mut m = vortex_memory::NewMemory::new(

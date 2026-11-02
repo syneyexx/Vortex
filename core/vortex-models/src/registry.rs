@@ -87,6 +87,14 @@ pub struct ModelEntry {
     /// Vision-projector (llama-server `--mmproj`) voor beeldinvoer (W16.01).
     #[serde(default)]
     pub mmproj: Option<String>,
+    /// Speculative decoding (W17.08): klein draft-model + gemeten versnelling. Alleen gebruikt als
+    /// `spec_gain` (tok/s met ÷ zonder, uit `vortex specbench`) ≥ 1,05.
+    #[serde(default)]
+    pub draft: Option<String>,
+    #[serde(default)]
+    pub draft_max: Option<u32>,
+    #[serde(default)]
+    pub spec_gain: Option<f64>,
 }
 
 fn default_parser() -> String {

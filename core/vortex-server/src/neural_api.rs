@@ -54,7 +54,7 @@ pub fn attach(chat: &mut ChatEngine) -> Arc<LayerRegistry> {
     reg
 }
 
-fn eval_prompts() -> Vec<String> {
+pub(crate) fn eval_prompts() -> Vec<String> {
     let dir = crate::eval_api::evals_dir().join("sets");
     vortex_eval::load_dir(&dir)
         .map(|s| s.into_iter().flat_map(|x| x.tasks.into_iter().map(|t| t.prompt)).collect())

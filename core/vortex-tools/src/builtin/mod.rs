@@ -4,6 +4,8 @@ pub mod api;
 pub mod code;
 pub mod fs;
 pub mod meta;
+pub mod program;
+pub mod repo;
 pub mod sqlite;
 pub mod web;
 
@@ -26,6 +28,9 @@ pub fn register_all(reg: &Arc<ToolRegistry>, cfg: &BuiltinConfig) {
     for t in code::tools() {
         reg.register(t);
     }
+    for t in repo::tools() {
+        reg.register(t);
+    }
     for t in sqlite::tools() {
         reg.register(t);
     }
@@ -35,6 +40,7 @@ pub fn register_all(reg: &Arc<ToolRegistry>, cfg: &BuiltinConfig) {
     reg.register(Arc::new(api::HttpGet::new(cfg)));
     reg.register(Arc::new(api::HttpRequest::new(cfg)));
     reg.register(Arc::new(meta::DescribeTool::new(Arc::downgrade(reg))));
+    reg.register(Arc::new(program::ToolProgram::new(Arc::downgrade(reg))));
 }
 
 /// Helper: string-veld uit de invoer.

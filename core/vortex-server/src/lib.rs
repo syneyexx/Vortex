@@ -3,10 +3,13 @@
 //! Zie `CARD.md`.
 
 pub mod api;
+pub mod automation;
 pub mod autonomy;
 pub mod chat;
+pub mod cloud;
 pub mod cognitive;
 pub mod eval_api;
+pub mod experiments;
 pub mod ingest;
 pub mod live;
 pub mod media;
@@ -14,7 +17,9 @@ pub mod memory_adv;
 pub mod memory_api;
 pub mod neural_api;
 pub mod observe_api;
+pub mod quality_api;
 pub mod research_api;
+pub mod semcache;
 pub mod sessions;
 pub mod team_api;
 pub mod tools_api;

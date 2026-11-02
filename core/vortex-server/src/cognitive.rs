@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 
 use futures::StreamExt;
 use tokio_util::sync::CancellationToken;
-use vortex_cognition::planning::{critique, execute_plan, make_plan};
+use vortex_cognition::planning::{critique, execute_plan_with, make_plan};
 use vortex_cognition::{
     CogLlm, Cycle, GenOpts, Path, Phase, PlanStyle, Prediction, Signals, UserProfile, Workspace, decide, salience,
 };
@@ -212,6 +212,11 @@ impl ChatEngine {
         let mut tool_steps: Vec<Step> = Vec::new();
         let mut used_skills: Vec<String> = Vec::new();
         let mut verified_ok = false;
+        // Semantische cache (W17.11): geschikt? (vraag-embedding) en was het een treffer?
+        let mut cache_ok: Option<Option<Vec<f32>>> = None;
+        let mut cache_hit = false;
+        let mut cache_claim = None;
+        let semcache = self.semcache.clone();
         let outcome: Result<Option<serde_json::Value>, ChatError> = async {
             ctx.start()?;
             // 1. Waarnemen
@@ -275,7 +280,7 @@ impl ChatEngine {
 
             // 4. Overwegen: metacognitie kiest pad + strategie.
             cyc.enter(Phase::Deliberate);
-            let strategy = decide(&Signals {
+            let mut strategy = decide(&Signals {
                 route: route.clone(),
                 mode: mode.as_str().into(),
                 best_memory: best,
@@ -284,6 +289,16 @@ impl ChatEngine {
                 research: crate::eval_api::FEATURES.contains(&"W10"),
                 self_score: self.self_model.read().score(route.task),
             });
+            // Kostengebaseerde planselectie (W17.12): diep alleen als het iets oplevert.
+            if mode == Mode::Adaptive
+                && strategy.path == Path::Deliberate
+                && let Some(why) = vortex_cognition::cost::downgrade(&self.plan_costs(), route.task, self.self_model.read().score(route.task), 20_000.0)
+            {
+                strategy.path = Path::Fast;
+                strategy.plan = PlanStyle::Direct;
+                strategy.max_steps = 1;
+                strategy.why.push(why);
+            }
             let _ = log.log_decision(
                 trace,
                 Some(run_id),
@@ -302,6 +317,32 @@ impl ChatEngine {
             ws.set_strategy(sv.clone());
             let _ = log.append(Event::new(EventKind::StrategyChosen, trace, sv).for_run(run_id));
             cyc.finish(serde_json::json!({"path": strategy.path, "plan": strategy.plan, "prediction": strategy.prediction}));
+
+            // Cache (W17.11): alleen informatieve vragen zonder bijlagen, nooit acties/research/persoonlijk/tijdgevoelig.
+            if crate::eval_api::FEATURES.contains(&"W17")
+                && !matches!(mode, Mode::Research)
+                && !matches!(route.task, vortex_cognition::TaskType::Personal | vortex_cognition::TaskType::Research | vortex_cognition::TaskType::Planning)
+                && !route.features.time_sensitive
+                && strategy.prediction == Prediction::Answer
+                && !self.attachments.lock().contains_key(&run_id)
+            {
+                let emb = match &self.memory {
+                    Some(m) => tokio::time::timeout(Duration::from_millis(800), m.store.embedder().embed(std::slice::from_ref(&question))).await.ok().and_then(|r| r.ok()).and_then(|mut v| v.pop()),
+                    None => None,
+                };
+                let (model, cfgv, generation) = (backend.model_name().to_string(), ctx.config().version.clone(), crate::semcache::mem_gen(&log));
+                // Stampede: dezelfde vraag loopt al → wachten en dan de cache lezen.
+                let key = format!("{}|{model}|{cfgv}", crate::semcache::norm(&question));
+                cache_claim = semcache.claim(&key, Duration::from_secs(90)).await;
+                if let Some(hit) = semcache.lookup(&log, &question, emb.as_deref(), &model, &cfgv, &generation) {
+                    text.push_str(&hit.answer);
+                    log.append(Event::new(EventKind::MessageDelta, trace, serde_json::json!({"session_id": session, "message_id": msg, "text": hit.answer, "reasoning": ""})).for_run(run_id))?;
+                    log.append(Event::new(EventKind::CacheHit, trace, serde_json::json!({"cache_id": hit.id, "similarity": hit.similarity, "message_id": msg})).for_run(run_id))?;
+                    cache_hit = true;
+                    return Ok(None);
+                }
+                cache_ok = Some(emb);
+            }
 
             // 5. Handelen
             cyc.enter(Phase::Act);
@@ -421,7 +462,8 @@ impl ChatEngine {
                 // System 2: plan → stappen (geïsoleerde contexten) → evt. kritiek.
                 let plan = make_plan(&llm, &ws, &question, &mems.iter().map(|m| m.text.clone()).collect::<Vec<_>>().join("\n")).await;
                 let _ = log.append(Event::new(EventKind::PlanCreated, trace, serde_json::json!({"steps": plan.steps})).for_run(run_id));
-                let results = execute_plan(&llm, &ws, &question, strategy.max_steps, |i, step, out| {
+                let known = mems.iter().map(|m| m.score).fold(0.0f64, f64::max);
+                let results = execute_plan_with(&llm, &ws, &question, strategy.max_steps, Some(&self.step_cache), known, |i, step, out| {
                     let _ = log.append(
                         Event::new(EventKind::PlanStepCompleted, trace, serde_json::json!({"i": i, "step": step, "chars": out.len()})).for_run(run_id),
                     );
@@ -719,6 +761,25 @@ impl ChatEngine {
                     h.skills.record_outcome(s, verified_ok);
                 }
             }
+            // Cache vullen: geslaagd, geen tools gebruikt, niet zelf uit de cache.
+            if let Some(emb) = &cache_ok
+                && !cache_hit
+                && tool_steps.is_empty()
+                && !text.trim().is_empty()
+            {
+                semcache.store(
+                    &log,
+                    &question,
+                    emb.as_deref(),
+                    &text,
+                    backend.model_name(),
+                    &ctx.config().version,
+                    &crate::semcache::mem_gen(&log),
+                    &run_id.to_string(),
+                    &msg.to_string(),
+                );
+            }
+            drop(cache_claim.take());
             self.remember_exchange(session, question, text.clone());
             if let Some(mem) = self.memory.clone() {
                 // Elke 8 beurten de sessiesamenvatting vernieuwen (achtergrond).

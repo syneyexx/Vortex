@@ -1,0 +1,9 @@
+# Optionele cloud-escalatie (W17.17). STANDAARD UIT: Vortex blijft volledig lokaal.
+# Aanzetten: enabled = true, een OpenAI-compatibele dienst invullen en de API-sleutel in de
+# secret-opslag zetten (naam: key_secret). Elke escalatie wordt gelogd (event chat.cloud.escalated).
+enabled = false
+base_url = ""          # bv. https://api.openai.com of een andere OpenAI-compatibele dienst
+model = ""
+key_secret = "cloud_api_key"
+auto = false           # ook automatisch bij moeilijke vragen in een zwak taaktype
+max_per_day = 20

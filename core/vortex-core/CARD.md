@@ -62,3 +62,6 @@
 
 ## One-brain-check
 - [x] event log · [ ] workspace (W07) · [ ] geheugen (W05) · [x] metacog/neural (feature-logging `DecisionRecord`) · [ ] GUI (W03)
+
+## W17
+`faults::{FaultProxy, FaultMode}` (fault injection), migratie 0014 (`answer_cache`, `experiments`).

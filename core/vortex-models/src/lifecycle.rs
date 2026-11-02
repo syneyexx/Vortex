@@ -64,6 +64,9 @@ pub struct LoadReport {
 }
 
 /// llama-server-argumenten uit een registry-entry.
+/// Minimale gemeten versnelling om speculative decoding aan te zetten.
+pub const SPEC_MIN_GAIN: f64 = 1.05;
+
 pub fn llama_args(entry: &ModelEntry, host: &str, port: u16, slot_dir: Option<&Path>) -> Vec<String> {
     let mut a = vec!["-m".into(), entry.file.clone(), "--host".into(), host.into(), "--port".into(), port.to_string()];
     a.extend(["-ngl".into(), "999".into()]);
@@ -86,6 +89,19 @@ pub fn llama_args(entry: &ModelEntry, host: &str, port: u16, slot_dir: Option<&P
     }
     if let Some(d) = slot_dir {
         a.extend(["--slot-save-path".into(), d.to_string_lossy().into_owned()]);
+    }
+    // Speculative decoding (W17.08): alleen bij gemeten winst.
+    if let Some(d) = &entry.draft
+        && entry.spec_gain.is_some_and(|g| g >= SPEC_MIN_GAIN)
+    {
+        a.extend([
+            "--model-draft".into(),
+            d.clone(),
+            "-ngld".into(),
+            "99".into(),
+            "--draft-max".into(),
+            entry.draft_max.unwrap_or(16).to_string(),
+        ]);
     }
     // Visie (W16.01): projector voor beeldinvoer.
     if let Some(mm) = &entry.mmproj {
@@ -500,6 +516,9 @@ mod tests {
             extra_args: vec!["--threads".into(), "8".into()],
             loras: vec![crate::registry::LoraEntry { name: "stijl".into(), path: "a.gguf".into(), scale: 0.0 }],
             mmproj: None,
+            draft: None,
+            draft_max: None,
+            spec_gain: None,
         };
         let a = llama_args(&e, "127.0.0.1", 8080, Some(Path::new("/s")));
         assert!(a.join(" ").contains("--lora a.gguf --lora-init-without-apply"));
@@ -520,5 +539,18 @@ mod tests {
         emb.roles = vec!["embedding".into()];
         assert!(llama_args(&emb, "h", 1, None).contains(&"--embedding".to_string()));
         assert!(default_caps(&emb).embeddings && !default_caps(&emb).chat);
+        // Speculative decoding alleen bij gemeten winst; visie met projector.
+        let mut sp = e.clone();
+        sp.draft = Some("d.gguf".into());
+        assert!(!llama_args(&sp, "h", 1, None).join(" ").contains("--model-draft"), "niet gemeten → uit");
+        sp.spec_gain = Some(1.02);
+        assert!(!llama_args(&sp, "h", 1, None).join(" ").contains("--model-draft"), "te weinig winst → uit");
+        sp.spec_gain = Some(1.3);
+        sp.mmproj = Some("mm.gguf".into());
+        let s = llama_args(&sp, "h", 1, None).join(" ");
+        assert!(
+            s.contains("--model-draft d.gguf") && s.contains("--draft-max 16") && s.contains("--mmproj mm.gguf"),
+            "{s}"
+        );
     }
 }

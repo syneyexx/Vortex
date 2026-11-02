@@ -92,14 +92,14 @@ function TeamRows({ c, streaming }: { c: Cognition; streaming: boolean }) {
 }
 
 export function AgentPanel() {
-  const { c, streaming } = useStore((s) => {
+  // Losse selectors met stabiele waarden: een nieuw object per aanroep geeft in zustand v5 een
+  // oneindige render-lus (React #185) — gevonden door de visuele UI-controle (W17.16).
+  const last = useStore((s) => {
     const list = s.currentSession ? s.messages[s.currentSession] : undefined;
-    const last = list?.filter((m) => m.role === "assistant").at(-1);
-    return {
-      c: (last?.run_id ? s.cognition[last.run_id] : undefined) ?? EMPTY,
-      streaming: last?.status === "streaming",
-    };
+    return list?.filter((m) => m.role === "assistant").at(-1);
   });
+  const c = useStore((s) => (last?.run_id ? s.cognition[last.run_id] : undefined)) ?? EMPTY;
+  const streaming = last?.status === "streaming";
   const verdict = c.judge
     ? `Judge: ${c.judge.verdict === "accept" ? "goedgekeurd" : c.judge.verdict === "revise" ? "herzien" : "onzeker"} · ${Math.round(c.judge.confidence * 100)}% vertrouwen${c.evidence?.scope === "lokaal" && c.evidence.checks.length > 0 ? " · lokaal geverifieerd" : ""}`
     : c.verify

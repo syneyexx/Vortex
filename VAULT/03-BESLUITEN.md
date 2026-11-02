@@ -111,3 +111,9 @@ Nieuwste onderaan. Formaat: datum · besluit · waarom.
 | 2026-11-02 | OCR-zekerheid gaat mee: herinnering krijgt de gemiddelde zekerheid, onzekere regels staan expliciet in de prompt | Model gokt niet over slecht gelezen tekst |
 | 2026-11-02 | Coördinaat-citaten als locator `p. N [x0, y0, x1, y1]` (PDF-punten) per regio-herinnering | Exacte bron, in de GUI te markeren; werkt naast ColPali-paginaretrieval |
 | 2026-11-02 | Beeldgeneratie: eerst GPU-lease P1 + LLM-servers ontladen, daarna terug | Diffusion en LLM passen niet samen in VRAM |
+| 2026-11-02 | Geen eigen llama.cpp-bindings: KV-slots, logprobs en `/lora-adapters` dekken de behoefte | Minder onderhoud; één backend-pad |
+| 2026-11-02 | Semantische cache alleen voor informatieve vragen zonder tools/bijlagen; sleutel = model + configversie + kennisgeneratie | "Nooit voor acties"; kennis verandert → cache vervalt vanzelf |
+| 2026-11-02 | Speculative decoding alleen als `spec_gain` (gemeten) ≥ 1,05 | Draft-modellen kosten VRAM; alleen bij aantoonbare winst |
+| 2026-11-02 | Grote tests (ablations, fault-injection-run) vragen expliciet `confirm = "GROTE TESTEN NU"` | Regel 7 ook in API/GUI afgedwongen |
+| 2026-11-02 | Cloud-escalatie standaard uit, alleen met sleutel, gelogd en met daglimiet | Lokaal blijft de standaard; volledige transparantie |
+| 2026-11-02 | Programmatic tool calling alleen voor tools zonder externe bijwerking | Externe acties houden de idempotentie-ledger van de executor |

@@ -76,3 +76,7 @@ models-down:
 # Voortgang per wave
 vault:
     python tools/vault/vault.py status
+
+# Visuele UI-controle (W17.16): screenshots van de gebouwde GUI vs referentie
+visual:
+    cd app && npm run build && ../worker/.venv/bin/python ../tools/visual/visual_check.py

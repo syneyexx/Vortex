@@ -35,6 +35,15 @@ async fn fake_model() -> String {
             .and_then(|m| m["content"].as_str())
             .unwrap_or("")
             .to_string();
+        if b["logprobs"].as_bool().unwrap_or(false) {
+            let lp = json!({"content": [
+                {"token": "De", "logprob": -0.01, "top_logprobs": [{"token": "De", "logprob": -0.01}]},
+                {"token": " hoofdstad", "logprob": -0.05, "top_logprobs": []},
+                {"token": " is", "logprob": -0.02, "top_logprobs": []},
+                {"token": " Lyon", "logprob": -1.8, "top_logprobs": [{"token": " Lyon", "logprob": -1.8}, {"token": " Parijs", "logprob": -0.3}]}
+            ]});
+            return axum::Json(json!({"choices":[{"message":{"content": "De hoofdstad is Lyon"},"finish_reason":"stop","logprobs": lp}],"usage":{"prompt_tokens":3,"completion_tokens":4}})).into_response();
+        }
         if !b["stream"].as_bool().unwrap_or(false) {
             let schema = b["response_format"]["json_schema"]["schema"]["properties"].clone();
             let content = if schema.get("steps").is_some() {
@@ -1356,4 +1365,286 @@ async fn multimodal_attachments_memory_and_outputs() {
     let m = fx.wait_message(&sid, 3, "complete").await;
     assert!(m["content"].as_str().unwrap_or("").starts_with("![een kat op de maan](/api/media/file/img_"), "{m}");
     let _ = worker.kill().await;
+}
+
+/// W17.11: tweede keer dezelfde (informatieve) vraag → uit de cache, model niet opnieuw;
+/// persoonlijke vraag nooit uit de cache; slechte feedback → weg uit de cache.
+#[tokio::test]
+async fn semantic_cache_strict_and_invalidated() {
+    let fx = setup().await;
+    let ask = |sid: String, q: &'static str| {
+        let fx = &fx;
+        async move {
+            fx.post(&format!("/api/sessions/{sid}/messages"), json!({"text": q, "mode": "quick"})).await;
+        }
+    };
+    let s1 = fx.post("/api/sessions", json!({})).await["id"].as_str().unwrap_or_default().to_string();
+    ask(s1.clone(), "Wat is de hoofdstad van Frankrijk?").await;
+    let first = fx.wait_message(&s1, 1, "complete").await;
+    let s2 = fx.post("/api/sessions", json!({})).await["id"].as_str().unwrap_or_default().to_string();
+    ask(s2.clone(), "wat is de hoofdstad van frankrijk").await;
+    let second = fx.wait_message(&s2, 1, "complete").await;
+    assert_eq!(first["content"], second["content"]);
+    let hits = || {
+        fx.kernel
+            .events()
+            .read_from(0, 100_000)
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|e| e.kind.as_str() == "chat.cache.hit")
+            .count()
+    };
+    assert_eq!(hits(), 1, "tweede keer uit de cache");
+    // Andere vraag → geen treffer.
+    ask(s2.clone(), "Wat is de hoofdstad van Duitsland?").await;
+    fx.wait_message(&s2, 3, "complete").await;
+    assert_eq!(hits(), 1);
+    // Slechte feedback → weg.
+    fx.post(&format!("/api/messages/{}/feedback", first["id"].as_str().unwrap_or("")), json!({"rating": "bad"})).await;
+    let s3 = fx.post("/api/sessions", json!({})).await["id"].as_str().unwrap_or_default().to_string();
+    ask(s3.clone(), "Wat is de hoofdstad van Frankrijk?").await;
+    fx.wait_message(&s3, 1, "complete").await;
+    assert_eq!(hits(), 1, "na slechte feedback niet meer uit de cache");
+}
+
+async fn wait_exp(fx: &Fx, id: &str) -> Value {
+    for _ in 0..600 {
+        let e = fx.get(&format!("/api/experiments/{id}")).await;
+        if e["status"] != "running" {
+            return e;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    panic!("experiment {id} niet klaar");
+}
+
+/// W17.03/04/05/07: A/B met gepaarde statistiek, schaduw-run met blinde Judge, metamorf +
+/// counterfactual, positioneel per model; ablation (🔒) alleen met bevestiging.
+#[tokio::test]
+async fn experiments_ab_shadow_metamorphic_positional() {
+    unsafe_env();
+    let fx = setup().await;
+    let ab = fx
+        .post("/api/experiments/ab", json!({"suites": ["redeneren"], "a": {"name": "basis"}, "b": {"name": "korte prompt", "system_prompt": "Antwoord kort."}}))
+        .await;
+    let r = wait_exp(&fx, ab["id"].as_str().unwrap_or_default()).await;
+    assert_eq!(r["status"], "done", "{r}");
+    assert!(r["result"]["overall"]["n"].as_u64().unwrap_or(0) >= 5, "{r}");
+    assert!(r["result"]["overall"]["verdict"].is_string());
+    // Schaduw: eerst een echte vraag.
+    let sid = fx.post("/api/sessions", json!({})).await["id"].as_str().unwrap_or_default().to_string();
+    fx.post(
+        &format!("/api/sessions/{sid}/messages"),
+        json!({"text": "Wat is het verschil tussen TCP en UDP?", "mode": "quick"}),
+    )
+    .await;
+    fx.wait_message(&sid, 1, "complete").await;
+    let sh = fx.post("/api/experiments/shadow", json!({"candidate": {"name": "t0", "temperature": 0.0}, "n": 3})).await;
+    let r = wait_exp(&fx, sh["id"].as_str().unwrap_or_default()).await;
+    assert_eq!(r["result"]["n"], 1, "{r}");
+    assert!(r["result"]["advice"].is_string());
+    let mm = fx.post("/api/experiments/metamorphic", json!({"suites": ["redeneren"]})).await;
+    let r = wait_exp(&fx, mm["id"].as_str().unwrap_or_default()).await;
+    let rep = &r["result"]["suites"][0]["report"];
+    assert!(rep["pairs"].as_u64().unwrap_or(0) >= 20 && rep["counterfactuals"].as_u64() == Some(4), "{r}");
+    let ps = fx.post("/api/experiments/positional", json!({"lengths": [400]})).await;
+    let r = wait_exp(&fx, ps["id"].as_str().unwrap_or_default()).await;
+    assert_eq!(r["result"]["report"]["by_position"].as_object().map(|o| o.len()), Some(5), "{r}");
+    // 🔒 ablation zonder bevestiging → geweigerd.
+    let no = fx
+        .http
+        .post(format!("{}/api/experiments/ablation", fx.base))
+        .json(&json!({}))
+        .send()
+        .await
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(no.status(), 400);
+    assert!(fx.get("/api/experiments").await.as_array().is_some_and(|a| a.len() == 4));
+}
+
+/// W17.06 (klein, per component): model weg / verbinding valt weg midden in de stream /
+/// verminkte uitvoer → bericht netjes mislukt (geen hangende run); traag → gewoon klaar.
+#[tokio::test]
+async fn faults_model_connection_recovers_cleanly() {
+    let fx = setup().await;
+    let models = std::fs::read_to_string(fx.cfg.join("models.toml")).unwrap_or_default();
+    let url = models
+        .lines()
+        .find_map(|l| l.strip_prefix("url = \""))
+        .map(|u| u.trim_end_matches('"').trim_start_matches("http://").to_string())
+        .unwrap_or_default();
+    let proxy = vortex_core::faults::FaultProxy::start(&url).await.unwrap_or_else(|e| panic!("{e}"));
+    std::fs::write(fx.cfg.join("models.toml"), models.replace(&format!("http://{url}"), &proxy.url()))
+        .unwrap_or_else(|e| panic!("{e}"));
+    fx.kernel.config().reload().unwrap_or_else(|e| panic!("{e}"));
+    let sid = fx.post("/api/sessions", json!({})).await["id"].as_str().unwrap_or_default().to_string();
+    let mut idx = 1;
+    for (mode, expect) in [
+        (vortex_core::faults::FaultMode::Refuse, "failed"),
+        (vortex_core::faults::FaultMode::CutAfter(120), "failed"),
+        (vortex_core::faults::FaultMode::Garble, "failed"),
+        (vortex_core::faults::FaultMode::Delay(30), "complete"),
+    ] {
+        proxy.set(mode);
+        fx.post(&format!("/api/sessions/{sid}/messages"), json!({"text": format!("fouttest {idx}"), "mode": "quick"}))
+            .await;
+        let mut status = String::new();
+        for _ in 0..300 {
+            let s = fx.get(&format!("/api/sessions/{sid}")).await;
+            status = s["messages"][idx]["status"].as_str().unwrap_or("").to_string();
+            if status != "streaming" && !status.is_empty() {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(30)).await;
+        }
+        // Weigeren/traag: exact; afkappen/verminken: netjes afgerond (mislukt of met deelantwoord), nooit hangend.
+        let strict = matches!(mode, vortex_core::faults::FaultMode::Refuse | vortex_core::faults::FaultMode::Delay(_));
+        assert!(status == expect || (!strict && status == "complete"), "{mode:?}: {status}");
+        idx += 2;
+    }
+    // Geen hangende runs.
+    let active = fx.get("/api/runs").await;
+    assert!(active.as_array().is_none_or(|a| a.iter().all(|r| r["state"] != "running")), "{active}");
+    proxy.stop();
+}
+
+/// W17.08: logprob-diagnostiek wijst het onzekere stuk aan (met alternatief).
+#[tokio::test]
+async fn logprob_diagnostics_flag_uncertain_tokens() {
+    let fx = setup().await;
+    let r = fx.post("/api/diagnostics/logprobs", json!({"prompt": "Wat is de hoofdstad van Frankrijk?"})).await;
+    let d = &r["diagnosis"];
+    assert_eq!(d["tokens"], 4, "{r}");
+    assert_eq!(d["spans"][0]["text"], " Lyon", "{r}");
+    assert_eq!(d["spans"][0]["alternatives"][0], " Parijs");
+}
+
+/// W17.14: browser-tool via de worker (echte Chromium) en repo-indexering.
+#[tokio::test]
+async fn browser_tool_and_repo_index() {
+    let fx = setup().await;
+    // Repo inlezen (eigen tools-crate als voorbeeld).
+    let repo = fx._dir.path().join("mini");
+    std::fs::create_dir_all(repo.join("src")).unwrap_or_else(|e| panic!("{e}"));
+    std::fs::write(
+        repo.join("src/motor.rs"),
+        "/// Start de motor van Vortex.\npub fn start_motor() -> u32 {\n    42\n}\n",
+    )
+    .unwrap_or_else(|e| panic!("{e}"));
+    let r = fx.post("/api/repo/index", json!({"path": repo.display().to_string(), "name": "mini"})).await;
+    assert_eq!(r["workspace"], "repo:mini", "{r}");
+    let hits = fx.post("/api/memory/search", json!({"text": "start_motor functie", "workspace": "repo:mini"})).await;
+    assert!(
+        hits.as_array()
+            .is_some_and(|h| h.iter().any(|x| x["memory"]["content"].as_str().unwrap_or("").contains("start_motor"))),
+        "{hits}"
+    );
+    // Browser (alleen met worker + Chromium).
+    if !std::path::Path::new("/opt/pw-browsers/chromium").exists() {
+        return;
+    }
+    let Some(mut worker) = start_worker(&fx).await else { return };
+    let app = axum::Router::new().route("/", axum::routing::get(|| async { axum::response::Html("<html><title>T</title><body><input id=q><button id=b onclick=\"document.getElementById('o').innerText='zocht: '+document.getElementById('q').value\">z</button><div id=o></div></body></html>") }));
+    let l = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap_or_else(|e| panic!("{e}"));
+    let url = format!("http://{}/", l.local_addr().unwrap_or_else(|e| panic!("{e}")));
+    tokio::spawn(async move { axum::serve(l, app).await });
+    let steps = json!([{"action": "goto", "url": url}, {"action": "fill", "selector": "#q", "text": "vortex"}, {"action": "click", "selector": "#b"}, {"action": "extract", "selector": "#o"}]);
+    let res = fx.post("/api/tools/browser/call", json!({"input": {"steps": steps}})).await;
+    assert_eq!(res["ok"], true, "{res}");
+    assert!(res["output"]["text"].as_str().unwrap_or("").contains("zocht: vortex"), "{res}");
+    let _ = worker.kill().await;
+}
+
+/// W17.15: MPO vs int8 op een eigen layer (router, met gelabelde HF-data) via de worker.
+#[tokio::test]
+async fn compression_experiment_on_own_layer() {
+    let fx = setup().await;
+    let Some(mut worker) = start_worker(&fx).await else { return };
+    let hf = fx._dir.path().join("data/layers/hf");
+    std::fs::create_dir_all(&hf).unwrap_or_else(|e| panic!("{e}"));
+    let mut rows = String::new();
+    for i in 0..90 {
+        let (t, l) = match i % 3 {
+            0 => (format!("Schrijf een Rust-functie die lijst {i} sorteert met code"), "code"),
+            1 => (format!("Bereken {i} × 17 + 3 en geef het getal"), "math"),
+            _ => (format!("hoi, hoe gaat het vandaag {i}?"), "chat"),
+        };
+        rows.push_str(&format!("{}\n", json!({"text": t, "label": l})));
+    }
+    std::fs::write(hf.join("router.jsonl"), rows).unwrap_or_else(|e| panic!("{e}"));
+    let e = fx.post("/api/experiments/compression", json!({"layer": "router", "chis": [2, 4]})).await;
+    let r = wait_exp(&fx, e["id"].as_str().unwrap_or_default()).await;
+    assert_eq!(r["status"], "done", "{r}");
+    let rows = r["result"]["result"]["rows"].as_array().cloned().unwrap_or_default();
+    assert!(
+        rows.iter().any(|x| x["variant"] == "int8") && rows.iter().any(|x| x["variant"] == "mpo χ=2 + healing"),
+        "{r}"
+    );
+    // Alleen eigen layers: een "model" kan niet.
+    let bad = fx.post("/api/experiments/compression", json!({"layer": "gpt-oss-20b"})).await;
+    let rb = wait_exp(&fx, bad["id"].as_str().unwrap_or_default()).await;
+    assert_eq!(rb["status"], "failed");
+    let _ = worker.kill().await;
+}
+
+/// W17.17: cloud standaard uit; aan → model "cloud" gaat naar de externe dienst (met sleutel),
+/// gelogd en begrensd per dag.
+#[tokio::test]
+async fn cloud_escalation_opt_in_logged_and_limited() {
+    let fx = setup().await;
+    let sid = fx.post("/api/sessions", json!({})).await["id"].as_str().unwrap_or_default().to_string();
+    let off = fx
+        .http
+        .post(format!("{}/api/sessions/{sid}/messages", fx.base))
+        .json(&json!({"text": "hoi", "model": "cloud"}))
+        .send()
+        .await
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(off.status(), 400, "standaard uit");
+    let models = std::fs::read_to_string(fx.cfg.join("models.toml")).unwrap_or_default();
+    let url = models
+        .lines()
+        .find_map(|l| l.strip_prefix("url = \""))
+        .map(|u| u.trim_end_matches('"').to_string())
+        .unwrap_or_default();
+    std::fs::write(
+        fx.cfg.join("cloud.toml"),
+        format!("enabled = true\nbase_url = \"{url}\"\nmodel = \"m\"\nmax_per_day = 1\n"),
+    )
+    .unwrap_or_else(|e| panic!("{e}"));
+    fx.kernel.config().reload().unwrap_or_else(|e| panic!("{e}"));
+    let nokey = fx
+        .http
+        .post(format!("{}/api/sessions/{sid}/messages", fx.base))
+        .json(&json!({"text": "hoi", "model": "cloud"}))
+        .send()
+        .await
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(nokey.status(), 400, "zonder sleutel niet");
+    fx.kernel.secrets().set("cloud_api_key", "geheim").unwrap_or_else(|e| panic!("{e}"));
+    let r = fx
+        .post(
+            &format!("/api/sessions/{sid}/messages"),
+            json!({"text": "Leg kwantumverstrengeling uit", "model": "cloud", "mode": "quick"}),
+        )
+        .await;
+    assert!(r["model"].as_str().unwrap_or("").starts_with("cloud:"), "{r}");
+    fx.wait_message(&sid, 1, "complete").await;
+    let logged = fx
+        .kernel
+        .events()
+        .read_from(0, 100_000)
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|e| e.kind.as_str() == "chat.cloud.escalated")
+        .count();
+    assert_eq!(logged, 1);
+    let limit = fx
+        .http
+        .post(format!("{}/api/sessions/{sid}/messages", fx.base))
+        .json(&json!({"text": "nog een", "model": "cloud"}))
+        .send()
+        .await
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(limit.status(), 400, "daglimiet");
 }

@@ -32,6 +32,8 @@ pub struct OpenAiBackend {
     client: reqwest::Client,
     caps: Capabilities,
     parser: Box<dyn ToolCallParser>,
+    /// Bearer-sleutel (alleen voor een externe OpenAI-compatibele dienst, W17.17).
+    api_key: Option<String>,
 }
 
 /// Wat een llama-server maximaal kan (wordt doorsneden met wat het model in de registry claimt).
@@ -55,6 +57,11 @@ pub fn llama_server_caps() -> Capabilities {
 
 impl OpenAiBackend {
     /// `declared` = capabilities uit de registry (wat het model kan).
+    /// Modelnaam zoals de server hem kent.
+    pub fn model_name(&self) -> &str {
+        &self.model
+    }
+
     pub fn new(name: &str, base_url: &str, model: &str, declared: &Capabilities, parser_id: &str) -> Result<Self> {
         let client = reqwest::Client::builder().connect_timeout(Duration::from_secs(3)).build()?;
         Ok(Self {
@@ -64,7 +71,14 @@ impl OpenAiBackend {
             client,
             caps: declared.intersect(&llama_server_caps()),
             parser: parser_by_id(parser_id)?,
+            api_key: None,
         })
+    }
+
+    /// Externe dienst met API-sleutel (cloud-escalatie, W17.17).
+    pub fn with_api_key(mut self, key: impl Into<String>) -> Self {
+        self.api_key = Some(key.into());
+        self
     }
 
     pub fn parser_id(&self) -> &'static str {
@@ -120,7 +134,11 @@ impl OpenAiBackend {
     }
 
     async fn post(&self, path: &str, body: &Value, cancel: &CancellationToken) -> Result<reqwest::Response> {
-        let fut = self.client.post(format!("{}{path}", self.base)).json(body).send();
+        let mut rb = self.client.post(format!("{}{path}", self.base)).json(body);
+        if let Some(k) = &self.api_key {
+            rb = rb.bearer_auth(k);
+        }
+        let fut = rb.send();
         let r = tokio::select! {
             r = fut => r?,
             _ = cancel.cancelled() => return Err(ModelError::Cancelled),
@@ -188,6 +206,9 @@ impl OpenAiBackend {
         }
         if req.logprobs {
             b["logprobs"] = json!(true);
+            if let Some(k) = req.top_logprobs {
+                b["top_logprobs"] = json!(k);
+            }
         }
         if let Some(l) = &req.lora {
             // LoRA per verzoek (nieuwere llama-server); anders geldt de globale schaal.
@@ -321,6 +342,31 @@ impl Backend for OpenAiBackend {
             finish_reason: v.pointer("/choices/0/finish_reason").and_then(|f| f.as_str()).unwrap_or("stop").into(),
             usage,
             metrics,
+            logprobs: v
+                .pointer("/choices/0/logprobs/content")
+                .and_then(|c| c.as_array())
+                .map(|a| {
+                    a.iter()
+                        .map(|t| crate::diagnostics::TokenLogprob {
+                            token: t["token"].as_str().unwrap_or("").to_string(),
+                            logprob: t["logprob"].as_f64().unwrap_or(0.0) as f32,
+                            top: t["top_logprobs"]
+                                .as_array()
+                                .map(|x| {
+                                    x.iter()
+                                        .map(|y| {
+                                            (
+                                                y["token"].as_str().unwrap_or("").to_string(),
+                                                y["logprob"].as_f64().unwrap_or(0.0) as f32,
+                                            )
+                                        })
+                                        .collect()
+                                })
+                                .unwrap_or_default(),
+                        })
+                        .collect()
+                })
+                .unwrap_or_default(),
         })
     }
 

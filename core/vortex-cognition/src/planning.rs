@@ -26,6 +26,74 @@ fn critique_schema() -> serde_json::Value {
     serde_json::json!({"type":"object","properties":{"verdict":{"type":"string","enum":["ok","revise"]},"issues":{"type":"array","items":{"type":"string"}}},"required":["verdict","issues"]})
 }
 
+// ── W17.12: CSE, incrementele herberekening, value-of-information ─────────────
+// VX:W17.12
+
+fn words(s: &str) -> std::collections::BTreeSet<String> {
+    s.to_lowercase().split(|c: char| !c.is_alphanumeric()).filter(|w| w.len() > 2).map(String::from).collect()
+}
+
+/// Common subexpression elimination: (bijna) gelijke stappen maar één keer (Jaccard ≥ 0,8).
+pub fn dedup_steps(steps: Vec<String>) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for s in steps {
+        let w = words(&s);
+        let dup = out.iter().any(|o| {
+            let ow = words(o);
+            let inter = w.intersection(&ow).count() as f64;
+            let uni = w.union(&ow).count().max(1) as f64;
+            inter / uni >= 0.8
+        });
+        if !dup {
+            out.push(s);
+        }
+    }
+    out
+}
+
+/// Stapresultaten hergebruiken als stap + invoer (eerdere resultaten) niet veranderd zijn
+/// (incrementele herberekening bij herplannen/reflexion, ook over runs heen binnen de TTL).
+#[derive(Debug, Default)]
+pub struct StepCache {
+    inner: parking_lot::Mutex<std::collections::HashMap<u64, (std::time::Instant, String)>>,
+}
+
+impl StepCache {
+    pub const TTL: std::time::Duration = std::time::Duration::from_secs(1800);
+
+    pub fn key(task: &str, step: &str, material: &[String]) -> u64 {
+        let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+        for part in std::iter::once(task).chain(std::iter::once(step)).chain(material.iter().map(|s| s.as_str())) {
+            for b in part.bytes().chain(std::iter::once(0x1e)) {
+                h ^= u64::from(b);
+                h = h.wrapping_mul(0x0100_0000_01b3);
+            }
+        }
+        h
+    }
+
+    pub fn get(&self, k: u64) -> Option<String> {
+        let g = self.inner.lock();
+        g.get(&k).filter(|(t, _)| t.elapsed() < Self::TTL).map(|(_, v)| v.clone())
+    }
+
+    pub fn put(&self, k: u64, v: &str) {
+        let mut g = self.inner.lock();
+        if g.len() > 2000 {
+            g.retain(|_, (t, _)| t.elapsed() < Self::TTL);
+        }
+        g.insert(k, (std::time::Instant::now(), v.to_string()));
+    }
+}
+
+/// Value-of-information: een opzoek-/controlestap levert weinig op als het geheugen het al
+/// met hoge zekerheid weet (`known` = beste geheugenscore 0..1).
+pub fn low_value(step: &str, known: f64) -> bool {
+    let l = step.to_lowercase();
+    let lookup = ["zoek", "opzoeken", "controleer", "verifieer", "achterhaal", "check"].iter().any(|w| l.contains(w));
+    lookup && known >= 0.85
+}
+
 /// Plan maken (doelen in de workspace). Mislukt het JSON → één stap = de vraag zelf.
 pub async fn make_plan(llm: &dyn CogLlm, ws: &Workspace, task: &str, context: &str) -> Plan {
     let msgs = vec![Message::system(PLANNER), Message::user(format!("Taak: {task}\n\nContext:\n{context}"))];
@@ -36,7 +104,7 @@ pub async fn make_plan(llm: &dyn CogLlm, ws: &Workspace, task: &str, context: &s
         ..Default::default()
     };
     let plan = match llm.complete(msgs, opts).await.ok().and_then(|s| serde_json::from_str::<Plan>(&s).ok()) {
-        Some(p) if !p.steps.is_empty() => Plan { steps: p.steps.into_iter().take(5).collect() },
+        Some(p) if !p.steps.is_empty() => Plan { steps: dedup_steps(p.steps).into_iter().take(5).collect() },
         _ => Plan { steps: vec![task.to_string()] },
     };
     let mut prev: Option<usize> = None;
@@ -54,6 +122,19 @@ pub async fn execute_plan(
     ws: &Workspace,
     task: &str,
     max_steps: u32,
+    on_step: impl FnMut(usize, &str, &str),
+) -> Vec<(String, String)> {
+    execute_plan_with(llm, ws, task, max_steps, None, 0.0, on_step).await
+}
+
+/// Zoals [`execute_plan`], met stapcache (incrementeel) en VOI (`known` = geheugenzekerheid).
+pub async fn execute_plan_with(
+    llm: &dyn CogLlm,
+    ws: &Workspace,
+    task: &str,
+    max_steps: u32,
+    cache: Option<&StepCache>,
+    known: f64,
     mut on_step: impl FnMut(usize, &str, &str),
 ) -> Vec<(String, String)> {
     let mut results: Vec<(String, String)> = Vec::new();
@@ -65,6 +146,24 @@ pub async fn execute_plan(
         }
         ws.set_goal_status(g.id, GoalStatus::Active, None);
         let material: Vec<String> = results.iter().map(|(s, r)| format!("Stap '{s}': {r}")).collect();
+        if low_value(&g.text, known) {
+            let out =
+                "(overgeslagen: het geheugen weet dit al met hoge zekerheid — weinig informatiewaarde)".to_string();
+            ws.set_goal_status(g.id, GoalStatus::Done, Some(out.clone()));
+            on_step(n, &g.text, &out);
+            results.push((g.text.clone(), out));
+            n += 1;
+            continue;
+        }
+        let key = StepCache::key(task, &g.text, &material);
+        if let Some(out) = cache.and_then(|c| c.get(key)) {
+            ws.add_note(&format!("stap hergebruikt (invoer ongewijzigd): {}", g.text));
+            ws.set_goal_status(g.id, GoalStatus::Done, Some(out.chars().take(500).collect()));
+            on_step(n, &g.text, &out);
+            results.push((g.text.clone(), out));
+            n += 1;
+            continue;
+        }
         let a = assemble_for_role(
             EXECUTOR,
             &format!("Hoofdtaak: {task}\nHuidige stap: {}", g.text),
@@ -75,6 +174,11 @@ pub async fn execute_plan(
             .complete(a.messages, GenOpts { max_tokens: Some(700), temperature: Some(0.3), ..Default::default() })
             .await
             .unwrap_or_else(|e| format!("(stap mislukt: {e})"));
+        if let Some(c) = cache
+            && !out.starts_with("(stap mislukt")
+        {
+            c.put(key, &out);
+        }
         ws.set_goal_status(g.id, GoalStatus::Done, Some(out.chars().take(500).collect()));
         on_step(n, &g.text, &out);
         results.push((g.text.clone(), out));
@@ -279,5 +383,39 @@ mod tests {
             critique(&Script(Mutex::new(vec![r#"{"verdict":"revise","issues":["rekenfout"]}"#.into()])), "t", "d")
                 .await;
         assert_eq!(crit.issues, vec!["rekenfout".to_string()]);
+    }
+
+    #[tokio::test]
+    async fn cse_incremental_and_voi() {
+        assert_eq!(
+            dedup_steps(vec![
+                "Zoek de prijs van product A op".into(),
+                "zoek de prijs van product A op.".into(),
+                "Vergelijk A met B".into()
+            ])
+            .len(),
+            2
+        );
+        assert!(low_value("Controleer de hoofdstad van Frankrijk", 0.9));
+        assert!(!low_value("Bereken de som", 0.9));
+        assert!(!low_value("Controleer de hoofdstad", 0.4));
+        let cache = StepCache::default();
+        // Eerste run: twee stappen → twee modelaanroepen.
+        let ws = Workspace::new(RunId::new(), TraceId::new(), "t", None);
+        ws.push_goal("stap een", None, vec![]);
+        let llm = Script(Mutex::new(vec!["r1".into(), "r2".into()]));
+        let first = execute_plan_with(&llm, &ws, "taak", 5, Some(&cache), 0.0, |_, _, _| {}).await;
+        assert_eq!(first[0].1, "r1");
+        // Tweede run met dezelfde stap en invoer: geen modelaanroep (script is leeg genoeg).
+        let ws2 = Workspace::new(RunId::new(), TraceId::new(), "t", None);
+        ws2.push_goal("stap een", None, vec![]);
+        let empty = Script(Mutex::new(vec![]));
+        let again = execute_plan_with(&empty, &ws2, "taak", 5, Some(&cache), 0.0, |_, _, _| {}).await;
+        assert_eq!(again[0].1, "r1", "hergebruikt i.p.v. opnieuw berekend");
+        // VOI: opzoekstap bij hoge geheugenzekerheid → overgeslagen zonder model.
+        let ws3 = Workspace::new(RunId::new(), TraceId::new(), "t", None);
+        ws3.push_goal("zoek de hoofdstad op", None, vec![]);
+        let v = execute_plan_with(&empty, &ws3, "taak", 5, None, 0.95, |_, _, _| {}).await;
+        assert!(v[0].1.starts_with("(overgeslagen"));
     }
 }

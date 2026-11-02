@@ -17,21 +17,29 @@ use crate::api::{ApiError, AppState};
 use crate::chat::Mode;
 
 /// Waves waarvan de functies in deze build aanwezig zijn (voor `requires` in eval-taken).
-pub const FEATURES: &[&str] =
-    &["W01", "W02", "W03", "W04", "W05", "W06", "W07", "W08", "W09", "W10", "W11", "W12", "W13", "W14", "W15", "W16"];
+pub const FEATURES: &[&str] = &[
+    "W01", "W02", "W03", "W04", "W05", "W06", "W07", "W08", "W09", "W10", "W11", "W12", "W13", "W14", "W15", "W16",
+    "W17",
+];
 
 #[derive(Debug)]
 pub struct VortexSubject {
     pub state: AppState,
     /// Modus voor álle taken (bv. "quick" = single-agent vs "deep" = debatteam, W09-gate).
     pub mode_override: Option<String>,
+    /// Variant (A/B, ablation, ander model) — W17.
+    pub variant: Option<crate::chat::Variant>,
 }
 
 #[async_trait::async_trait]
 impl Subject for VortexSubject {
     fn version(&self) -> String {
         let model = self.state.chat.registry().map(|r| r.default).unwrap_or_default();
-        format!("{}+{}+{model}", env!("VORTEX_BUILD"), self.state.kernel.config().current().version)
+        let base = format!("{}+{}+{model}", env!("VORTEX_BUILD"), self.state.kernel.config().current().version);
+        match &self.variant {
+            Some(v) if !v.name.is_empty() => format!("{base}+variant:{}", v.name),
+            _ => base,
+        }
     }
     fn has(&self, feature: &str) -> bool {
         FEATURES.contains(&feature)
@@ -49,10 +57,11 @@ impl Subject for VortexSubject {
     async fn answer(&self, ws: &str, prompt: &str, mode: Option<&str>) -> Result<String, String> {
         self.state
             .chat
-            .answer_once(
+            .answer_variant(
                 prompt,
                 Mode::parse(self.mode_override.as_deref().or(mode).unwrap_or("adaptive")),
                 Some(ws.to_string()),
+                self.variant.as_ref(),
             )
             .await
             .map_err(|e| e.to_string())
@@ -126,7 +135,7 @@ async fn run(State(s): State<AppState>, Json(b): Json<RunBody>) -> Result<Json<V
     let names: Vec<String> = chosen.iter().map(|x| x.name.clone()).collect();
     let st = s.clone();
     tokio::spawn(async move {
-        let subject = VortexSubject { state: st.clone(), mode_override: b.mode.clone() };
+        let subject = VortexSubject { state: st.clone(), mode_override: b.mode.clone(), variant: None };
         let runner = Runner { log: st.kernel.events(), subject: &subject, python: python() };
         for suite in chosen {
             let label = match (&b.label, &b.mode) {
@@ -153,7 +162,7 @@ pub async fn run_suites(state: &AppState, suite: Option<&str>, mode: Option<Stri
     if chosen.is_empty() {
         return Err("geen suite gevonden".into());
     }
-    let subject = VortexSubject { state: state.clone(), mode_override: mode.clone() };
+    let subject = VortexSubject { state: state.clone(), mode_override: mode.clone(), variant: None };
     let runner = Runner { log: state.kernel.events(), subject: &subject, python: python() };
     let mut out = Vec::new();
     for s in chosen {

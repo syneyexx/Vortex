@@ -32,7 +32,7 @@ export function StatusBar() {
   const st = useStore((s) => s.status);
   const conn = useStore((s) => s.conn);
   const tok = st?.tok_s ?? [];
-  const main = st?.servers.find((s) => s.name === "main");
+  const main = st?.servers?.find((s) => s.name === "main");
   return (
     <footer className="statusbar">
       <div className="engine">
@@ -47,7 +47,7 @@ export function StatusBar() {
           {conn === "open" ? "" : conn === "connecting" ? "verbinden…" : "verbinding weg"}
         </span>
       </div>
-      {st && st.gpus.length > 0 ? (
+      {st && (st.gpus?.length ?? 0) > 0 ? (
         st.gpus.map((g) => (
           <div key={g.index}>
             <span>{shortGpu(g.name)}</span>

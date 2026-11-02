@@ -69,6 +69,7 @@ fn suite() -> Suite {
         mode: None,
         tags: vec![],
         difficulty: None,
+        counterfactual: vec![],
     };
     let py = "assert is_palindroom('Lepel') and not is_palindroom('ab')";
     let mut mem = t("m", "waar?", vec![Check::Contains { all: vec!["Helix".into()] }], None);
@@ -128,4 +129,28 @@ async fn retrieval_eval_on_repo_set() {
     // Ondergrens met de hash-embedder; het echte model hoort hier ruim boven te zitten.
     assert!(rep.recall_at_5 >= 0.8, "{rep:?}");
     assert!(rep.mrr > 0.5, "{rep:?}");
+}
+
+/// W17.04: metamorfe varianten veranderen de uitkomst niet (consistentie 1,0); een
+/// counterfactual dat een ander antwoord vraagt, laat zien dat het subject niet echt rekent.
+#[tokio::test]
+async fn metamorphic_and_counterfactual() {
+    let log = EventLog::new(Arc::new(Db::open_in_memory(CORE_MIGRATIONS).unwrap_or_else(|e| panic!("{e}"))));
+    let py = if std::process::Command::new("python3").arg("-V").output().is_ok() { "python3" } else { "python" };
+    let good = Fake { good: true, facts: Mutex::new(vec![]) };
+    let mut s = suite();
+    s.tasks[0].counterfactual = vec![Counterfactual {
+        prompt: "Wat is 17 × 24?".into(),
+        checks: vec![Check::Number { value: 408.0, tolerance: 0.0 }],
+    }];
+    let runner = Runner { log: &log, subject: &good, python: py.into() };
+    let orig = runner.run_suite(&s, None).await.unwrap_or_else(|e| panic!("{e}"));
+    let d = metamorphic::derive(&s);
+    assert_eq!(d.tasks.len(), 3 * metamorphic::RELATIONS.len() + 1, "geheugen-taak niet, cf wel");
+    let der = runner.run_suite(&d, None).await.unwrap_or_else(|e| panic!("{e}"));
+    let rep =
+        metamorphic::report(&results(&log, &orig.id).unwrap_or_default(), &results(&log, &der.id).unwrap_or_default());
+    assert_eq!(rep.consistency, 1.0, "{rep:?}");
+    assert_eq!(rep.counterfactuals, 1);
+    assert_eq!(rep.counterfactual_pass, 0.0, "nep-subject rekent niet echt");
 }

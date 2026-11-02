@@ -128,6 +128,9 @@ pub struct ChatRequest {
     pub seed: Option<u64>,
     #[serde(default)]
     pub logprobs: bool,
+    /// Aantal alternatieven per token (diagnostiek).
+    #[serde(default)]
+    pub top_logprobs: Option<u8>,
     /// LoRA-schalen voor dit verzoek (adapter-ID, schaal).
     #[serde(default)]
     pub lora: Option<Vec<(u32, f32)>>,
@@ -145,6 +148,7 @@ impl ChatRequest {
             reasoning_effort: None,
             seed: None,
             logprobs: false,
+            top_logprobs: None,
             lora: None,
         }
     }
@@ -166,6 +170,9 @@ pub struct ChatResponse {
     pub finish_reason: String,
     pub usage: TokenUsage,
     pub metrics: InferenceMetrics,
+    /// Per token (alleen als `logprobs` gevraagd is).
+    #[serde(default)]
+    pub logprobs: Vec<crate::diagnostics::TokenLogprob>,
 }
 
 /// Gebeurtenissen tijdens streamen.

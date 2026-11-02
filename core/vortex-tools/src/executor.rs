@@ -34,6 +34,8 @@ pub struct ExecOptions {
     /// Max tekens tool-uitvoer voor het model.
     pub max_output_chars: usize,
     pub filter: ResultFilter,
+    /// Record/replay (W17.01): opnemen of afspelen in plaats van echt uitvoeren.
+    pub tape: Option<Arc<crate::tape::Tape>>,
 }
 
 impl Default for ExecOptions {
@@ -47,6 +49,7 @@ impl Default for ExecOptions {
             dry_run: false,
             max_output_chars: 12_000,
             filter: ResultFilter::default(),
+            tape: None,
         }
     }
 }
@@ -162,6 +165,42 @@ impl Executor {
     }
 
     pub async fn execute(&self, a: Action, prior: &HashMap<String, ActionResult>, opts: &ExecOptions) -> ActionResult {
+        let Some(tape) = opts.tape.clone() else { return self.execute_live(a, prior, opts).await };
+        let input = resolve_refs(&a.input, prior).unwrap_or_else(|_| a.input.clone());
+        let input = match self.registry.get(&a.tool) {
+            Some(t) => crate::schema::coerce(&t.contract().input_schema, input),
+            None => input,
+        };
+        let key = crate::input_key(&a.tool, &input);
+        match tape.mode {
+            crate::tape::TapeMode::Record => {
+                let r = self.execute_live(a.clone(), prior, opts).await;
+                tape.push(&a.tool, &key, &input, &r);
+                r
+            }
+            mode => {
+                match tape.lookup(&a.tool, &key) {
+                    Some(mut r) => {
+                        r.action_id = a.id.clone();
+                        self.emit(EventKind::ToolCallCompleted, opts, serde_json::json!({"action_id": a.id, "tool": a.tool, "replayed": true, "tape": true, "ms": 0}));
+                        r
+                    }
+                    None if mode == crate::tape::TapeMode::ReplayOrLive => self.execute_live(a, prior, opts).await,
+                    None => {
+                        tape.miss(&a.tool, &key);
+                        let e = ToolError::new(
+                            ToolErrorKind::Precondition,
+                            format!("simulatie: geen opname voor {} met deze invoer", a.tool),
+                        )
+                        .with_hint("neem eerst op (TapeMode::Record) of gebruik ReplayOrLive");
+                        self.fail(&a, crate::contract::Effect::Read, e, 0, opts)
+                    }
+                }
+            }
+        }
+    }
+
+    async fn execute_live(&self, a: Action, prior: &HashMap<String, ActionResult>, opts: &ExecOptions) -> ActionResult {
         let started = Instant::now();
         // 1. Tool + capability.
         let Some(tool) = self.registry.get(&a.tool) else {

@@ -32,3 +32,6 @@
 
 ## Tests
 `cargo test -p vortex-tools` — 17 unit + 11 integratie (`tests/tools.rs`: idempotentie-gate, onderbroken extern, transactie/preview, herstelhints + caps, plan parallel/chaining, sandbox (limieten, annuleren), SQLite, MCP stdio + HTTP/SSE, skills import/selectie/hot-reload/voorstellen, cache/discovery).
+
+## W17
+`Tape`/`TapeMode` (record/replay via `ExecOptions.tape`), tools `tool_program` (programmatic tool calling), `git`, `repo_map`, `repo_search`.

@@ -20,3 +20,6 @@
 
 ## Tests
 `cargo test -p vortex-eval` — checks, lekkage, percentielen, runner+vergelijking met nep-subject, validatie van de repo-sets, retrieval-eval op de repo-set.
+
+## W17
+`stats::paired` (A/B), `metamorphic::{derive, report}` + `EvalTask.counterfactual`, `positional::{suite, report}`.

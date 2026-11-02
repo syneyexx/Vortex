@@ -20,3 +20,6 @@
 
 ## Afhankelijk van
 vortex-core, vortex-types, vortex-models (berichttypen), vortex-memory (user model). Richting: `tools/check_deps.py`.
+
+## W17
+`planning::{dedup_steps, StepCache, low_value, execute_plan_with}`, `cost::{PlanCosts, downgrade}`.

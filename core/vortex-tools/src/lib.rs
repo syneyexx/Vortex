@@ -25,6 +25,7 @@ pub mod registry;
 pub mod sandbox;
 pub mod schema;
 pub mod skills;
+pub mod tape;
 pub mod tool;
 pub mod txn;
 
@@ -37,6 +38,7 @@ pub use executor::{ExecOptions, Executor};
 pub use hub::{ToolHub, ToolHubConfig};
 pub use registry::{ToolBrief, ToolRegistry};
 pub use skills::{Skill, SkillStore};
+pub use tape::{Tape, TapeMode};
 pub use tool::{Tool, ToolCtx, ToolOutput};
 
 /// Stabiele 64-bits hash (FNV-1a) — voor idempotentie- en cachesleutels.

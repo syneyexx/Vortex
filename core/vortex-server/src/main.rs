@@ -93,6 +93,34 @@ enum Cmd {
         #[arg(long)]
         cold: Option<std::path::PathBuf>,
     },
+    /// 🔒 Fault injection (W17.06, GROTE TEST — alleen op commando): Vortex in een tijdelijke
+    /// datamap met de echte config, modelverkeer via een fout-proxy (weg, afgekapt, verminkt,
+    /// traag), crash + herstart, volle schijf bij backup. Rapport + exitcode.
+    Faults {
+        /// Wachttijd per scenario (s).
+        #[arg(long, default_value_t = 180)]
+        timeout: u64,
+    },
+    /// 🔒 Ablations (W17.02, GROTE TEST — alleen op commando): elke component uit vs alles aan op
+    /// de eval-suites, gepaard; toont per component de meetbare waarde.
+    Ablate {
+        #[arg(long, env = "VORTEX_API", default_value = "http://127.0.0.1:7420")]
+        api: String,
+        /// Suites (leeg = alle).
+        #[arg(long)]
+        suite: Vec<String>,
+        /// Componenten (leeg = memory, debate, system_prompt, reasoning).
+        #[arg(long)]
+        component: Vec<String>,
+    },
+    /// Speculative decoding meten (W17.08, op de PC met GPU): tok/s met en zonder draft-model.
+    /// Zet daarna `spec_gain = <uitkomst>` bij het model in models.toml (≥ 1,05 → aan).
+    Specbench {
+        #[arg(long)]
+        model: String,
+        #[arg(long, default_value_t = 3)]
+        rounds: usize,
+    },
     /// Backup terugzetten (W15.10). De kern moet gestopt zijn; de huidige database wordt eerst
     /// bewaard als `vortex.db.voor-restore`.
     Restore {
@@ -141,6 +169,9 @@ async fn main() -> anyhow::Result<()> {
     match &cli.cmd {
         Cmd::Serve { listen, app_dist } => serve(&cli, listen, app_dist).await,
         Cmd::Restore { file, with_config } => restore(&cli, file, *with_config).await,
+        Cmd::Faults { timeout } => faults(&cli, *timeout).await,
+        Cmd::Specbench { model, rounds } => specbench(&cli, model, *rounds).await,
+        Cmd::Ablate { api, suite, component } => ablate(api, suite, component).await,
         Cmd::Status { json } => status::run(&cli.config, &data_dir(&cli), *json).await,
         Cmd::Runs { all, limit } => runs(&cli, *all, *limit),
         Cmd::Perf { api, quick } => {
@@ -205,6 +236,227 @@ async fn serve(cli: &Cli, listen: &str, app_dist: &std::path::Path) -> anyhow::R
     kernel.shutdown(Duration::from_secs(5)).await?;
     let _ = disp.await;
     let _ = server.await;
+    Ok(())
+}
+
+async fn ablate(api: &str, suites: &[String], comps: &[String]) -> anyhow::Result<()> {
+    let http = reqwest::Client::new();
+    let r: serde_json::Value = http
+        .post(format!("{api}/api/experiments/ablation"))
+        .json(&serde_json::json!({"suites": suites, "components": comps, "confirm": "GROTE TESTEN NU"}))
+        .send()
+        .await?
+        .json()
+        .await?;
+    let id = r["id"].as_str().ok_or_else(|| anyhow::anyhow!("{r}"))?.to_string();
+    println!("Ablation gestart ({id}); dit duurt lang…");
+    loop {
+        tokio::time::sleep(Duration::from_secs(20)).await;
+        let e: serde_json::Value = http.get(format!("{api}/api/experiments/{id}")).send().await?.json().await?;
+        if e["status"] == "running" {
+            continue;
+        }
+        for c in e["result"]["components"].as_array().into_iter().flatten() {
+            println!(
+                "{:<14} volledig {:.3} · zonder {:.3} · waarde {:+.3} → {}",
+                c["component"].as_str().unwrap_or(""),
+                c["full"].as_f64().unwrap_or(0.0),
+                c["without"].as_f64().unwrap_or(0.0),
+                c["value"].as_f64().unwrap_or(0.0),
+                c["verdict"].as_str().unwrap_or("")
+            );
+        }
+        anyhow::ensure!(e["status"] == "done", "ablation mislukt: {}", e["result"]);
+        return Ok(());
+    }
+}
+
+async fn specbench(cli: &Cli, model: &str, rounds: usize) -> anyhow::Result<()> {
+    use vortex_models::backend::{Backend, ChatRequest, Message};
+    let opts = vortex_core::KernelOptions::new(data_dir(cli), &cli.config);
+    let (kernel, _) = vortex_core::Kernel::open(opts).await?;
+    let cfg = kernel.config().current();
+    let reg = vortex_models::Registry::from_config(&cfg)?;
+    let entry = reg.models.get(model).cloned().ok_or_else(|| anyhow::anyhow!("onbekend model {model}"))?;
+    anyhow::ensure!(entry.draft.is_some(), "geen `draft` ingesteld bij {model}");
+    let srv = reg.server(&entry.gpu).ok_or_else(|| anyhow::anyhow!("server onbekend"))?;
+    let port: u16 =
+        srv.url.rsplit(':').next().and_then(|p| p.trim_end_matches('/').parse().ok()).unwrap_or(8080) + 1000;
+    let lc = vortex_models::LaunchConfig {
+        program: cfg.get::<String>("paths.llama_server").ok().flatten().unwrap_or_else(|| "llama-server".into()),
+        program_args: srv.launch_args.clone(),
+        host: "127.0.0.1".into(),
+        port,
+        gpu: srv.gpu,
+        log_dir: data_dir(cli).join("logs"),
+        health_timeout: Duration::from_secs(300),
+        drain_timeout: Duration::from_secs(10),
+        slot_save_dir: None,
+    };
+    let ms = vortex_models::ModelServer::new("specbench", lc, kernel.supervisor().clone(), kernel.events().clone());
+    let prompts = [
+        "Schrijf een Python-functie die priemgetallen tot n zeeft, met uitleg.",
+        "Leg uit hoe een B-tree werkt, in vijf alinea's.",
+        "Vat de oorzaken van de Eerste Wereldoorlog samen.",
+    ];
+    let measure = |with: bool| {
+        let mut e = entry.clone();
+        e.spec_gain = if with { Some(99.0) } else { None };
+        let ms = ms.clone();
+        async move {
+            ms.load(model, &e).await?;
+            let g = ms.begin_request().await?;
+            let mut tps = Vec::new();
+            for i in 0..rounds {
+                let mut req = ChatRequest::new(vec![Message::user(prompts[i % prompts.len()])]);
+                req.max_tokens = Some(256);
+                req.temperature = Some(0.0);
+                let r = g.backend.chat(&req, &tokio_util::sync::CancellationToken::new()).await?;
+                tps.push(r.metrics.decode_tps.unwrap_or(0.0));
+            }
+            drop(g);
+            ms.unload().await?;
+            Ok::<f64, anyhow::Error>(tps.iter().sum::<f64>() / tps.len().max(1) as f64)
+        }
+    };
+    let base = measure(false).await?;
+    let with = measure(true).await?;
+    let gain = if base > 0.0 { with / base } else { 0.0 };
+    println!(
+        "{model}: zonder draft {base:.1} tok/s, met draft {with:.1} tok/s → spec_gain = {gain:.2} ({})",
+        if gain >= vortex_models::lifecycle::SPEC_MIN_GAIN { "AAN" } else { "uit laten" }
+    );
+    std::fs::write(
+        data_dir(cli).join("specbench.json"),
+        serde_json::json!({"model": model, "base_tps": base, "draft_tps": with, "spec_gain": gain}).to_string(),
+    )?;
+    kernel.shutdown(Duration::from_secs(5)).await?;
+    Ok(())
+}
+
+async fn faults(cli: &Cli, timeout: u64) -> anyhow::Result<()> {
+    use vortex_core::faults::{FaultMode, FaultProxy};
+    let tmp = std::env::temp_dir().join(format!("vortex-faults-{}", std::process::id()));
+    let cfg_dir = tmp.join("config");
+    std::fs::create_dir_all(&cfg_dir)?;
+    for e in std::fs::read_dir(&cli.config)? {
+        let e = e?;
+        if e.path().is_file() {
+            std::fs::copy(e.path(), cfg_dir.join(e.file_name()))?;
+        } else if e.path().is_dir() {
+            let d = cfg_dir.join(e.file_name());
+            std::fs::create_dir_all(&d)?;
+            for f in std::fs::read_dir(e.path())?.flatten() {
+                if f.path().is_file() {
+                    std::fs::copy(f.path(), d.join(f.file_name()))?;
+                }
+            }
+        }
+    }
+    // Elke modelserver via een proxy.
+    let models = std::fs::read_to_string(cfg_dir.join("models.toml"))?;
+    let mut rewritten = models.clone();
+    let mut proxies = Vec::new();
+    for line in models.lines().filter(|l| l.trim_start().starts_with("url")) {
+        if let Some(u) = line.split('"').nth(1) {
+            let host = u.trim_start_matches("http://").trim_end_matches('/');
+            let p = FaultProxy::start(host).await?;
+            rewritten = rewritten.replace(u, &p.url());
+            proxies.push(p);
+        }
+    }
+    std::fs::write(cfg_dir.join("models.toml"), rewritten)?;
+    let set = |m: FaultMode| proxies.iter().for_each(|p| p.set(m));
+    let mut report = Vec::new();
+    let data = tmp.join("data");
+    {
+        let (kernel, _) = vortex_core::Kernel::open(vortex_core::KernelOptions::new(data.clone(), &cfg_dir)).await?;
+        let state = vortex_server::api::build_state(kernel.clone())?;
+        for (name, mode) in [
+            ("dienst weg", FaultMode::Refuse),
+            ("verbinding weg midden in stream", FaultMode::CutAfter(600)),
+            ("kapotte uitvoer", FaultMode::Garble),
+            ("trage dienst", FaultMode::Delay(1500)),
+            ("normaal", FaultMode::Pass),
+        ] {
+            set(mode);
+            let sess = state.chat.new_session()?;
+            let t0 = std::time::Instant::now();
+            let r = state.chat.send(
+                sess.id,
+                vortex_server::chat::SendRequest {
+                    text: format!("Fouttest: {name}. Antwoord kort."),
+                    mode: vortex_server::chat::Mode::Quick,
+                    model: None,
+                    attachments: vec![],
+                },
+            );
+            let mut status = "send-fout".to_string();
+            if r.is_ok() {
+                while t0.elapsed().as_secs() < timeout {
+                    let ms = state.chat.sessions().messages(sess.id).unwrap_or_default();
+                    if let Some(m) = ms.iter().find(|m| m.role == "assistant").filter(|m| m.status != "streaming") {
+                        status = m.status.clone();
+                        break;
+                    }
+                    tokio::time::sleep(Duration::from_millis(200)).await;
+                }
+                if status == "send-fout" {
+                    status = "HANGT".into();
+                }
+            }
+            let ok = match mode {
+                FaultMode::Pass | FaultMode::Delay(_) => status == "complete",
+                FaultMode::Refuse => status == "failed",
+                _ => status != "HANGT",
+            };
+            println!(
+                "{:<34} → {status:<10} {:>6} ms {}",
+                name,
+                t0.elapsed().as_millis(),
+                if ok { "OK" } else { "FOUT" }
+            );
+            report.push(serde_json::json!({"scenario": name, "status": status, "ms": t0.elapsed().as_millis() as u64, "ok": ok}));
+        }
+        // Volle schijf bij backup: koude map is een bestand → nette fout, geen crash.
+        std::fs::write(tmp.join("vol"), "x")?;
+        std::fs::write(
+            cfg_dir.join("paths.toml"),
+            format!("cold_dir = {:?}\n", tmp.join("vol").display().to_string()),
+        )?;
+        kernel.config().reload()?;
+        let b = vortex_server::autonomy::backup::run(&state).await;
+        println!(
+            "{:<34} → {}",
+            "volle/onbruikbare schijf (backup)",
+            if b.is_err() { "nette fout OK" } else { "FOUT: geen fout" }
+        );
+        report.push(serde_json::json!({"scenario": "schijf", "ok": b.is_err(), "error": b.err()}));
+        // Crash: niet netjes afsluiten (lopende run achterlaten).
+        set(FaultMode::Delay(5000));
+        let sess = state.chat.new_session()?;
+        let _ = state.chat.send(
+            sess.id,
+            vortex_server::chat::SendRequest {
+                text: "Lang antwoord dat onderbroken wordt.".into(),
+                mode: vortex_server::chat::Mode::Quick,
+                model: None,
+                attachments: vec![],
+            },
+        );
+        tokio::time::sleep(Duration::from_millis(500)).await;
+        drop(state);
+        drop(kernel);
+    }
+    set(FaultMode::Pass);
+    let (k2, crash) = vortex_core::Kernel::open(vortex_core::KernelOptions::new(data.clone(), &cfg_dir)).await?;
+    println!("{:<34} → {}", "crash + herstart", crash.summary());
+    report.push(serde_json::json!({"scenario": "crash", "recovery": crash.summary()}));
+    k2.shutdown(Duration::from_secs(5)).await?;
+    let ok = report.iter().all(|r| r["ok"].as_bool() != Some(false));
+    std::fs::write(tmp.join("faults-report.json"), serde_json::to_string_pretty(&report)?)?;
+    println!("Rapport: {}", tmp.join("faults-report.json").display());
+    anyhow::ensure!(ok, "fault injection: niet alles herstelde correct");
     Ok(())
 }
 

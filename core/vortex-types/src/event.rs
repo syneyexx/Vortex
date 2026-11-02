@@ -84,6 +84,9 @@ event_kinds! {
     GpuRestored => "autonomy.gpu.restored",
     BackupCompleted => "autonomy.backup.completed",
     AttachmentsProcessed => "chat.attachments.processed",
+    CacheHit => "chat.cache.hit",
+    CloudEscalated => "chat.cloud.escalated",
+    ExperimentCompleted => "eval.experiment.completed",
     // neurale layers (W11)
     NeuralShadow => "neural.shadow.compared",
     NeuralExample => "neural.example.logged",

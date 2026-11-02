@@ -4,10 +4,13 @@
 
 pub mod checks;
 pub mod leakage;
+pub mod metamorphic;
 pub mod model;
 pub mod perf;
+pub mod positional;
 pub mod retrieval;
 pub mod runner;
+pub mod stats;
 
-pub use model::{Check, EvalTask, RetrievalSet, Suite, load_dir, load_suite};
+pub use model::{Check, Counterfactual, EvalTask, RetrievalSet, Suite, load_dir, load_suite};
 pub use runner::{Comparison, RunSummary, Runner, Subject, TaskResult, compare, get_run, list_runs, results};

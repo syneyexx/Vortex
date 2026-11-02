@@ -68,6 +68,15 @@ pub struct EvalTask {
     pub tags: Vec<String>,
     #[serde(default)]
     pub difficulty: Option<u8>,
+    /// Counterfactuals (W17.04): zelfde taak met één wezenlijke wijziging → ander verwacht antwoord.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub counterfactual: Vec<Counterfactual>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Counterfactual {
+    pub prompt: String,
+    pub checks: Vec<Check>,
 }
 
 /// Een suite = alle taken uit één bestand.

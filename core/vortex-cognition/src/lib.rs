@@ -3,6 +3,7 @@
 //! (plan-and-execute, reflexion, ReAct), salience, leeragenda, gebruikersmodel. Zie `CARD.md`.
 
 pub mod agenda;
+pub mod cost;
 pub mod cycle;
 pub mod llm;
 pub mod metacog;

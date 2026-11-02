@@ -132,4 +132,10 @@ Nieuwste onderaan. Per sessie 3–5 regels: wat gedaan, wat open, volgende stap.
 - GUI: bijlagen uploaden, spraakmodus (opnemen, voorlezen, onderbreken), 🔊 per bericht, Studio-pagina, bronweergave met gemarkeerde coördinaten.
 - Test-engines (zelfde contract) maken alles end-to-end testbaar; echte modellen kunnen niet in de cloud (HF geblokkeerd, geen GPU) → W16.01/02/04/05/06 op de PC.
 
-**Actieve wave:** PC-verificatie W00–W16 · cloud: volgende = W17 (kwaliteit + performance)
+## 2026-11-02 (W17 kwaliteit + performance)
+- Record/replay voor tools, semantische cache (strikt, stampede, invalidatie), varianten → schaduw-runs, A/B (gepaarde statistiek), metamorf + counterfactual, positionele tests, compressie-experiment (MPO vs int8, alleen eigen layers).
+- Fault-proxy + kleine fault-tests; 🔒 `vortex faults` en 🔒 `vortex ablate` gebouwd, niet gedraaid. Speculative decoding alleen bij gemeten winst (`vortex specbench`), logprob-diagnostiek, CSE/stapcache/VOI/kostengebaseerde planning.
+- Programmatic tool calling, git/repo-tools + repo-indexering, browser (Playwright, getest), computer use (PC), cloud-escalatie (standaard uit), visuele UI-controle → 2 echte GUI-bugs gevonden en opgelost.
+- Gebruiker: daarna `install.bat` + `start_vortex.bat`.
+
+**Actieve wave:** PC-verificatie W00–W17 · cloud: volgende = W18 (frontier)

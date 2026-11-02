@@ -5,6 +5,7 @@
 //! metingen. Zie `CARD.md`.
 
 pub mod backend;
+pub mod diagnostics;
 pub mod error;
 pub mod lifecycle;
 pub mod metrics;

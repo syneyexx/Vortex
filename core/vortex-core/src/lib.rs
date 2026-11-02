@@ -12,6 +12,7 @@ pub mod db;
 pub mod dirigent;
 pub mod error;
 pub mod events;
+pub mod faults;
 pub mod hddqueue;
 pub mod kernel;
 pub mod memwatch;

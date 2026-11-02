@@ -298,6 +298,20 @@ export const api = {
   scaleAdapter: (id: string, scale: number) =>
     req<{ status: string }>("POST", `/api/training/adapters/${id}/scale`, { scale }),
   calibrate: () => req<Record<string, unknown>>("POST", "/api/training/calibrate", {}),
+  // Experimenten (W17)
+  experiments: () => req<Experiment[]>("GET", "/api/experiments"),
+  experiment: (kind: string, body: Record<string, unknown>) =>
+    req<{ id: string; status: string }>("POST", `/api/experiments/${kind}`, body),
+  diagnose: (prompt: string, model?: string) =>
+    req<{
+      answer: string;
+      diagnosis: {
+        tokens: number;
+        perplexity: number;
+        uncertain_share: number;
+        spans: { text: string; min_prob: number; alternatives: string[] }[];
+      };
+    }>("POST", "/api/diagnostics/logprobs", { prompt, model }),
   // Autonomie (W15)
   autonomy: () => req<AutonomyOverview>("GET", "/api/autonomy"),
   tasks: (status?: string) => req<VxTask[]>("GET", `/api/autonomy/tasks${status ? `?status=${status}` : ""}`),
@@ -717,4 +731,14 @@ export interface VxProgress {
   agenda_open: number;
   tasks_done: number;
   world_calibration: { n: number; brier: number; ece: number };
+}
+
+export interface Experiment {
+  id: string;
+  kind: string;
+  spec: Record<string, unknown>;
+  status: "running" | "done" | "failed";
+  result: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
 }

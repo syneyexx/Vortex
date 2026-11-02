@@ -43,3 +43,6 @@
 
 ## W16
 `Message.images` (+ `Message::user_with_images`) → OpenAI-contentdelen `image_url`; `ModelEntry.mmproj` → `--mmproj`.
+
+## W17
+`diagnostics::{TokenLogprob, diagnose}`, `ChatResponse.logprobs`, `ChatRequest.top_logprobs`, `ModelEntry.{draft, draft_max, spec_gain}` (alleen bij winst), `OpenAiBackend::{with_api_key, model_name}`.

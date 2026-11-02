@@ -9,6 +9,7 @@ import { TrainingPage } from "./pages/TrainingPage.tsx";
 import { WorldPage } from "./pages/WorldPage.tsx";
 import { AutonomyPage } from "./pages/AutonomyPage.tsx";
 import { StudioPage } from "./pages/StudioPage.tsx";
+import { ExperimentsPage } from "./pages/ExperimentsPage.tsx";
 import { StatusBar } from "./components/StatusBar.tsx";
 import { SubNav, TopNav, type Sub, type Top } from "./components/TopNav.tsx";
 import { ModelsPage, Placeholder, RunsPage, SettingsPage } from "./pages/Pages.tsx";
@@ -95,6 +96,7 @@ export function App() {
       <div style={{ display: "grid", gap: 0 }}>
         <ModelsPage />
         <TrainingPage />
+        <ExperimentsPage />
       </div>
     );
   else if (top === "studio") body = <StudioPage />;

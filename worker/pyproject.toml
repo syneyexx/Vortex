@@ -13,6 +13,8 @@ dependencies = [
 ingest = ["pymupdf>=1.24", "ebooklib>=0.18", "trafilatura>=1.12", "pyarrow>=17", "openpyxl>=3.1", "python-docx>=1.1", "pillow>=10"]
 # Multimodaal (W16), CPU: OCR, spraak in/uit.
 media = ["paddleocr>=2.8", "pytesseract>=0.3", "faster-whisper>=1.0", "kokoro>=0.9", "soundfile>=0.12", "pillow>=10"]
+# Automatisering (W17.14): browser (Playwright) en computer use (alleen met bureaublad).
+automation = ["playwright>=1.45", "pyautogui>=0.9", "mss>=9"]
 # Multimodaal op de GPU: beeldgeneratie en visuele retrieval.
 media-gpu = ["torch", "diffusers>=0.30", "transformers", "accelerate", "colpali-engine>=0.3"]
 # Neurale layers (W11): numpy-trainer + ONNX-export (licht). PyTorch wordt gebruikt als het er is.
