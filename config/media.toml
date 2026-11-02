@@ -1,0 +1,15 @@
+# Multimodaal (W16). Zie core/vortex-server/src/media.rs en worker/src/vortex_worker/media.py.
+# Engines: "auto" kiest wat geïnstalleerd is (worker-extra's `media` en `media-gpu`).
+ocr_engine = "auto"          # paddle | tesseract | auto
+stt_engine = "auto"          # faster-whisper (CPU, int8)
+stt_model = "small"          # tiny | base | small | medium | large-v3
+tts_engine = "auto"          # piper (met stem) | kokoro
+# tts_voice = "E:/vortex-models/piper/nl_NL-mls-medium.onnx"
+imagegen_engine = "auto"     # diffusers (GPU; het LLM wordt eerst ontladen)
+# imagegen_model = "stabilityai/sdxl-turbo"
+overview_px = 1024           # ROI: overzicht op deze grootte, daarna uitsneden op volle resolutie
+max_rois = 3
+ocr_low = 0.6                # OCR-regels onder deze zekerheid worden als onzeker doorgegeven
+video_max_frames = 40
+
+# Visie: geef een model de rol "vision" in models.toml (bv. Qwen3.5-9B met `mmproj = "…"`).

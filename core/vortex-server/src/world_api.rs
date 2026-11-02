@@ -489,7 +489,7 @@ impl ChatEngine {
         crate::research_api::cold_dir(&self.kernel.config().current(), &self.data_dir()).join("hf-imports")
     }
 
-    async fn worker_job(
+    pub(crate) async fn worker_job(
         &self,
         job: &str,
         toml: String,
@@ -528,7 +528,7 @@ impl ChatEngine {
     }
 }
 
-fn toml_kv(v: &Value) -> String {
+pub(crate) fn toml_kv(v: &Value) -> String {
     v.as_object()
         .map(|o| {
             o.iter()
@@ -536,7 +536,11 @@ fn toml_kv(v: &Value) -> String {
                 .map(|(k, x)| {
                     format!(
                         "{k} = {}\n",
-                        if x.is_string() { format!("{:?}", x.as_str().unwrap_or("")) } else { x.to_string() }
+                        if x.is_string() {
+                            toml::Value::String(x.as_str().unwrap_or("").to_string()).to_string()
+                        } else {
+                            x.to_string()
+                        }
                     )
                 })
                 .collect::<String>()

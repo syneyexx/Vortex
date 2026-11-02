@@ -126,4 +126,10 @@ Nieuwste onderaan. Per sessie 3–5 regels: wat gedaan, wat open, volgende stap.
 - Dagelijkse briefing, backups met restore-test + `vortex restore`, voortgangsdashboard (trend → leeragenda), OpenAI-compatibele API (`/v1`), Tailscale-listener, GPU-bewaker voor beheerde llama-servers (getest met testdubbel). GUI: tab Autonomie + meldingen.
 - Gebruiker: mobiele weergave hoeft niet → geschrapt. Gevonden: interval-trigger vuurde pas na één interval i.p.v. direct → opgelost.
 
-**Actieve wave:** PC-verificatie W00–W15 · cloud: volgende = W16 (multimodaal)
+## 2026-11-02 (W16 multimodaal)
+- Worker `media.py`: PDF-lay-out + tabellen + coördinaten, DOCX/XLSX/CSV met structuur, OCR met zekerheid, STT/TTS, beeldgeneratie, video (scènewissels + transcript op tijd), ColPali; `media:*`-jobs. Ingest gebruikt tabellen en spreadsheets.
+- Kern `media.rs`: uploads, bijlagen in de chat (visie met ROI, OCR-onzekerheid naar het model, audio, video, documenten + regio's) → geheugen met locators; `/beeld`, voorlezen, paginaweergave. `Message.images` + `--mmproj`.
+- GUI: bijlagen uploaden, spraakmodus (opnemen, voorlezen, onderbreken), 🔊 per bericht, Studio-pagina, bronweergave met gemarkeerde coördinaten.
+- Test-engines (zelfde contract) maken alles end-to-end testbaar; echte modellen kunnen niet in de cloud (HF geblokkeerd, geen GPU) → W16.01/02/04/05/06 op de PC.
+
+**Actieve wave:** PC-verificatie W00–W16 · cloud: volgende = W17 (kwaliteit + performance)

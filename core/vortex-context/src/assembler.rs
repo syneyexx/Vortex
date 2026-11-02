@@ -255,7 +255,14 @@ pub fn assemble(inp: &AssemblyInput, b: &Budget) -> Assembled {
     for t in inp.history[keep_from..].iter() {
         let content =
             if t.tool_ref.is_some() { filter_tool_output(&t.content, b.max_tool_chars) } else { t.content.clone() };
-        recent.push(Message { role: t.role, content, tool_calls: vec![], tool_call_id: None, name: None });
+        recent.push(Message {
+            role: t.role,
+            content,
+            tool_calls: vec![],
+            tool_call_id: None,
+            name: None,
+            images: vec![],
+        });
     }
     // Te groot? Dan de oudste van de "recente" ook nog compacteren.
     let mut recent_tokens: usize = recent.iter().map(|m| tokens(&m.content)).sum();

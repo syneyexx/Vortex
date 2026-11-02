@@ -47,12 +47,45 @@ export const api = {
   archive: (id: string) => req<unknown>("DELETE", `/api/sessions/${id}`),
   fork: (id: string, messageId: string) =>
     req<Session>("POST", `/api/sessions/${id}/fork`, { message_id: messageId }),
-  send: (id: string, text: string, mode: Mode, model?: string) =>
+  send: (id: string, text: string, mode: Mode, model?: string, attachments: string[] = []) =>
     req<{ run_id: string; user_message_id: string; assistant_message_id: string; model: string }>(
       "POST",
       `/api/sessions/${id}/messages`,
-      { text, mode, model },
+      { text, mode, model, attachments },
     ),
+  // Multimodaal (W16)
+  upload: (name: string, data: string) =>
+    req<{ path: string; kind: "image" | "audio" | "video" | "document"; bytes: number }>(
+      "POST",
+      "/api/uploads",
+      { name, data },
+    ),
+  transcribe: (name: string, data: string) =>
+    req<{ text: string; segments: { start: number; end: number; text: string }[] }>(
+      "POST",
+      "/api/media/transcribe",
+      { name, data },
+    ),
+  speak: (text: string) =>
+    req<{ parts: { text: string; url: string; seconds: number }[] }>("POST", "/api/media/speak", { text }),
+  imagine: (prompt: string, init_image?: string) =>
+    req<{ url: string; engine: string }>("POST", "/api/media/imagine", { prompt, init_image }),
+  renderPage: (path: string, page: number) =>
+    req<{ url: string; width: number; height: number; zoom: number; page_size: [number, number] }>(
+      "POST",
+      "/api/media/page",
+      { path, page },
+    ),
+  analyze: (path: string, question = "") =>
+    req<{ text: string; result: Record<string, unknown> }>("POST", "/api/media/analyze", { path, question }),
+  media: () =>
+    req<{
+      vision: boolean;
+      ocr_engine: string;
+      stt_engine: string;
+      tts_engine: string;
+      imagegen_engine: string;
+    }>("GET", "/api/media"),
   stop: (runId: string) => req<{ accepted: boolean }>("POST", `/api/runs/${runId}/stop`),
   pause: (runId: string) => req<{ paused: boolean }>("POST", `/api/runs/${runId}/pause`),
   resume: (runId: string) => req<{ paused: boolean }>("POST", `/api/runs/${runId}/resume`),

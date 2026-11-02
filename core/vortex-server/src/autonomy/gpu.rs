@@ -106,6 +106,18 @@ impl GpuGuard {
         out
     }
 
+    /// Alle beheerde servers ontladen (bv. voor beeldgeneratie). Geeft het aantal.
+    pub async fn unload_all(&self) -> usize {
+        let all: Vec<Managed> = self.servers.lock().values().cloned().collect();
+        let mut n = 0;
+        for m in all {
+            if m.srv.phase().await == Phase::Ready && m.srv.unload().await.is_ok() {
+                n += 1;
+            }
+        }
+        n
+    }
+
     /// Zorg dat de server van `model` draait (expliciet verzoek: wint van de game).
     pub async fn ensure(&self, reg: &Registry, model: &str) {
         let Some(server) = reg.models.get(model).map(|e| e.gpu.clone()) else { return };

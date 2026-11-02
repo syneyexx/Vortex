@@ -13,10 +13,22 @@ use serde_json::{Value, json};
 use vortex_core::{Kernel, KernelOptions, SecretBroker};
 
 static LORA_SCALE: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+/// Zag het nep-model een bericht met afbeeldingen (OpenAI-contentdelen)?
+static SAW_IMAGE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+/// Zag het nep-model de OCR-onzekerheid in de prompt?
+static SAW_UNSURE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 /// Nep-llama-server: streamt "Hallo wereld" in stukjes; "slow" streamt lang.
 async fn fake_model() -> String {
     async fn chat(Json(b): Json<Value>) -> Response {
+        if b["messages"].as_array().is_some_and(|ms| {
+            ms.iter().any(|m| m["content"].as_array().is_some_and(|p| p.iter().any(|x| x["type"] == "image_url")))
+        }) {
+            SAW_IMAGE.store(true, std::sync::atomic::Ordering::SeqCst);
+        }
+        if b["messages"].to_string().contains("ONZEKER gelezen") {
+            SAW_UNSURE.store(true, std::sync::atomic::Ordering::SeqCst);
+        }
         let last = b["messages"]
             .as_array()
             .and_then(|m| m.last())
@@ -1157,4 +1169,191 @@ async fn gpu_guard_releases_and_restores() {
     assert!(kinds.iter().any(|k| k == "autonomy.gpu.released") && kinds.iter().any(|k| k == "autonomy.gpu.restored"));
     let all = g.status().await;
     assert_eq!(all["servers"][0]["phase"], "Ready", "{all}");
+}
+
+fn b64(bytes: &[u8]) -> String {
+    use base64::Engine as _;
+    base64::engine::general_purpose::STANDARD.encode(bytes)
+}
+
+fn wav(secs: f32) -> Vec<u8> {
+    let rate = 16000u32;
+    let n = (rate as f32 * secs) as u32;
+    let mut v = Vec::new();
+    v.extend(b"RIFF");
+    v.extend((36 + n * 2).to_le_bytes());
+    v.extend(b"WAVEfmt ");
+    v.extend(16u32.to_le_bytes());
+    v.extend(1u16.to_le_bytes());
+    v.extend(1u16.to_le_bytes());
+    v.extend(rate.to_le_bytes());
+    v.extend((rate * 2).to_le_bytes());
+    v.extend(2u16.to_le_bytes());
+    v.extend(16u16.to_le_bytes());
+    v.extend(b"data");
+    v.extend((n * 2).to_le_bytes());
+    for i in 0..n {
+        v.extend(((((i as f32) * 0.05).sin() * 3000.0) as i16).to_le_bytes());
+    }
+    v
+}
+
+/// W16 end-to-end: beeld (visie met afbeeldingen naar het model + OCR met onzekerheid) als
+/// chatbijlage, audio (transcript met tijdstempels), video (tijdlijn), spreadsheet (cel-locators),
+/// spraak uit, beeldgeneratie — alles in het geheugen en terug te vinden.
+#[tokio::test]
+async fn multimodal_attachments_memory_and_outputs() {
+    let fx = setup().await;
+    let Some(mut worker) = start_worker(&fx).await else { return };
+    std::fs::write(
+        fx.cfg.join("media.toml"),
+        "ocr_engine = \"test\"\nstt_engine = \"test\"\ntts_engine = \"test\"\nimagegen_engine = \"test\"\n",
+    )
+    .unwrap_or_else(|e| panic!("{e}"));
+    let models = std::fs::read_to_string(fx.cfg.join("models.toml")).unwrap_or_default();
+    std::fs::write(
+        fx.cfg.join("models.toml"),
+        format!("{models}[models.v]\nfile = \"v.gguf\"\nroles = [\"vision\"]\ngpu = \"main\"\n"),
+    )
+    .unwrap_or_else(|e| panic!("{e}"));
+    fx.kernel.config().reload().unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(fx.get("/api/media").await["vision"], true);
+
+    // Beeld als chatbijlage.
+    let mut png = std::io::Cursor::new(Vec::new());
+    image::DynamicImage::new_rgb8(1600, 900)
+        .write_to(&mut png, image::ImageFormat::Png)
+        .unwrap_or_else(|e| panic!("{e}"));
+    let up = fx.post("/api/uploads", json!({"name": "factuur scan.png", "data": b64(png.get_ref())})).await;
+    let path = up["path"].as_str().unwrap_or_default().to_string();
+    assert_eq!(up["kind"], "image", "{up}");
+    std::fs::write(
+        format!("{path}.ocr.json"),
+        json!([{"text": "Factuur Zonnepanelen 2026", "conf": 0.95}, {"text": "Totaal 1?84,00", "conf": 0.35}])
+            .to_string(),
+    )
+    .unwrap_or_else(|e| panic!("{e}"));
+    let sid = fx.post("/api/sessions", json!({})).await["id"].as_str().unwrap_or_default().to_string();
+    fx.post(
+        &format!("/api/sessions/{sid}/messages"),
+        json!({"text": "Wat staat er op deze factuur?", "attachments": [path]}),
+    )
+    .await;
+    fx.wait_message(&sid, 1, "complete").await;
+    assert!(SAW_IMAGE.load(std::sync::atomic::Ordering::SeqCst), "visiemodel kreeg de afbeelding");
+    let evs: Vec<Value> = fx
+        .kernel
+        .events()
+        .read_from(0, 100_000)
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|e| e.kind.as_str() == "chat.attachments.processed")
+        .map(|e| e.payload)
+        .collect();
+    assert_eq!(evs[0]["items"][0]["ok"], true, "{evs:?}");
+    assert_eq!(evs[0]["items"][0]["result"]["ocr"]["uncertain"].as_array().map(Vec::len), Some(1));
+    // Het model kreeg de onzekere regel mee.
+    assert!(SAW_UNSURE.load(std::sync::atomic::Ordering::SeqCst), "onzekerheid doorgegeven aan het model");
+    let hits = fx.post("/api/memory/search", json!({"text": "factuur zonnepanelen"})).await;
+    let hit = hits
+        .as_array()
+        .and_then(|a| {
+            a.iter().find(|h| h["memory"]["content"].as_str().unwrap_or("").contains("Zonnepanelen")).cloned()
+        })
+        .unwrap_or_else(|| panic!("{hits}"));
+    assert_eq!(hit["memory"]["source_uri"].as_str(), Some(path.as_str()));
+
+    // Audio → transcript met tijdstempels in het geheugen.
+    let au = fx.post("/api/uploads", json!({"name": "memo.wav", "data": b64(&wav(1.0))})).await;
+    let ap = au["path"].as_str().unwrap_or_default().to_string();
+    std::fs::write(
+        format!("{ap}.stt.json"),
+        json!([{"start": 1.0, "end": 4.0, "text": "Morgen de tandarts om negen uur", "conf": 0.9}]).to_string(),
+    )
+    .unwrap_or_else(|e| panic!("{e}"));
+    let a = fx.post("/api/media/analyze", json!({"path": ap})).await;
+    assert!(a["text"].as_str().unwrap_or("").contains("[00:01] Morgen de tandarts"), "{a}");
+    let hits = fx.post("/api/memory/search", json!({"text": "tandarts morgen"})).await;
+    assert!(hits.as_array().is_some_and(|h| h.iter().any(|x| x["memory"]["locator"] == "00:01–00:04")), "{hits}");
+
+    // Spreadsheet → tabel met cel-locator.
+    let csv = fx
+        .post(
+            "/api/uploads",
+            json!({"name": "budget.csv", "data": b64(b"post,bedrag\nhuur,950\nenergie,140\nverzekering,85\n")}),
+        )
+        .await;
+    let r = fx.post("/api/media/analyze", json!({"path": csv["path"]})).await;
+    assert_eq!(r["result"]["kind"], "document", "{r}");
+    let hits = fx.post("/api/memory/search", json!({"text": "energie bedrag budget"})).await;
+    assert!(
+        hits.as_array()
+            .is_some_and(|h| h.iter().any(|x| x["memory"]["locator"].as_str().unwrap_or("").contains("!A1:B4"))),
+        "{hits}"
+    );
+
+    // Video (als ffmpeg er is): tijdlijn met beeld + spraak.
+    if std::process::Command::new("ffmpeg").arg("-version").output().is_ok() {
+        let v = fx._dir.path().join("clip.mp4");
+        let ok = std::process::Command::new("ffmpeg")
+            .args([
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                "color=c=red:s=160x120:d=3",
+                "-f",
+                "lavfi",
+                "-i",
+                "color=c=blue:s=160x120:d=3",
+                "-f",
+                "lavfi",
+                "-i",
+                "sine=frequency=300:duration=6",
+                "-filter_complex",
+                "[0:v][1:v]concat=n=2:v=1:a=0[v]",
+                "-map",
+                "[v]",
+                "-map",
+                "2:a",
+                "-shortest",
+            ])
+            .arg(&v)
+            .status()
+            .is_ok_and(|s| s.success());
+        if ok {
+            std::fs::write(format!("{}.stt.json", v.display()), json!([{"start": 0.2, "end": 2.0, "text": "rood scherm", "conf": 0.9}, {"start": 3.5, "end": 5.5, "text": "blauw scherm", "conf": 0.9}]).to_string()).unwrap_or_else(|e| panic!("{e}"));
+            let r = fx.post("/api/media/analyze", json!({"path": v.display().to_string()})).await;
+            let t = r["text"].as_str().unwrap_or("");
+            assert!(t.contains("spraak: rood scherm") && t.contains("spraak: blauw scherm"), "{r}");
+        }
+    }
+
+    // Uitvoer: spraak en beeld.
+    let sp = fx.post("/api/media/speak", json!({"text": "Hallo. Dit is Vortex."})).await;
+    assert_eq!(sp["parts"].as_array().map(Vec::len), Some(2), "{sp}");
+    let audio = fx
+        .http
+        .get(format!("{}{}", fx.base, sp["parts"][0]["url"].as_str().unwrap_or("")))
+        .send()
+        .await
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(audio.headers().get("content-type").and_then(|v| v.to_str().ok()), Some("audio/wav"));
+    let im = fx.post("/api/media/imagine", json!({"prompt": "een vuurtoren bij nacht"})).await;
+    let img = fx
+        .http
+        .get(format!("{}{}", fx.base, im["url"].as_str().unwrap_or("")))
+        .send()
+        .await
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(img.status(), 200, "{im}");
+    assert!(img.bytes().await.map(|b| b.starts_with(b"\x89PNG")).unwrap_or(false));
+    // `/beeld` in de chat → antwoord met het beeld.
+    fx.post(&format!("/api/sessions/{sid}/messages"), json!({"text": "/beeld een kat op de maan"})).await;
+    let m = fx.wait_message(&sid, 3, "complete").await;
+    assert!(m["content"].as_str().unwrap_or("").starts_with("![een kat op de maan](/api/media/file/img_"), "{m}");
+    let _ = worker.kill().await;
 }

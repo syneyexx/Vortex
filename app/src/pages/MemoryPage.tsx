@@ -2,6 +2,7 @@
 // "zoek als Vortex" (met scoreherkomst), backup / export / import. VX:W05.13
 import { useCallback, useEffect, useState } from "react";
 import { DreamTab, GraphTab, MetaTab } from "./MemoryAdvanced.tsx";
+import { RegionPreview } from "../components/RegionPreview.tsx";
 import { api } from "../api/client.ts";
 import type { ConflictRow, Memory, Retrieved } from "../api/types.ts";
 import { setError } from "../state/store.ts";
@@ -58,6 +59,12 @@ function Detail({ id, onDone }: { id: string; onDone: () => void }) {
         <span className="pill">{m.access_count}× gebruikt</span>
       </div>
       {m.context && <p style={{ color: "var(--vx-muted)", fontSize: 13 }}>Context: {m.context}</p>}
+      {m.locator && (
+        <p style={{ fontSize: 13 }}>
+          Bron: {m.source_uri ?? "?"} · <b>{m.locator}</b>
+        </p>
+      )}
+      <RegionPreview path={m.source_uri} locator={m.locator} />
       <textarea
         className="editor"
         style={{ minHeight: 140 }}

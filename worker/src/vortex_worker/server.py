@@ -109,6 +109,9 @@ class WorkerService(worker_pb2_grpc.WorkerServiceServicer):
         if request.job_kind.startswith("lora:"):
             yield from self._train_lora(request, tomllib.loads(request.config_toml or ""))
             return
+        if request.job_kind.startswith("media:"):
+            yield from _media_updates(request, tomllib.loads(request.config_toml or ""))
+            return
         if request.job_kind.startswith("dataset:"):
             yield from _dataset_updates(request, tomllib.loads(request.config_toml or ""))
             return
@@ -182,6 +185,26 @@ def _dataset_updates(request, cfg: dict):
     except Exception as e:
         yield worker_pb2.TrainUpdate(error=f"{type(e).__name__}: {e}")
     yield worker_pb2.TrainUpdate(done=True, progress=common_pb2.Progress(trace=trace, fraction=1.0, stage="klaar"))
+
+
+def _media_updates(request, cfg: dict):
+    """W16: `media:<op>` (regions, render_page, ocr, stt, tts, imagegen, video, colpali_*) → JSON-artefact."""
+    from vortex_worker import media
+
+    op = request.job_kind.split(":", 1)[1]
+    try:
+        res = media.run_job(op, cfg)
+        out = Path(
+            cfg.get("result") or Path(cfg.get("out_dir") or Path(cfg.get("out", "media")).parent) / f"{op}.result.json"
+        )
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(res, ensure_ascii=False), encoding="utf-8")
+        yield worker_pb2.TrainUpdate(
+            artifact=common_pb2.ArtifactRef(artifact_id=op, path=str(out), media_type="application/json")
+        )
+    except Exception as e:
+        yield worker_pb2.TrainUpdate(error=f"{type(e).__name__}: {e}")
+    yield worker_pb2.TrainUpdate(done=True)
 
 
 def _lora_updates(self_, request, cfg: dict):

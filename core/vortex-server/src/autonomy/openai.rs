@@ -50,6 +50,26 @@ fn text_of(content: &Value) -> String {
     }
 }
 
+fn save_images(s: &AppState, content: &Value) -> Vec<String> {
+    use base64::Engine as _;
+    let dir = s.chat.data_dir().join("uploads");
+    content
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|p| p["image_url"]["url"].as_str())
+        .filter_map(|u| {
+            let (head, data) = u.strip_prefix("data:")?.split_once(";base64,")?;
+            let ext = head.rsplit('/').next().unwrap_or("png");
+            let bytes = base64::engine::general_purpose::STANDARD.decode(data).ok()?;
+            std::fs::create_dir_all(&dir).ok()?;
+            let p = dir.join(format!("api_{:012x}.{ext}", vortex_tools::stable_hash(&bytes) & 0xffff_ffff_ffff));
+            std::fs::write(&p, bytes).ok()?;
+            Some(p.display().to_string())
+        })
+        .collect()
+}
+
 /// Sessie per gesprek: sleutel = client-gebruiker + eerste gebruikersbericht.
 fn session_for(s: &AppState, user: &str, first: &str) -> Result<SessionId, String> {
     let key = format!("{user}|{:016x}", vortex_tools::stable_hash(first.as_bytes()));
@@ -101,10 +121,14 @@ async fn completions(State(s): State<AppState>, Json(b): Json<Value>) -> Respons
     };
     // Eerst luisteren, dan versturen (geen deltas missen).
     let mut rx = s.kernel.events().subscribe();
-    let reply = match s.chat.send(sid, SendRequest { text: last.clone(), mode: Mode::parse(mode), model: None }) {
-        Ok(r) => r,
-        Err(e) => return err(StatusCode::BAD_REQUEST, &e.to_string()),
-    };
+    // Afbeeldingen in het laatste gebruikersbericht (data-URL's) → bijlagen (W16.08).
+    let attachments =
+        msgs.iter().rev().find(|m| m["role"] == "user").map(|m| save_images(&s, &m["content"])).unwrap_or_default();
+    let reply =
+        match s.chat.send(sid, SendRequest { text: last.clone(), mode: Mode::parse(mode), model: None, attachments }) {
+            Ok(r) => r,
+            Err(e) => return err(StatusCode::BAD_REQUEST, &e.to_string()),
+        };
     let run = reply.run_id;
     let id = format!("chatcmpl-{}", run.to_string().trim_start_matches("run_"));
     let (tx, out) = tokio::sync::mpsc::channel::<Result<String, std::convert::Infallible>>(64);

@@ -84,6 +84,9 @@ pub struct ModelEntry {
     /// LoRA-adapters (W13.04): bij start geladen met schaal 0, hot-swappen via `/lora-adapters`.
     #[serde(default)]
     pub loras: Vec<LoraEntry>,
+    /// Vision-projector (llama-server `--mmproj`) voor beeldinvoer (W16.01).
+    #[serde(default)]
+    pub mmproj: Option<String>,
 }
 
 fn default_parser() -> String {

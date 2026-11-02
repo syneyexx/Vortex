@@ -308,6 +308,11 @@ impl ChatEngine {
             let profile = self.memory.as_ref().map(|m| UserProfile::build(&m.store, None)).and_then(|p| p.prompt_block());
             let mut sys = ctx.config().file("prompts/system.md").map(|s| s.trim().to_string()).unwrap_or_default();
             let mut guidance = strategy.guidance.clone();
+            // Bijlagen (W16.08): verwerkte context + beelden voor een visiecapabel model.
+            let attach = self.attachments.lock().remove(&run_id);
+            if let Some(a) = &attach {
+                guidance.push(format!("Bijlagen bij deze vraag:\n{}", a.context.trim()));
+            }
             // Memory-based few-shot (W12.10): eerder goed beoordeelde antwoorden op vergelijkbare vragen.
             if crate::eval_api::FEATURES.contains(&"W12")
                 && let Some(mem) = &self.memory
@@ -483,6 +488,13 @@ impl ChatEngine {
                 metrics = None;
             } else {
                 let mut messages = assembled.messages;
+                if let Some(a) = &attach
+                    && !a.images.is_empty()
+                    && backend.capabilities().vision
+                    && let Some(last) = messages.iter_mut().rev().find(|m| m.role == vortex_models::backend::Role::User)
+                {
+                    last.images = a.images.clone();
+                }
                 let effort = strategy.reasoning_effort.clone();
                 const MAX_TOOL_ROUNDS: usize = 8;
                 let mut tool_rounds = 0usize;

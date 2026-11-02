@@ -40,3 +40,6 @@
 
 ## W15
 `ServerEntry.{managed, launch_args}` (Vortex beheert de llama-server zelf, GPU-bewaker) en `ModelServer::inflight()`.
+
+## W16
+`Message.images` (+ `Message::user_with_images`) → OpenAI-contentdelen `image_url`; `ModelEntry.mmproj` → `--mmproj`.

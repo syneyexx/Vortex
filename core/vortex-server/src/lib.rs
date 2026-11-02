@@ -9,6 +9,7 @@ pub mod cognitive;
 pub mod eval_api;
 pub mod ingest;
 pub mod live;
+pub mod media;
 pub mod memory_adv;
 pub mod memory_api;
 pub mod neural_api;

@@ -13,7 +13,7 @@ updated: 2026-11-02
 | `vortex-types` | gedeelde ID's, event-typen, fouttypen, tijd, herkomstlabels (geen logica) | [[11-ONE-BRAIN]] | W01 | **ja** |
 | `vortex-core` | runs, state machine, scheduler (W01) + Dirigent (W04), event log + outbox, config, tracing, secrets, supervisie | [[modules/runtime-core]], [[modules/orkestrator-performance]] | W01, W04 | **ja** |
 | `vortex-models` | registry, `Backend`-trait, lifecycle, templates, toolcall-parsers, wisselen, metingen | [[modules/inference-modelbeheer]] | W02 | **ja** |
-| `vortex-server` | eventstream naar GUI, opdrachten, lokale OpenAI-API, autonomie (taakqueue, triggers, briefing, backups, GPU-bewaker), `vortex` CLI (admin) | [[modules/gui]], [[modules/autonomie]] | W03, W15 | **ja** (W03–W15) |
+| `vortex-server` | eventstream naar GUI, opdrachten, lokale OpenAI-API, autonomie (taakqueue, triggers, briefing, backups, GPU-bewaker), multimodaal (`media.rs`), `vortex` CLI (admin) | [[modules/gui]], [[modules/autonomie]] | W03, W15 | **ja** (W03–W15) |
 | `vortex-memory` | `MemoryStore`-trait, SQLite + LanceDB, schrijf-/ophaalpipeline, tiering | [[modules/geheugen]] | W05, W12 | **ja** |
 | `vortex-eval` *(of `evals/` runner)* | eval-runner, scores per versie, lekkagecontrole | [[modules/observability-eval]] | W06 | **ja** |
 | `vortex-cognition` | cyclus, Global Workspace, doelstapel, metacognitie, wereld-/zelfmodel | [[modules/cognitie]] | W07, W12 | **ja** (W07) |
@@ -26,9 +26,9 @@ updated: 2026-11-02
 ## Overige mappen
 | Map | Inhoud | Waves | Bestaat |
 | --- | --- | --- | --- |
-| `worker/` | Python (uv): ingest, parsers, training, HF-datasets, layer-training → ONNX | W10, W11, W13, W14 | **ja** (W10–W14) |
+| `worker/` | Python (uv): ingest, parsers, training, HF-datasets, layer-training → ONNX, media (OCR, spraak, beeld, video, lay-out) | W10, W11, W13, W14 | **ja** (W10–W14) |
 | `app/` | Tauri 2 + React + TS, design tokens, WebGL-vortex | W03+ | **ja** (chat-GUI) |
-| `config/` | `models.toml`, `prompts/`, `roles/`, `skills/` (hot-reload), `world.toml` (bronnen), `autonomy.toml` | W00+ | **ja** |
+| `config/` | `models.toml`, `prompts/`, `roles/`, `skills/` (hot-reload), `world.toml` (bronnen), `autonomy.toml`, `media.toml` | W00+ | **ja** |
 | `evals/` | eval-sets, fixtures, retrieval-tests | W06+ | **ja** (7 suites + retrieval) |
 | `proto/` | gRPC-contracten kern ⇄ worker ⇄ GUI ⇄ CLI — kaart: [[15-CONTRACTEN]] | W00, W03, W10 | **ja** |
 | `justfile` | vaste commando's (build, test, check, run, eval, models-up/down) | W00 | **ja** |

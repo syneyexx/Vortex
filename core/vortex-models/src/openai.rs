@@ -138,6 +138,11 @@ impl OpenAiBackend {
             .iter()
             .map(|m| {
                 let mut o = json!({"role": m.role, "content": m.content});
+                if !m.images.is_empty() {
+                    let mut parts = vec![json!({"type": "text", "text": m.content})];
+                    parts.extend(m.images.iter().map(|u| json!({"type": "image_url", "image_url": {"url": u}})));
+                    o["content"] = Value::Array(parts);
+                }
                 if !m.tool_calls.is_empty() {
                     o["tool_calls"] = m
                         .tool_calls

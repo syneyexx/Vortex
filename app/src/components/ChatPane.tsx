@@ -12,6 +12,7 @@ import { ToolCards } from "./ToolCards.tsx";
 import { Replay } from "./Replay.tsx";
 import { TaskBar } from "./TaskBar.tsx";
 import { VortexMark } from "./VortexShader.tsx";
+import { speak, stopSpeaking } from "../state/voice.ts";
 
 const EMPTY: ChatMessage[] = [];
 
@@ -87,6 +88,15 @@ function Assistant({ m, sessionId }: { m: ChatMessage; sessionId: string }) {
           {!streaming && (
             <button className="fork" title="Gesprek vanaf hier forken" onClick={() => void fork()}>
               <IcFork size={14} /> fork
+            </button>
+          )}
+          {!streaming && m.role === "assistant" && m.content && (
+            <button
+              className="fork"
+              title="Voorlezen"
+              onClick={() => void speak(m.content).catch((e: unknown) => setError(String(e)))}
+            >
+              🔊
             </button>
           )}
         </div>
@@ -176,12 +186,22 @@ export function ChatPane() {
 
   const activeRun = useMemo(() => messages.find((m) => m.status === "streaming")?.run_id ?? null, [messages]);
 
-  const send = async (text: string, mode: Mode, model: string) => {
+  const send = async (text: string, mode: Mode, model: string, attachments: string[] = []) => {
     let sid = getState().currentSession;
     if (!sid) sid = await newSession();
     stick.current = true;
-    await api.send(sid, text, mode, model || undefined);
+    await api.send(sid, text, mode, model || undefined, attachments);
   };
+  // Spraakmodus (W16.05): een net afgerond antwoord wordt voorgelezen.
+  const [voice, setVoice] = useState(false);
+  const spoken = useRef<string | null>(null);
+  useEffect(() => {
+    const last = messages.at(-1);
+    if (!voice || !last || last.role !== "assistant" || last.status !== "complete") return;
+    if (spoken.current === last.id) return;
+    spoken.current = last.id;
+    void speak(last.content).catch(() => undefined);
+  }, [messages, voice]);
 
   return (
     <section className="panel chat" style={{ position: "relative" }}>
@@ -262,11 +282,32 @@ export function ChatPane() {
       )}
 
       <TaskBar />
+      {voice && (
+        <div className="row" style={{ gap: 8, fontSize: 12, padding: "0 12px" }}>
+          <span className="pill ok">🎙 spraakmodus: antwoorden worden voorgelezen</span>
+          <button className="btn" onClick={() => stopSpeaking()}>
+            stil
+          </button>
+          <button
+            className="btn"
+            onClick={() => {
+              setVoice(false);
+              stopSpeaking();
+            }}
+          >
+            uit
+          </button>
+        </div>
+      )}
       <Composer
         models={models}
         defaultModel={defaultModel}
         activeRun={activeRun}
         onSend={send}
+        onVoice={(on) => {
+          setVoice(on);
+          if (!on) stopSpeaking();
+        }}
         onStop={async () => {
           if (activeRun) await api.stop(activeRun);
         }}

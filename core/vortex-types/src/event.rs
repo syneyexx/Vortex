@@ -83,6 +83,7 @@ event_kinds! {
     GpuReleased => "autonomy.gpu.released",
     GpuRestored => "autonomy.gpu.restored",
     BackupCompleted => "autonomy.backup.completed",
+    AttachmentsProcessed => "chat.attachments.processed",
     // neurale layers (W11)
     NeuralShadow => "neural.shadow.compared",
     NeuralExample => "neural.example.logged",

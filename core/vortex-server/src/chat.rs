@@ -60,6 +60,9 @@ pub struct SendRequest {
     pub mode: Mode,
     #[serde(default)]
     pub model: Option<String>,
+    /// Bijlagen (paden van `/api/uploads` of lokale bestanden): beeld, audio, video, document (W16.08).
+    #[serde(default)]
+    pub attachments: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -131,6 +134,8 @@ pub struct ChatEngine {
     pub online: Arc<vortex_agents::connectivity::Connectivity>,
     /// Webcrawler (W10), lui aangemaakt.
     pub(crate) crawler: Arc<Mutex<Option<Arc<vortex_crawler::Crawler>>>>,
+    /// Voorbereide bijlage-context per run (W16.08).
+    pub(crate) attachments: crate::media::AttachMap,
     /// GPU-bewaker (W15.01): beheerde llama-servers; chat laadt hiermee een vrijgegeven model.
     pub(crate) gpu_guard: Arc<crate::autonomy::gpu::GpuGuard>,
     /// Wereldmonitor (W14), lui aangemaakt.
@@ -165,6 +170,7 @@ impl ChatEngine {
             online: Arc::new(vortex_agents::connectivity::Connectivity::new(None)),
             crawler: Arc::new(Mutex::new(None)),
             world: Arc::new(Mutex::new(None)),
+            attachments: Arc::new(Mutex::new(HashMap::new())),
             gpu_guard: Arc::new(crate::autonomy::gpu::GpuGuard::new(log.clone())),
             scorer: None,
             layers: None,
@@ -441,7 +447,21 @@ impl ChatEngine {
         let me = self.clone();
         let mode = req.mode;
         let model2 = model.clone();
+        let attachments = req.attachments.clone();
+        let question = text.clone();
         tokio::spawn(async move {
+            // `/beeld <prompt>` (of `/image`): beeld genereren als antwoord (W16.06/W16.08).
+            if let Some(prompt) = question.strip_prefix("/beeld ").or_else(|| question.strip_prefix("/image ")) {
+                let init = attachments
+                    .iter()
+                    .find(|a| crate::media::kind_of(std::path::Path::new(a)) == crate::media::MediaKind::Image)
+                    .cloned();
+                me.answer_with_image(ctx, session, asst_id, prompt.trim(), init).await;
+                return;
+            }
+            if !attachments.is_empty() {
+                me.prepare_attachments(run_id, &attachments, &question, None).await;
+            }
             // Door de GPU-bewaker vrijgegeven model? Expliciet verzoek → meteen weer laden (W15.01).
             if me.gpu_guard.is_released() || !me.gpu_guard.managed().is_empty() {
                 me.gpu_guard.ensure(&reg, &model2).await;

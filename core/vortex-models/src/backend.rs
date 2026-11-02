@@ -38,17 +38,38 @@ pub struct Message {
     pub tool_call_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    /// Afbeeldingen bij dit bericht (data-URL's of http-URL's) voor visiemodellen (W16.01).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub images: Vec<String>,
 }
 
 impl Message {
+    /// Gebruikersbericht met afbeeldingen (OpenAI-contentdelen).
+    pub fn user_with_images(c: impl Into<String>, images: Vec<String>) -> Self {
+        Self { images, ..Self::user(c) }
+    }
     pub fn system(c: impl Into<String>) -> Self {
-        Self { role: Role::System, content: c.into(), tool_calls: vec![], tool_call_id: None, name: None }
+        Self {
+            role: Role::System,
+            content: c.into(),
+            tool_calls: vec![],
+            tool_call_id: None,
+            name: None,
+            images: vec![],
+        }
     }
     pub fn user(c: impl Into<String>) -> Self {
-        Self { role: Role::User, content: c.into(), tool_calls: vec![], tool_call_id: None, name: None }
+        Self { role: Role::User, content: c.into(), tool_calls: vec![], tool_call_id: None, name: None, images: vec![] }
     }
     pub fn assistant(c: impl Into<String>) -> Self {
-        Self { role: Role::Assistant, content: c.into(), tool_calls: vec![], tool_call_id: None, name: None }
+        Self {
+            role: Role::Assistant,
+            content: c.into(),
+            tool_calls: vec![],
+            tool_call_id: None,
+            name: None,
+            images: vec![],
+        }
     }
     pub fn tool_result(call_id: impl Into<String>, name: impl Into<String>, c: impl Into<String>) -> Self {
         Self {
@@ -57,6 +78,7 @@ impl Message {
             tool_calls: vec![],
             tool_call_id: Some(call_id.into()),
             name: Some(name.into()),
+            images: vec![],
         }
     }
 }

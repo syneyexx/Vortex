@@ -106,3 +106,8 @@ Nieuwste onderaan. Formaat: datum · besluit · waarom.
 | 2026-11-02 | Cron-triggers halen een gemist moment één keer in (geen inhaalreeks) | PC staat niet altijd aan; geen stapel dubbele briefings |
 | 2026-11-02 | GPU vrijgeven = beheerde llama-server ontladen (opt-in `managed = true`); expliciet chatverzoek laadt meteen | VRAM echt vrij voor games; gebruiker blijft voorgaan |
 | 2026-11-02 | OpenAI-API: `vortex*`-modellen draaien de volledige pijplijn in een eigen sessie per gesprek; andere modellen worden doorgegeven | Cursor krijgt geheugen + cognitie, of rauwe snelheid naar keuze |
+| 2026-11-02 | Media-engines in de worker zijn verwisselbaar (`auto` kiest wat er is); `engine = "test"` is een deterministisch test-dubbel met hetzelfde contract | Pijplijnen overal end-to-end testbaar; zware modellen alleen op de PC |
+| 2026-11-02 | ROI-visie in twee stappen: overzicht → model kiest gebieden → uitsneden op volle resolutie | Kleine tekst en grafiekdetails leesbaar zonder het hele beeld op hoge resolutie te sturen |
+| 2026-11-02 | OCR-zekerheid gaat mee: herinnering krijgt de gemiddelde zekerheid, onzekere regels staan expliciet in de prompt | Model gokt niet over slecht gelezen tekst |
+| 2026-11-02 | Coördinaat-citaten als locator `p. N [x0, y0, x1, y1]` (PDF-punten) per regio-herinnering | Exacte bron, in de GUI te markeren; werkt naast ColPali-paginaretrieval |
+| 2026-11-02 | Beeldgeneratie: eerst GPU-lease P1 + LLM-servers ontladen, daarna terug | Diffusion en LLM passen niet samen in VRAM |

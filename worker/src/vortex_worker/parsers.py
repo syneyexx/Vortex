@@ -56,7 +56,8 @@ CODE_EXT = {
     ".lua": "lua",
 }
 TEXT_EXT = {".txt", ".text", ".log", ".csv", ".tsv", ".json", ".toml", ".yaml", ".yml", ".ini", ".cfg"}
-SUPPORTED = {".epub", ".pdf", ".docx", ".md", ".markdown", ".html", ".htm", *CODE_EXT, *TEXT_EXT}
+SHEET_EXT = {".xlsx", ".xlsm", ".csv", ".tsv"}
+SUPPORTED = {".epub", ".pdf", ".docx", ".md", ".markdown", ".html", ".htm", *CODE_EXT, *TEXT_EXT, *SHEET_EXT}
 
 
 def file_hash(path: Path) -> str:
@@ -80,6 +81,8 @@ def detect(path: Path, media_type: str = "") -> str:
     if "html" in mt:
         return "html"
     ext = path.suffix.lower()
+    if ext in SHEET_EXT or "spreadsheetml" in mt:
+        return "sheet"
     return {
         ".epub": "epub",
         ".pdf": "pdf",
@@ -254,6 +257,15 @@ def parse_docx(path: Path) -> Parsed:
             sections.append(Section(text.strip(), int(m.group(2)), "", f"§ {text.strip()} (alinea {para_no})"))
         elif text.strip():
             sections[-1].text += text + "\n"
+    # W16.03: tabellen met structuur (python-docx) als eigen secties.
+    try:
+        from vortex_worker.media import docx_blocks
+
+        for b in docx_blocks(path):
+            if b["kind"] == "table" and b["text"]:
+                sections.append(Section(f"Tabel ({b['locator']})", 3, b["text"] + "\n", b["locator"]))
+    except (ImportError, KeyError, ValueError):
+        pass  # minimale DOCX (zonder volledige package-structuur) of geen python-docx
     return Parsed(file_hash(path), [s for s in sections if s.text.strip()], meta)
 
 
@@ -302,7 +314,33 @@ def parse_pdf(path: Path) -> Parsed:
             first = last.locator.split("-")[0]
             last.locator = first if f"p. {pno}" == first else f"{first}-{pno}"
     doc.close()
+    # W16.03: tabellen met structuur en coördinaten als eigen secties.
+    from vortex_worker.media import pdf_regions
+
+    regions = pdf_regions(path)
+    for r in regions:
+        if r["kind"] == "table" and r["text"]:
+            sections.append(Section(f"Tabel {r['table']} (p. {r['page']})", 3, r["text"] + "\n", r["locator"]))
+    scans = [r["page"] for r in regions if r["kind"] == "scan"]
+    if scans:
+        meta["scan_pages"] = ",".join(str(x) for x in scans)  # → OCR/visie in de kern
     return Parsed(file_hash(path), [s for s in sections if s.text.strip()], meta)
+
+
+# ---------------- spreadsheets ----------------
+
+
+def parse_sheet(path: Path) -> Parsed:
+    """XLSX/CSV als tabellen (kop herhaald per brok), locator = blad!A1:D51."""
+    from vortex_worker.media import sheet_blocks
+
+    blocks = sheet_blocks(path)
+    secs = [Section(f"{b['sheet']} ({b['locator']})", 2, b["text"] + "\n", b["locator"]) for b in blocks]
+    return Parsed(
+        file_hash(path),
+        secs,
+        {"format": path.suffix.lower().lstrip("."), "sheets": str(len({b["sheet"] for b in blocks}))},
+    )
 
 
 # ---------------- Markdown ----------------
@@ -386,6 +424,7 @@ def parse(path: str | Path, media_type: str = "") -> Parsed:
         "md": parse_markdown,
         "html": parse_html,
         "code": parse_code,
+        "sheet": parse_sheet,
     }.get(kind, parse_text)
     out = fn(p)
     out.metadata.setdefault("title", p.stem)

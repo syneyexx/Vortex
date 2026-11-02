@@ -1,6 +1,7 @@
 // Markdown met codeblokken (highlighting, kopiëren, diff), tabellen, LaTeX en Mermaid (VX:W03.07).
 import { memo, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
+import { API_BASE } from "../api/client.ts";
 import rehypeHighlight from "rehype-highlight";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
@@ -62,6 +63,17 @@ function Code({ className, children }: { className?: string; children?: ReactNod
   return <code className={className}>{children}</code>;
 }
 
+/// Beelden van de kern (`/api/media/file/…`) via de API-basis (ook in Tauri/dev).
+function Img({ src, alt }: { src?: string | Blob; alt?: string }) {
+  const url =
+    typeof src === "string" && src.startsWith("/api/")
+      ? `${API_BASE}${src}`
+      : typeof src === "string"
+        ? src
+        : "";
+  return <img src={url} alt={alt ?? ""} style={{ maxWidth: "100%", borderRadius: 8 }} />;
+}
+
 export const Markdown = memo(function Markdown({ text, streaming }: { text: string; streaming: boolean }) {
   return (
     <div className="prose">
@@ -71,7 +83,7 @@ export const Markdown = memo(function Markdown({ text, streaming }: { text: stri
         rehypePlugins={
           streaming ? [] : [[rehypeHighlight, { detect: true, ignoreMissing: true }], rehypeKatex]
         }
-        components={{ pre: Pre, code: Code }}
+        components={{ pre: Pre, code: Code, img: Img }}
       >
         {text}
       </ReactMarkdown>
