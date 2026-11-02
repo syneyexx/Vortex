@@ -16,6 +16,7 @@ pub mod diff;
 pub mod error;
 pub mod executor;
 pub mod filter;
+pub mod generated;
 pub mod glob;
 pub mod hub;
 pub mod ledger;

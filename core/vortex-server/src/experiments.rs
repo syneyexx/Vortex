@@ -231,7 +231,7 @@ fn e400(e: impl std::fmt::Display) -> ApiError {
     ApiError::new(StatusCode::BAD_REQUEST, e.to_string())
 }
 
-fn spawn_exp<F>(state: &AppState, kind: &str, spec: Value, f: F) -> Result<Json<Value>, ApiError>
+pub(crate) fn spawn_exp<F>(state: &AppState, kind: &str, spec: Value, f: F) -> Result<Json<Value>, ApiError>
 where
     F: std::future::Future<Output = Result<Value, String>> + Send + 'static,
 {
@@ -342,6 +342,24 @@ async fn comp_h(State(s): State<AppState>, Json(b): Json<CompBody>) -> Result<Js
     })
 }
 
+#[derive(Debug, Deserialize)]
+struct PromptOptBody {
+    #[serde(default)]
+    suites: Vec<String>,
+    #[serde(default = "three")]
+    k: usize,
+}
+fn three() -> usize {
+    3
+}
+
+async fn prompt_opt_h(State(s): State<AppState>, Json(b): Json<PromptOptBody>) -> Result<Json<Value>, ApiError> {
+    let st = s.clone();
+    spawn_exp(&s, "prompt_opt", json!({"suites": b.suites, "k": b.k}), async move {
+        crate::selfimprove::optimize_prompt(&st, &b.suites, b.k.clamp(1, 5)).await
+    })
+}
+
 async fn list(State(s): State<AppState>) -> Json<Value> {
     let v: Vec<Value> = s
         .kernel
@@ -378,4 +396,5 @@ pub fn routes() -> Router<AppState> {
         .route("/api/experiments/positional", post(pos_h))
         .route("/api/experiments/ablation", post(abl_h))
         .route("/api/experiments/compression", post(comp_h))
+        .route("/api/experiments/prompt_opt", post(prompt_opt_h))
 }

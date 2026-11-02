@@ -31,3 +31,6 @@
 
 ## Tests
 `cargo test -p vortex-agents` — unit (team, rollen, json, specialist) + `tests/team.rs` (rekencheck kiest juiste kandidaat, Judge-revise/onzeker, offline lokaal bewijs, conflict-team: regel/periodes/rollback/betwist) + `tests/research.rs` (standaard end-to-end met nep-SearXNG en twee domeinen, offline lokaal, corpus) + `tests/world.rs` (KG-integratie, hypotheses, voorspellen + toetsen + kalibratie, samenvattingen, spelers).
+
+## W18
+`agentmem::{record, recall, private_ws, shared_ws}`.

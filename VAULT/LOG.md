@@ -138,4 +138,10 @@ Nieuwste onderaan. Per sessie 3–5 regels: wat gedaan, wat open, volgende stap.
 - Programmatic tool calling, git/repo-tools + repo-indexering, browser (Playwright, getest), computer use (PC), cloud-escalatie (standaard uit), visuele UI-controle → 2 echte GUI-bugs gevonden en opgelost.
 - Gebruiker: daarna `install.bat` + `start_vortex.bat` → gemaakt (+ `stop_vortex.bat`), logica in `scripts/{install,start,stop}.ps1` (UTF-8 met BOM voor Windows PowerShell 5.1). Niet op Windows uitgevoerd (cloud = Linux) → eerste keer op de PC controleren.
 
-**Actieve wave:** PC-verificatie W00–W17 · cloud: volgende = W18 (frontier)
+## 2026-11-02 (W18 frontier)
+- Associatief geheugen (modern Hopfield, geleerde projectie) als reranker + experiment; continual learning (replay, L2-SP, vergeet-check) met meting; causale graaf (do, counterfactual, tracking) + Monte-Carlo-simulaties.
+- Zelfgeschreven tools (schrijven → testen → registreren → bewaard), zelfverbeterende prompts (alleen via A/B-winst + akkoord) en tools, privé/gedeeld teamgeheugen.
+- Alles achter `config/frontier.toml` (standaard uit) — gate: alleen aan bij meetbare winst. Quantum-tool op verzoek geschrapt.
+- Klaar voor een test op de PC: install.bat → start_vortex.bat.
+
+**Actieve wave:** alle cloudwaves af (W19/W20 alleen op commando) · volgende = PC-verificatie W00–W18 (`[~]`-items) + 🔒 grote tests op commando

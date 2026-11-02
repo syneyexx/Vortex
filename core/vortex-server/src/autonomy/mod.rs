@@ -202,6 +202,12 @@ pub async fn execute(state: &AppState, t: &Task) -> Result<Value, String> {
             Ok(json!({"run": run, "report": rep}))
         }
         "eval" => crate::eval_api::run_suites(state, s("suite").as_deref(), s("mode")).await,
+        // W18.06: verbeterde systeemprompt toepassen (na A/B-winst + akkoord van de gebruiker).
+        "apply_prompt" => {
+            crate::api::set_prompt(state, "prompts/system.md", &s("content").ok_or("params.content ontbreekt")?)
+                .map_err(|e| format!("{e:?}"))
+        }
+        "improve_tools" => crate::selfimprove::improve_tools(state).await,
         kind => {
             let mut spec = RunSpec::new(RunKind::Other(format!("task:{kind}")), prio(t.priority));
             spec.input = json!({"task": t.id, "title": t.title, "params": p});

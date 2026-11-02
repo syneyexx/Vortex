@@ -78,3 +78,14 @@ def test_numpy_trainer_is_deterministic():
     a = train_numpy(x, y, np.ones_like(y), 1, 8)
     b = train_numpy(x, y, np.ones_like(y), 1, 8)
     assert np.allclose(a.weights[0][0], b.weights[0][0])
+
+
+def test_continual_learning_reduces_forgetting():
+    from vortex_worker.train_layer import continual_experiment
+
+    r = continual_experiment()
+    v = r["varianten"]
+    assert v["naief"]["vergeten"] > 0.1, r
+    assert v["replay"]["vergeten"] < v["naief"]["vergeten"], r
+    assert v["replay+l2sp"]["vergeten"] < v["naief"]["vergeten"], r
+    assert v["replay+l2sp"]["B"] > 0.75, r

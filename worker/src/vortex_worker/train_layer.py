@@ -69,7 +69,21 @@ def _loss_acc(params, x, y, w, classes):
     return float(loss), acc
 
 
-def train_numpy(x, y, w, classes: int, hidden: int, epochs: int = 300, lr: float = 0.01, seed: int = 7) -> Result:
+def train_numpy(
+    x,
+    y,
+    w,
+    classes: int,
+    hidden: int,
+    epochs: int = 300,
+    lr: float = 0.01,
+    seed: int = 7,
+    anchor: list | None = None,
+    l2sp: float = 0.0,
+    init: list | None = None,
+) -> Result:
+    """`anchor` + `l2sp` (W18.02): trek de gewichten naar de vorige versie (L2-SP) tegen vergeten;
+    `init` = start vanaf de vorige versie (fine-tunen i.p.v. opnieuw)."""
     rng = np.random.default_rng(seed)
     mean = x.mean(axis=0)
     std = x.std(axis=0)
@@ -94,6 +108,8 @@ def train_numpy(x, y, w, classes: int, hidden: int, epochs: int = 300, lr: float
     w2 = rng.normal(0, math.sqrt(1.0 / hidden), (classes, hidden)).astype(np.float32)
     b2 = np.zeros(classes, np.float32)
     params = [w1, b1, w2, b2]
+    if init is not None and all(a.shape == b.shape for a, b in zip(init, params, strict=True)):
+        params = [np.array(p, dtype=np.float32) for p in init]
     m = [np.zeros_like(p) for p in params]
     v = [np.zeros_like(p) for p in params]
     best, best_params, patience = float("inf"), [p.copy() for p in params], 0
@@ -113,6 +129,8 @@ def train_numpy(x, y, w, classes: int, hidden: int, epochs: int = 300, lr: float
         gw1 = gh.T @ xt
         gb1 = gh.sum(axis=0)
         grads = [gw1 + 1e-4 * params[0], gb1, gw2 + 1e-4 * params[2], gb2]
+        if anchor is not None and l2sp > 0:
+            grads = [g + l2sp * (p - a) for g, p, a in zip(grads, params, anchor, strict=True)]
         for i in range(4):
             m[i] = 0.9 * m[i] + 0.1 * grads[i]
             v[i] = 0.999 * v[i] + 0.001 * grads[i] ** 2
@@ -173,6 +191,54 @@ def train_torch(x, y, w, classes: int, hidden: int, epochs: int = 300) -> Result
     return Result(ws, mean, std, {"train_loss": tl, "train_acc": ta}, f"torch-{dev}")
 
 
+def load_onnx_params(path: str | Path) -> tuple[list, np.ndarray, np.ndarray]:
+    """Gewichten (w0, b0, w1, b1) + normalisatie van een eerder geëxporteerde layer."""
+    import onnx
+    from onnx import numpy_helper
+
+    g = {t.name: numpy_helper.to_array(t) for t in onnx.load(str(path)).graph.initializer}
+    return [g["w0"], g["b0"], g["w1"], g["b1"]], g["mean"], g["std"]
+
+
+# VX:W18.02
+def continual_experiment(classes: int = 1, hidden: int = 24, seed: int = 3) -> dict:
+    """Taak A, daarna taak B (andere verdeling): hoeveel wordt A vergeten — naïef (alleen B),
+    met replay (deel van A erbij) en met replay + L2-SP + fine-tunen vanaf A?"""
+    rng = np.random.default_rng(seed)
+    d = 8
+
+    def task(shift: float, n: int):
+        x = rng.normal(size=(n, d)).astype(np.float32)
+        x[:, 0] += shift
+        y = ((x[:, 1] + (x[:, 2] if shift < 0 else -x[:, 3])) > 0).astype(np.float32)
+        return x, y
+
+    xa, ya = task(-2.0, 600)
+    xb, yb = task(2.0, 600)
+    ta, tb = task(-2.0, 300), task(2.0, 300)
+
+    def acc(r: Result, xy):
+        p = [r.weights[0][0], r.weights[0][1], r.weights[1][0], r.weights[1][1]]
+        return _loss_acc(p, (xy[0] - r.mean) / r.std, xy[1], np.ones_like(xy[1]), classes)[1]
+
+    ra = train_numpy(xa, ya, np.ones_like(ya), classes, hidden, seed=seed)
+    base_a = acc(ra, ta)
+    naive = train_numpy(xb, yb, np.ones_like(yb), classes, hidden, seed=seed)
+    k = len(ya) // 2
+    xr, yr = np.concatenate([xb, xa[:k]]), np.concatenate([yb, ya[:k]])
+    replay = train_numpy(xr, yr, np.ones_like(yr), classes, hidden, seed=seed)
+    prev = [ra.weights[0][0], ra.weights[0][1], ra.weights[1][0], ra.weights[1][1]]
+    both = train_numpy(xr, yr, np.ones_like(yr), classes, hidden, seed=seed, anchor=prev, l2sp=0.01, init=prev)
+    rows = {
+        "naief": {"A": acc(naive, ta), "B": acc(naive, tb)},
+        "replay": {"A": acc(replay, ta), "B": acc(replay, tb)},
+        "replay+l2sp": {"A": acc(both, ta), "B": acc(both, tb)},
+    }
+    for v in rows.values():
+        v["vergeten"] = round(base_a - v["A"], 4)
+    return {"A_voor": base_a, "varianten": rows}
+
+
 def export_onnx(r: Result, classes: int, path: str | Path, meta: dict[str, str]) -> None:
     import onnx
     from onnx import TensorProto, helper, numpy_helper
@@ -224,8 +290,24 @@ def train(
     layer: str,
     test_path: str | None = None,
     prefer_torch: bool = True,
+    replay: str | None = None,
+    anchor: str | None = None,
+    l2sp: float = 0.01,
 ) -> dict:
     x, y, w = load(train_path)
+    # Continual learning (W18.02): deel van de vorige data meetrainen + naar vorige gewichten trekken.
+    if replay and Path(replay).exists():
+        xo, yo, wo = load(replay)
+        if len(yo) and xo.shape[1] == x.shape[1]:
+            k = min(len(yo), max(1, len(y) // 2))
+            idx = np.random.default_rng(11).permutation(len(yo))[:k]
+            x, y, w = np.concatenate([x, xo[idx]]), np.concatenate([y, yo[idx]]), np.concatenate([w, wo[idx]])
+    anchor_params = None
+    if anchor and Path(anchor).exists():
+        try:
+            anchor_params = load_onnx_params(anchor)[0]
+        except Exception:
+            anchor_params = None
     if len(y) < 4:
         raise ValueError(f"te weinig voorbeelden ({len(y)})")
     random.seed(7)
@@ -237,8 +319,18 @@ def train(
             r = train_torch(x, y, w, classes, hidden)
         except ImportError:
             r = None
-    if r is None:
-        r = train_numpy(x, y, w, classes, hidden)
+    if r is None or anchor_params is not None:
+        ok = anchor_params is not None and anchor_params[0].shape == (hidden, x.shape[1])
+        r = train_numpy(
+            x,
+            y,
+            w,
+            classes,
+            hidden,
+            anchor=anchor_params if ok else None,
+            l2sp=l2sp if ok else 0.0,
+            init=anchor_params if ok else None,
+        )
     if test_path:
         xt, yt, _ = load(test_path)
         if len(yt):

@@ -49,3 +49,6 @@
 
 ## Tests
 `cargo test -p vortex-server` — `tests/api.rs` (29): chat end-to-end, resume zonder gaten, stop midden in stream (+ herladen tijdens streamen), verbinding weg, fork, prompts met versies, geheugen, eval, diep pad met plan + kritiek, persoonlijke vraag zonder geheugen, bijsturen midden in een stream, diep pad met debatteam (Judge vóór het antwoord, lokaal bewijs), chat met tools (kaarten, preview, skill-voorstel), ingest + research-API, EPUB via de echte Python-worker (gate W10), neurale layer trainen → promoveren → terugdraaien via de worker (gate W11), training/hot-swap/poortwachter (W13), wereldmonitor + HF-import via de worker (W14), autonomie (taken, triggers, suggesties, briefing, backup + restore-test, OpenAI-API) en GPU-bewaker met llama-server-testdubbel (W15), multimodaal: beeld met visie + OCR-onzekerheid, audio, video, spreadsheet, spraak, beeld, `/beeld` (W16), W17: semantische cache, experimenten, fault-proxy, logprobs, browser + repo, compressie, cloud.
+
+## W18
+`frontier.rs` (vlaggen, assoc-experiment, `/api/causal/*`, `/api/world/simulate`, `/api/frontier`), `selfimprove.rs` (`/api/experiments/prompt_opt`, taken `apply_prompt`/`improve_tools`); continual learning in `neural_api`.

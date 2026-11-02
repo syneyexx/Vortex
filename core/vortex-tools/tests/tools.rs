@@ -593,3 +593,28 @@ async fn git_and_repo_tools() {
     let st = s.output.unwrap().text;
     assert!(st.contains("src/lib.rs:3: pub fn start") && st.contains("src/lib.rs:7"), "{st}");
 }
+
+/// W18.05: Vortex schrijft een tool → tests in de sandbox → alleen bij groen geregistreerd en
+/// bewaard; na "herstart" (nieuwe hub) weer beschikbaar; nieuwe versie met dezelfde naam.
+#[tokio::test]
+async fn self_written_tools_are_tested_registered_and_persisted() {
+    let d = tempfile::tempdir().unwrap();
+    let (h, _) = hub(d.path());
+    let o = opts(d.path());
+    let code =
+        "def run(args):\n    w = args['tekst'].split()\n    return {'woorden': len(w), 'langste': max(w, key=len)}\n";
+    let tests = json!([{"input": {"tekst": "een twee drie"}, "expect_contains": "\"woorden\":3"}, {"input": {"tekst": "kort langstewoord"}, "expect_contains": "langstewoord"}]);
+    let schema = json!({"type": "object", "required": ["tekst"], "properties": {"tekst": {"type": "string"}}});
+    // Fout in een test → niet geregistreerd.
+    let bad = h.executor.call("c0", "create_tool", json!({"name": "woordtelling", "description": "Telt woorden en vindt het langste", "input_schema": schema, "code": code, "tests": [{"input": {"tekst": "a b"}, "expect_contains": "\"woorden\":3"}, tests[0]]}), &o).await;
+    assert!(!bad.ok && h.registry.get("woordtelling").is_none());
+    let ok = h.executor.call("c1", "create_tool", json!({"name": "woordtelling", "description": "Telt woorden en vindt het langste", "input_schema": schema, "code": code, "tests": tests}), &o).await;
+    assert!(ok.ok, "{ok:?}");
+    let r = h.executor.call("u1", "woordtelling", json!({"tekst": "Vortex leert zelf tools maken"}), &o).await;
+    assert!(r.ok && r.output.unwrap().data["woorden"] == 5);
+    // Ingebouwde naam mag niet.
+    assert!(!h.executor.call("c2", "create_tool", json!({"name": "read_file", "description": "overschrijven mag niet", "input_schema": schema, "code": code, "tests": tests}), &o).await.ok);
+    // "Herstart": nieuwe hub met dezelfde config laadt de tool weer.
+    let (h2, _) = hub(d.path());
+    assert!(h2.registry.get("woordtelling").is_some_and(|t| t.contract().description.contains("v1")));
+}

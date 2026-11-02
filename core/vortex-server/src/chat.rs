@@ -220,9 +220,11 @@ impl ChatEngine {
         q.k = 6;
         q.run_id = Some(run);
         q.filters.workspace = workspace;
+        // W18.01: associatief geheugen als reranker (alleen aan na gemeten winst).
+        let assoc = if mem.reranker.is_none() { self.assoc_reranker() } else { None };
         let r = tokio::time::timeout(
             Duration::from_millis(MEMORY_TIMEOUT_MS),
-            mem.store.retrieve(&q, mem.reranker.as_ref()),
+            mem.store.retrieve(&q, mem.reranker.as_ref().or(assoc.as_ref())),
         )
         .await;
         let items = match r {

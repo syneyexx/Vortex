@@ -1,0 +1,7 @@
+# Frontier (W18). Alles STANDAARD UIT — pas aanzetten als het experiment meetbare winst laat
+# zien (gate W18). Metingen: Models → Experimenten (assoc, continual, prompt-optimalisatie).
+assoc = false            # W18.01 associatief geheugen als reranker (experiment "assoc", MRR)
+continual_replay = false # W18.02 replay + vergeet-check bij hertrainen van layers
+continual_l2sp = false   # W18.02 L2-SP naar vorige gewichten (meting: replay alleen was hier beter)
+causal_tracking = false  # W18.03 causale claims uit antwoorden bijhouden
+agent_memory = false     # W18.07 privé + gedeeld geheugen voor het debatteam

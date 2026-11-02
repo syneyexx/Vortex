@@ -23,3 +23,6 @@ vortex-core, vortex-types, vortex-models (berichttypen), vortex-memory (user mod
 
 ## W17
 `planning::{dedup_steps, StepCache, low_value, execute_plan_with}`, `cost::{PlanCosts, downgrade}`.
+
+## W18
+`causal::{CausalGraph, extract_claims, Simulation}` (do, counterfactual, Monte Carlo).

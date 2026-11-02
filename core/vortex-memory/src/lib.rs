@@ -3,6 +3,7 @@
 //! SQLite = bron van waarheid (herinneringen, FTS5, graph, claims, herkomst, conflicten, vectoren);
 //! RAM-index en metadata zijn afgeleid. Start bij [`MemoryStore::open`]. Zie `CARD.md`.
 
+pub mod assoc;
 pub mod belief;
 pub mod chunk;
 pub mod dream;

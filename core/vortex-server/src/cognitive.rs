@@ -250,7 +250,8 @@ impl ChatEngine {
                     // Procedural memory (W12.01): werkwijzen voorrang bij "hoe doe ik"-taken.
                     q.prefer_kinds = vec![vortex_memory::MemoryKind::Procedural];
                 }
-                if let Ok(Ok(items)) = tokio::time::timeout(Duration::from_millis(MEMORY_TIMEOUT_MS), mem.store.retrieve(&q, mem.reranker.as_ref())).await {
+                let assoc = if mem.reranker.is_none() { self.assoc_reranker() } else { None };
+                if let Ok(Ok(items)) = tokio::time::timeout(Duration::from_millis(MEMORY_TIMEOUT_MS), mem.store.retrieve(&q, mem.reranker.as_ref().or(assoc.as_ref()))).await {
                     best = items.iter().filter(|i| !i.counter_evidence).map(|i| i.score.final_score).reduce(f64::max);
                     conflicts = items.iter().filter(|i| i.counter_evidence).count();
                     ws.set_memories(items.iter().map(|i| i.memory.id.to_string()).collect());
@@ -455,6 +456,13 @@ impl ChatEngine {
                     calibrator: self.calibrator(),
                 };
                 let out = vortex_agents::debate::run(&deps, &question, t).await;
+                // W18.07: privé- en gedeeld teamgeheugen (alleen als aangezet).
+                if self.frontier().agent_memory
+                    && let Some(mem) = &self.memory
+                {
+                    let r = vortex_agents::agentmem::record(&mem.store, &run_id.to_string(), &out).await;
+                    ws.add_note(&format!("teamgeheugen: {r}"));
+                }
                 let _ = ctx.checkpoint(&serde_json::json!({"team": t.roles(), "judge": out.verdict, "trusted": out.trusted}));
                 guidance.push(vortex_agents::debate::synthesizer_guidance(&deps.roles, &out));
                 deps.reporter.started("Synthesizer", "eindantwoord in jouw stijl");
@@ -780,6 +788,10 @@ impl ChatEngine {
                 );
             }
             drop(cache_claim.take());
+            // W18.03: eigen causale redeneringen bijhouden (alleen als aangezet).
+            if self.frontier().causal_tracking {
+                crate::frontier::track_claims(&log, &text);
+            }
             self.remember_exchange(session, question, text.clone());
             if let Some(mem) = self.memory.clone() {
                 // Elke 8 beurten de sessiesamenvatting vernieuwen (achtergrond).

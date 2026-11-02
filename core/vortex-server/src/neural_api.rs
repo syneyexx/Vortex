@@ -376,6 +376,20 @@ pub async fn bootstrap(
     Ok(done)
 }
 
+/// Actieve versie: (train-set, test-set, ONNX) van de dataset waarop ze getraind is.
+pub(crate) fn previous_version(chat: &ChatEngine, layer: &str) -> Option<(PathBuf, PathBuf, PathBuf)> {
+    let reg = chat.layers.clone()?;
+    let m = reg.manifest(layer);
+    let active = m.active.clone()?;
+    let ds = m.versions.iter().find(|v| v.version == active)?.dataset.clone();
+    let d = layers_dir(chat).join("datasets").join(layer);
+    Some((
+        d.join(format!("{ds}.train.jsonl")),
+        d.join(format!("{ds}.test.jsonl")),
+        layers_dir(chat).join(layer).join(format!("{active}.onnx")),
+    ))
+}
+
 /// Train via de worker (gRPC Train, `layer:<naam>`). Geeft het ONNX-pad en metrics.
 async fn worker_train(
     chat: &ChatEngine,
@@ -401,13 +415,23 @@ async fn worker_train(
         LayerKind::Multiclass(n) => n,
         LayerKind::Binary => 1,
     };
-    let toml = format!(
+    let mut toml = format!(
         "train = {:?}\ntest = {:?}\nout = {:?}\nclasses = {classes}\nhidden = {}\n",
         meta.train_path.display().to_string(),
         meta.test_path.display().to_string(),
         out.display().to_string(),
         sp.hidden
     );
+    // Continual learning (W18.02, alleen als aangezet): vorige data + vorige gewichten.
+    let fr = chat.frontier();
+    if let Some((old_train, _, old_onnx)) = previous_version(chat, layer) {
+        if fr.continual_replay && old_train.exists() {
+            toml.push_str(&format!("replay = {:?}\n", old_train.display().to_string()));
+        }
+        if fr.continual_l2sp && old_onnx.exists() {
+            toml.push_str(&format!("anchor = {:?}\nl2sp = 0.01\n", old_onnx.display().to_string()));
+        }
+    }
     let mut client = WorkerServiceClient::new(ch);
     let req = TrainRequest {
         trace: Some(TraceContext { trace_id: trace.to_string(), ..Default::default() }),
@@ -457,7 +481,23 @@ pub async fn train_layer(chat: &ChatEngine, layer: &str, priority: Priority) -> 
         let se = dataset::evaluate(&shadow_net, sp.kind, &test);
         reg.record_eval(layer, &version, se.clone())?;
         let ae = reg.manifest(layer).active.and_then(|a| vortex_neural::Net::load(&layers_dir(chat).join(layer).join(format!("{a}.onnx"))).ok()).map(|n| dataset::evaluate(&n, sp.kind, &test));
-        let decision = reg.auto_decide(layer, Some(&se), ae.as_ref(), 0.02)?;
+        // Vergeet-check (W18.02): bij continual learning ook op de testset van de vorige versie;
+        // gaat de nieuwe daar > 2 pt achteruit t.o.v. de actieve → niet promoveren.
+        let forgetting = if chat.frontier().continual_replay || chat.frontier().continual_l2sp {
+            previous_version(chat, layer).filter(|(_, t, _)| t.exists()).and_then(|(_, old_test, old_onnx)| {
+                let old = dataset::read(&old_test);
+                let act = vortex_neural::Net::load(&old_onnx).ok()?;
+                let a = dataset::evaluate(&act, sp.kind, &old).net;
+                let n = dataset::evaluate(&shadow_net, sp.kind, &old).net;
+                Some((a, n))
+            })
+        } else {
+            None
+        };
+        let decision = match forgetting {
+            Some((a, n)) if n < a - 0.02 => format!("afgewezen: vergeet de vorige taak ({:.1} → {:.1})", a * 100.0, n * 100.0),
+            _ => reg.auto_decide(layer, Some(&se), ae.as_ref(), 0.02)?,
+        };
         let now = vortex_types::now().to_rfc3339();
         let _ = chat.kernel.events().db().write(|tx| {
             tx.execute(

@@ -35,3 +35,6 @@
 
 ## W17
 `Tape`/`TapeMode` (record/replay via `ExecOptions.tape`), tools `tool_program` (programmatic tool calling), `git`, `repo_map`, `repo_search`.
+
+## W18
+`generated::{CreateTool, GeneratedTool}` (`create_tool`, `config/tools/generated/`).

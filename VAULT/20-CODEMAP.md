@@ -28,7 +28,7 @@ updated: 2026-11-02
 | --- | --- | --- | --- |
 | `worker/` | Python (uv): ingest, parsers, training, HF-datasets, layer-training → ONNX, media (OCR, spraak, beeld, video, lay-out) | W10, W11, W13, W14 | **ja** (W10–W14) |
 | `app/` | Tauri 2 + React + TS, design tokens, WebGL-vortex | W03+ | **ja** (chat-GUI) |
-| `config/` | `models.toml`, `prompts/`, `roles/`, `skills/` (hot-reload), `world.toml` (bronnen), `autonomy.toml`, `media.toml`, `cloud.toml` | W00+ | **ja** |
+| `config/` | `models.toml`, `prompts/`, `roles/`, `skills/` (hot-reload), `world.toml` (bronnen), `autonomy.toml`, `media.toml`, `cloud.toml`, `frontier.toml` | W00+ | **ja** |
 | `evals/` | eval-sets, fixtures, retrieval-tests | W06+ | **ja** (7 suites + retrieval) |
 | `proto/` | gRPC-contracten kern ⇄ worker ⇄ GUI ⇄ CLI — kaart: [[15-CONTRACTEN]] | W00, W03, W10 | **ja** |
 | `tools/visual/` | visuele UI-controle (screenshots vs referentie) | W17 | **ja** |

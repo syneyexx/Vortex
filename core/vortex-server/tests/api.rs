@@ -1648,3 +1648,44 @@ async fn cloud_escalation_opt_in_logged_and_limited() {
         .unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(limit.status(), 400, "daglimiet");
 }
+
+/// W18: causale effecten/counterfactual/simulatie op de hypotheses, assoc-experiment (MRR met vs
+/// zonder), frontier-vlaggen standaard uit.
+#[tokio::test]
+async fn frontier_causal_assoc() {
+    unsafe_env();
+    let fx = setup().await;
+    let st = fx.get("/api/frontier").await;
+    assert_eq!(st["flags"]["assoc"], false, "alles standaard uit");
+    let now = vortex_types::now().to_rfc3339();
+    let _ = fx.kernel.events().db().write(|tx| {
+        for (i, (c, e, p)) in [("renteverhoging", "minder hypotheken", 0.8), ("minder hypotheken", "dalende huizenprijzen", 0.6)].iter().enumerate() {
+            tx.execute("INSERT INTO hypotheses(id, cause, effect, confidence, support, contra, last_seen) VALUES (?1,?2,?3,?4,2,0,?5)", rusqlite::params![format!("h{i}"), c, e, p, now])?;
+        }
+        Ok(())
+    });
+    let e = fx.post("/api/causal/effects", json!({"cause": "Renteverhoging"})).await;
+    assert_eq!(e["effects"][0][0], "minder hypotheken", "{e}");
+    let cf = fx.post("/api/causal/counterfactual", json!({"cause": "renteverhoging"})).await;
+    assert!(
+        cf["effects"]
+            .as_array()
+            .is_some_and(|a| a.iter().any(|x| x["effect"] == "dalende huizenprijzen"
+                && (x["difference"].as_f64().unwrap_or(0.0) - 0.48).abs() < 1e-6)),
+        "{cf}"
+    );
+    let sim = fx.post("/api/world/simulate", json!({"on": ["renteverhoging"], "runs": 3000})).await;
+    assert!((sim["frequencies"]["dalende huizenprijzen"].as_f64().unwrap_or(0.0) - 0.48).abs() < 0.04, "{sim}");
+    // Associatief geheugen: experiment draait en meet (gate beslist op de uitkomst).
+    let a = fx.post("/api/experiments/assoc", json!({})).await;
+    let r = wait_exp(&fx, a["id"].as_str().unwrap_or_default()).await;
+    assert_eq!(r["status"], "done", "{r}");
+    assert!(
+        r["result"]["mrr_zonder"].is_number()
+            && r["result"]["mrr_met"].is_number()
+            && r["result"]["advies"].is_string()
+    );
+    // Prompt-optimalisatie met een nep-model zonder kandidaten → netjes mislukt, niets toegepast.
+    let p = fx.post("/api/experiments/prompt_opt", json!({"suites": ["redeneren"], "k": 1})).await;
+    assert_eq!(wait_exp(&fx, p["id"].as_str().unwrap_or_default()).await["status"], "failed");
+}

@@ -110,6 +110,7 @@ pub fn router(state: AppState, static_dir: Option<PathBuf>) -> Router {
         .merge(crate::experiments::routes())
         .merge(crate::quality_api::routes())
         .merge(crate::automation::routes())
+        .merge(crate::frontier::routes())
         .with_state(state);
     match static_dir {
         Some(d) if d.join("index.html").exists() => api.fallback_service(
@@ -360,6 +361,12 @@ struct PutPrompt {
 }
 
 async fn put_prompt(State(s): State<AppState>, Json(b): Json<PutPrompt>) -> R<Value> {
+    Ok(Json(set_prompt(&s, &b.path, &b.content)?))
+}
+
+/// Prompt- of rolbestand schrijven (nieuwe configversie, event). Ook voor zelfverbetering (W18.06).
+pub(crate) fn set_prompt(s: &AppState, path: &str, content: &str) -> Result<Value, ApiError> {
+    let b = PutPrompt { path: path.into(), content: content.into() };
     let rel = safe_rel(&b.path)?;
     let full = s.kernel.config().dir().join(&rel);
     if let Some(d) = full.parent() {
@@ -374,7 +381,7 @@ async fn put_prompt(State(s): State<AppState>, Json(b): Json<PutPrompt>) -> R<Va
         json!({"path": b.path, "version": v}),
     ))?;
     // Live vanaf het volgende bericht: nieuwe runs pakken de nieuwe versie; lopende runs houden hun eigen.
-    Ok(Json(json!({"version": v})))
+    Ok(json!({"version": v}))
 }
 
 async fn config_history(State(s): State<AppState>) -> R<Value> {

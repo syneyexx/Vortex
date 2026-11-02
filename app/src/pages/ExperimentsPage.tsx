@@ -71,6 +71,12 @@ export function ExperimentsPage() {
             <button className="btn" onClick={() => start("compression", { layer: "router" })}>
               MPO vs int8 (router-layer)
             </button>
+            <button className="btn" onClick={() => start("assoc", {})}>
+              Associatief geheugen (MRR)
+            </button>
+            <button className="btn" onClick={() => start("prompt_opt", { suites: [], k: 3 })}>
+              Prompt zelf verbeteren
+            </button>
             <button
               className="btn"
               title="Grote test — alleen op commando"
@@ -174,6 +180,8 @@ interface ExpResult {
   report?: { weakest?: number };
   result?: { advice?: string };
   components?: { component: string; verdict: string }[];
+  advies?: string;
+  winner?: unknown;
 }
 
 function summary(e: Experiment): string {
@@ -196,6 +204,10 @@ function summary(e: Experiment): string {
       return `zwakste positie: ${r.report?.weakest ?? "?"}%`;
     case "compression":
       return r.result?.advice ?? "";
+    case "assoc":
+      return r.advies ?? "";
+    case "prompt_opt":
+      return r.winner ? "winnaar gevonden → zie suggesties" : "geen kandidaat won aantoonbaar";
     case "ablation":
       return (r.components ?? []).map((c) => `${c.component}: ${c.verdict}`).join(" · ");
     default:

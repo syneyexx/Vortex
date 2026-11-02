@@ -140,6 +140,9 @@ class WorkerService(worker_pb2_grpc.WorkerServiceServicer):
                 request.job_kind.split(":", 1)[1],
                 cfg.get("test"),
                 prefer_torch=not cfg.get("numpy", False),
+                replay=cfg.get("replay"),
+                anchor=cfg.get("anchor"),
+                l2sp=float(cfg.get("l2sp", 0.01)),
             )
         except Exception as e:
             yield worker_pb2.TrainUpdate(error=str(e))

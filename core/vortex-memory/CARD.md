@@ -47,3 +47,6 @@ Schema `vortex-core/migrations/0003_memory.sql`: memories (+FTS5 met triggers), 
 | `features::*` | featurevectoren voor de neurale layers (W11) |
 Tabellen: `edge_support`, `cold_blocks`, `cold_members`, `dream_runs`; kolommen `edges.derived/rule`, `memories.tier` (migratie 0010).
 Tests: `tests/advanced.rs` (graaf, dromen-gate, tiering, meta/procedures/few-shot).
+
+## W18
+`assoc::{AssocMemory, AssocReranker}` (associatief geheugen, reranker).

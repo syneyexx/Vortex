@@ -117,6 +117,16 @@ impl ToolHub {
         let _ = skills.watch();
         registry.register(Arc::new(LoadSkill::new(skills.clone())));
         registry.register(Arc::new(RunSkillScript::new(skills.clone())));
+        // Zelfgeschreven tools (W18.05): naast de skills-map.
+        let gen_dir = cfg
+            .skills_dir
+            .clone()
+            .unwrap_or_else(|| PathBuf::from("config/skills"))
+            .parent()
+            .map(|p| p.join("tools").join("generated"))
+            .unwrap_or_else(|| PathBuf::from("config/tools/generated"));
+        crate::generated::GeneratedTool::load_all(&gen_dir, &registry);
+        registry.register(Arc::new(crate::generated::CreateTool::new(Arc::downgrade(&registry), gen_dir)));
         let executor = Executor::new(registry.clone(), log.clone(), Arc::new(sb));
         Arc::new(Self { registry, executor, skills, mcp: McpManager::new(), cfg, log })
     }

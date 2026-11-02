@@ -8,7 +8,7 @@ generated: true
 > daarna `python tools/vault/vault.py todo`. Legenda: `[ ]` open · `[~]` bezig · `[x]` af.
 > Functionaliteiten per domein (wat Vortex *kan*): [[FUNCTIES]].
 
-**Totaal: 174/235 af.**
+**Totaal: 182/235 af.**
 
 | Wave | Status | Af | Open |
 | --- | --- | --- | --- |
@@ -30,7 +30,7 @@ generated: true
 | [[waves/W15-autonomie\|W15 — Autonomie]] | af | 9 | 1 |
 | [[waves/W16-multimodaal\|W16 — Multimodaal]] | af | 3 | 5 |
 | [[waves/W17-kwaliteit-performance\|W17 — Kwaliteit en performance]] | af | 14 | 3 |
-| [[waves/W18-frontier\|W18 — Frontier]] | open | 0 | 8 |
+| [[waves/W18-frontier\|W18 — Frontier]] | af | 8 | 0 |
 | [[waves/W19-ethics-security\|W19 — Ethics & security layer]] | geparkeerd | 0 | 0 |
 | [[waves/W20-trading\|W20 — Trading]] | geparkeerd | 0 | 0 |
 
@@ -328,15 +328,15 @@ Bron: [[waves/W17-kwaliteit-performance]] · status: `af`
 - [x] `W17.17` Optionele cloud-escalatie (alleen als gebruiker aanzet) — `config/cloud.toml` standaard uit; aan → model "cloud" (of automatisch bij moeilijk + zwak taaktype als `auto`), sleutel uit de secret-opslag, elke escalatie gelogd, daglimiet
 
 ## W18 — Frontier
-Bron: [[waves/W18-frontier]] · status: `open`
-- [ ] `W18.01` Neural memory module (differentieerbaar associatief geheugen)
-- [ ] `W18.02` Continual learning zonder catastrophic forgetting (adapters, replay, regularisatie)
-- [ ] `W18.03` Causaal/counterfactual redeneren en tracking
-- [ ] `W18.04` Wereldmodel-simulaties
-- [ ] `W18.05` Vortex schrijft, test en registreert eigen tools
-- [ ] `W18.06` Self-improving prompts en tools
-- [ ] `W18.07` Multi-agent gedeeld + privé geheugen
-- [ ] `W18.08` Quantum-tool: Qiskit, circuits lokaal simuleren (~30 qubits haalbaar) + IBM Quantum Open Plan (10 min per 28 dagen) voor echte QPU-runs in research
+Bron: [[waves/W18-frontier]] · status: `af`
+- [x] `W18.01` Neural memory module (differentieerbaar associatief geheugen) — modern Hopfield met geleerde query-projectie (`vortex_memory::assoc`), online getraind op (vraag, relevante herinnering); leert associaties waar cosinus faalt (test); als reranker achter vlag `frontier.assoc`; experiment `assoc` meet MRR met/zonder op de retrieval-set
+- [x] `W18.02` Continual learning zonder catastrophic forgetting (adapters, replay, regularisatie) — layers: replay van de vorige dataset, L2-SP + fine-tunen vanaf de vorige versie, vergeet-check in de poortwachter (> 2 pt achteruit op de oude testset = afgewezen); meting: naïef vergeet 35 pt, replay 7 pt, replay+L2-SP 9 pt → aparte vlaggen; LM: adapters (W13) + gate
+- [x] `W18.03` Causaal/counterfactual redeneren en tracking — `vortex_cognition::causal`: graaf uit de hypotheses (noisy-OR), effecten van do(X), counterfactual ("wat als X niet"), causale claims uit antwoorden → hypotheses (vlag `causal_tracking`); `/api/causal/{effects,counterfactual}`
+- [x] `W18.04` Wereldmodel-simulaties — Monte Carlo over de causale graaf met ingrepen (aan) en blokkades (uit): frequentie per gevolg + meest voorkomende scenario's; `/api/world/simulate`
+- [x] `W18.05` Vortex schrijft, test en registreert eigen tools — `create_tool`: Python `run(args)` + schema + ≥ 2 tests in de sandbox; alleen bij groen bewaard (`config/tools/generated/`) en geregistreerd, versies, weer geladen na herstart; geen ingebouwde namen, alleen Local
+- [x] `W18.06` Self-improving prompts en tools — kandidaat-systeemprompts uit eigen fouten (mislukte evals, correcties) → A/B per kandidaat → alleen een aantoonbare winnaar wordt een suggestie (toepassen = nieuwe configversie); zelfgeschreven tools met fouten worden herschreven en opnieuw getest (taak `improve_tools`)
+- [x] `W18.07` Multi-agent gedeeld + privé geheugen — privé per rol (`agent:<rol>:<run>`), gedeeld per team (`team:<run>`), gestaafde beweringen pas algemene kennis na Judge-akkoord (`vortex_agents::agentmem`, vlag `agent_memory`)
+- [x] `W18.08` Quantum-tool: Qiskit, circuits lokaal simuleren (~30 qubits haalbaar) + IBM Quantum Open Plan (10 min per 28 dagen) voor echte QPU-runs in research — **geschrapt op verzoek van de gebruiker (2026-11-02: "heeft geen nut")**; gebouwd en weer verwijderd
 
 ## W19 — Ethics & security layer
 Bron: [[waves/W19-ethics-security]] · status: `geparkeerd`

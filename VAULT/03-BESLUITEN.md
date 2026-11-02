@@ -117,3 +117,6 @@ Nieuwste onderaan. Formaat: datum · besluit · waarom.
 | 2026-11-02 | Grote tests (ablations, fault-injection-run) vragen expliciet `confirm = "GROTE TESTEN NU"` | Regel 7 ook in API/GUI afgedwongen |
 | 2026-11-02 | Cloud-escalatie standaard uit, alleen met sleutel, gelogd en met daglimiet | Lokaal blijft de standaard; volledige transparantie |
 | 2026-11-02 | Programmatic tool calling alleen voor tools zonder externe bijwerking | Externe acties houden de idempotentie-ledger van de executor |
+| 2026-11-02 | Frontier-onderdelen standaard uit (`config/frontier.toml`); aan alleen na gemeten winst | Gate W18 |
+| 2026-11-02 | Quantum-tool (Qiskit/IBM) geschrapt | Besluit gebruiker: geen nut |
+| 2026-11-02 | Zelfgeschreven tools alleen Local en alleen na groene tests; prompts alleen na A/B-winst + akkoord | Zelfverbetering zonder ongemerkte regressies |

@@ -8,6 +8,7 @@
 // VX:W09.01
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
 
+pub mod agentmem;
 pub mod conflict;
 pub mod connectivity;
 pub mod debate;
