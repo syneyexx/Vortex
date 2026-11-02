@@ -1,0 +1,66 @@
+// Kern ⇄ Python-worker (ingest, parsing, training). Eigenaar: vortex-core.
+syntax = "proto3";
+package vortex.worker.v1;
+
+import "vortex/common/v1/common.proto";
+
+service WorkerService {
+  rpc GetHealth(HealthRequest) returns (vortex.common.v1.Health);
+  rpc Parse(ParseRequest) returns (ParseReply);
+  rpc Ingest(IngestRequest) returns (stream IngestUpdate);
+  rpc Train(TrainRequest) returns (stream TrainUpdate);
+  rpc Cancel(vortex.common.v1.CancelRequest) returns (vortex.common.v1.CancelReply);
+}
+
+message HealthRequest {}
+
+message ParseRequest {
+  vortex.common.v1.TraceContext trace = 1;
+  string path = 2;
+  string media_type = 3;  // leeg = autodetect
+}
+
+message ParsedSection {
+  string title = 1;
+  uint32 level = 2;
+  string text = 3;
+  string locator = 4;  // pagina/sectie/regel voor exacte bronverwijzing
+}
+
+message ParseReply {
+  string content_hash = 1;
+  repeated ParsedSection sections = 2;
+  map<string, string> metadata = 3;
+}
+
+message IngestRequest {
+  vortex.common.v1.TraceContext trace = 1;
+  repeated string paths = 2;
+  string workspace_id = 3;
+}
+
+message IngestUpdate {
+  oneof update {
+    vortex.common.v1.Progress progress = 1;
+    vortex.common.v1.ArtifactRef chunk_batch = 2;
+    string error = 3;
+    bool done = 4;
+  }
+}
+
+message TrainRequest {
+  vortex.common.v1.TraceContext trace = 1;
+  string job_kind = 2;  // "layer:<naam>", "lora", "dpo", …
+  string config_toml = 3;
+  vortex.common.v1.ArtifactRef dataset = 4;
+}
+
+message TrainUpdate {
+  oneof update {
+    vortex.common.v1.Progress progress = 1;
+    vortex.common.v1.ArtifactRef artifact = 2;
+    string error = 3;
+    bool done = 4;
+  }
+  map<string, double> metrics = 10;
+}

@@ -1,0 +1,6 @@
+# TS-codegen uit ../proto (bron van waarheid). Draai: pnpm gen
+version: v2
+plugins:
+  - local: protoc-gen-es
+    out: src/gen
+    opt: target=ts

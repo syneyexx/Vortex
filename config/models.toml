@@ -1,0 +1,41 @@
+# Model-registry (W00 basis; volledige velden + validatie in W02). Hot-reload.
+# Paden zijn voorbeelden — aanpassen aan de echte locatie op de SSD.
+
+default = "gpt-oss-20b"
+
+# llama-server-processen (één per GPU). `vortex status` controleert /health.
+[servers.main]
+role = "hoofd-GPU (wisselt)"
+url = "http://127.0.0.1:8080"
+gpu = 0                # RTX 5060 Ti — controleer index met `nvidia-smi`
+model = "gpt-oss-20b"
+
+[servers.aux]
+role = "1060-team (embed/rerank/router)"
+url = "http://127.0.0.1:8081"
+gpu = 1                # GTX 1060
+model = "qwen3-embedding"
+
+[models.gpt-oss-20b]
+file = "D:/vortex-models/gpt-oss-20b-mxfp4.gguf"
+roles = ["chat", "agents", "tools", "research"]
+gpu = "main"
+context = 32768
+kv_type = "q8_0"
+flash_attention = true
+
+[models.qwen3-embedding]
+file = "D:/vortex-models/qwen3-embedding-0.6b-q8_0.gguf"
+roles = ["embedding"]
+gpu = "aux"
+dims = 512
+
+[models.qwen3-reranker]
+file = "D:/vortex-models/qwen3-reranker-0.6b-q8_0.gguf"
+roles = ["rerank"]
+gpu = "aux"
+
+[models.router]
+file = "D:/vortex-models/qwen3.5-2b-q8_0.gguf"
+roles = ["router", "extract"]
+gpu = "aux"

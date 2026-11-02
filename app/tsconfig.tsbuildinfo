@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/main.tsx","./src/gen/vortex/admin/v1/admin_pb.ts","./src/gen/vortex/common/v1/common_pb.ts","./src/gen/vortex/gui/v1/gui_pb.ts","./src/gen/vortex/sandbox/v1/sandbox_pb.ts","./src/gen/vortex/worker/v1/worker_pb.ts","./vite.config.ts"],"version":"5.6.3"}

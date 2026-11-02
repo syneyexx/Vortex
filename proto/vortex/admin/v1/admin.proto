@@ -1,0 +1,43 @@
+// `vortex` CLI ⇄ kern. Eigenaar: vortex-server.
+syntax = "proto3";
+package vortex.admin.v1;
+
+import "vortex/common/v1/common.proto";
+
+service Admin {
+  rpc Status(StatusRequest) returns (StatusReply);
+  rpc ListRuns(ListRunsRequest) returns (ListRunsReply);
+  rpc StopRun(StopRunRequest) returns (StopRunReply);
+}
+
+message StatusRequest {}
+
+message GpuInfo {
+  uint32 index = 1;
+  string name = 2;
+  uint64 vram_total_mib = 3;
+  uint64 vram_used_mib = 4;
+  string role = 5;
+}
+
+message ModelServer {
+  string name = 1;
+  string url = 2;
+  bool ready = 3;
+  string model = 4;
+  string detail = 5;
+}
+
+message StatusReply {
+  string version = 1;
+  repeated vortex.common.v1.Health components = 2;
+  repeated GpuInfo gpus = 3;
+  repeated ModelServer models = 4;
+}
+
+message ListRunsRequest { bool include_finished = 1; uint32 limit = 2; }
+message RunSummary { string run_id = 1; string kind = 2; vortex.common.v1.RunState state = 3; string created_at = 4; }
+message ListRunsReply { repeated RunSummary runs = 1; }
+
+message StopRunRequest { string run_id = 1; }
+message StopRunReply { bool accepted = 1; }

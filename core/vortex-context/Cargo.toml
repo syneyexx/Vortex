@@ -1,0 +1,17 @@
+[package]
+name = "vortex-context"
+description = "Context assembly, budgetten, compactie, inspector."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+vortex-types.workspace = true
+vortex-core.workspace = true
+vortex-memory.workspace = true
+vortex-models.workspace = true
+vortex-tools.workspace = true
+
+[lints]
+workspace = true

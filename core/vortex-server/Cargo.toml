@@ -1,0 +1,43 @@
+[package]
+name = "vortex-server"
+description = "Kern-proces: eventstream naar GUI, opdrachten, lokale OpenAI-API en de `vortex` CLI."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "vortex"
+path = "src/main.rs"
+
+[features]
+default = []
+# tokio-console: `cargo run --features console` + RUSTFLAGS="--cfg tokio_unstable"
+console = ["dep:console-subscriber"]
+
+[dependencies]
+vortex-types.workspace = true
+vortex-core.workspace = true
+vortex-proto.workspace = true
+vortex-models.workspace = true
+vortex-memory.workspace = true
+vortex-tools.workspace = true
+vortex-neural.workspace = true
+vortex-crawler.workspace = true
+vortex-context.workspace = true
+vortex-cognition.workspace = true
+vortex-agents.workspace = true
+vortex-eval.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+tracing.workspace = true
+mimalloc.workspace = true
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+console-subscriber = { version = "0.4", optional = true }
+
+[lints]
+workspace = true

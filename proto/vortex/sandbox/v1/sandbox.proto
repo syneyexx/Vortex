@@ -1,0 +1,23 @@
+// Kern ⇄ sandbox-procesgroep (code/shell). Eigenaar: vortex-tools. Uitgewerkt in W08.
+syntax = "proto3";
+package vortex.sandbox.v1;
+
+import "vortex/common/v1/common.proto";
+
+message ExecRequest {
+  vortex.common.v1.TraceContext trace = 1;
+  string language = 2;  // "python" | "shell"
+  string code = 3;
+  string workdir = 4;
+  uint64 timeout_ms = 5;
+  uint64 max_output_bytes = 6;
+}
+
+message ExecReply {
+  int32 exit_code = 1;
+  string stdout = 2;
+  string stderr = 3;
+  bool truncated = 4;
+  bool timed_out = 5;
+  uint64 duration_ms = 6;
+}

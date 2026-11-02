@@ -32,4 +32,10 @@ Nieuwste onderaan. Per sessie 3–5 regels: wat gedaan, wat open, volgende stap.
 - Open: wat "testen pas als laatst" precies betekent; PC-details (moederbord, voeding, Windows, HDD's).
 - **Volgende stap (19:00):** repo klonen naar `C:\dev\Vortex`, dan [[waves/W00-fundament]] checks.
 
-**Actieve wave:** W00 (nog niet gestart)
+## 2026-11-02 (eerste code — Claude Code op het web, zonder GPU)
+- **W01 runtime kern gebouwd** (`core/vortex-core`): SQLite + migraties, event log (append-only, outbox, dispatcher), state machine, structured concurrency, stopketen (3 statussen), budgetten/deadlines, begrensde wachtrijen, resource-register, checkpoints + effecten, config hot-reload met versies, secrets broker, procesbewaking, GPU-slot-scheduler, tracing, crash-rapport. 57 unit- + 8 integratietests groen; **W01-gate (kill -9 → exact herstel + hervatten) groen op Linux**.
+- **W00 software-deel:** Rust-workspace (13 crates + richtingscontrole), `proto/` + codegen Rust/Python/TS, Python-worker (gRPC Health/Cancel), app-skelet (Vite + Tauri-config + iconen), `config/`, `justfile`, `vortex` CLI (`serve`/`status`/`runs`), CARD.md per crate. `just check` en `just test` groen.
+- Open (alleen op de PC): hardware-checks, CUDA/llama.cpp, modellen downloaden + metingen, Tauri-build, Windows-paden van W01.14/W01.15, `models-up.ps1` testen.
+- **Volgende stap:** op de PC W00 afmaken (checks + modellen + metingen), dan W02 — in de cloud kan ik verder met de delen van W02 die geen GPU nodig hebben.
+
+**Actieve wave:** W00 (PC-deel) + W01 (Windows-verificatie) · daarna W02

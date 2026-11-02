@@ -1,0 +1,15 @@
+[package]
+name = "vortex-eval"
+description = "Eval-runner, scores per versie, lekkagecontrole."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+vortex-types.workspace = true
+vortex-core.workspace = true
+vortex-agents.workspace = true
+
+[lints]
+workspace = true

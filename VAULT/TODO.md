@@ -8,12 +8,12 @@ generated: true
 > daarna `python tools/vault/vault.py todo`. Legenda: `[ ]` open · `[~]` bezig · `[x]` af.
 > Functionaliteiten per domein (wat Vortex *kan*): [[FUNCTIES]].
 
-**Totaal: 0/235 af.**
+**Totaal: 21/235 af.**
 
 | Wave | Status | Af | Open |
 | --- | --- | --- | --- |
-| [[waves/W00-fundament\|W00 — Fundament]] | open | 0 | 20 |
-| [[waves/W01-runtime-core\|W01 — Runtime kern]] | open | 0 | 18 |
+| [[waves/W00-fundament\|W00 — Fundament]] | bezig | 5 | 15 |
+| [[waves/W01-runtime-core\|W01 — Runtime kern]] | bezig | 16 | 2 |
 | [[waves/W02-modelbeheer\|W02 — Modelbeheer]] | open | 0 | 16 |
 | [[waves/W03-gui-chat\|W03 — GUI en chat]] | open | 0 | 15 |
 | [[waves/W04-dirigent-performance\|W04 — Dirigent en performance]] | open | 0 | 7 |
@@ -35,7 +35,7 @@ generated: true
 | [[waves/W20-trading\|W20 — Trading]] | geparkeerd | 0 | 0 |
 
 ## W00 — Fundament
-Bron: [[waves/W00-fundament]] · status: `open`
+Bron: [[waves/W00-fundament]] · status: `bezig`
 
 **Checks**
 - [~] `W00.01` SSD: **NVMe 250 GB** (bevestigd 2026-11-02); nog noteren: Windows erop?, vrije ruimte, HDD-groottes + schijfletters → [[04-HARDWARE-EN-OPSLAG]]
@@ -51,40 +51,40 @@ Bron: [[waves/W00-fundament]] · status: `open`
 
 **Repo**
 - [ ] `W00.09` Repo `syneyexx/Vortex` geklond op de SSD (`C:\dev\Vortex`, buiten OneDrive); grote data-paden op HDD vastgelegd in `config/` en [[04-HARDWARE-EN-OPSLAG]]
-- [ ] `W00.10` Rust-workspace met alle crates uit [[20-CODEMAP]] (incl. `vortex-types`, `vortex-crawler`), leeg maar compilerend, afhankelijkheidsrichting afgedwongen
-- [ ] `W00.11` `proto/` met eerste contracten (kern ⇄ worker, kern ⇄ GUI) volgens [[15-CONTRACTEN]]; codegen voor Rust, Python en TS
-- [ ] `W00.12` Python-project `worker/` (uv), Tauri-app `app/`
-- [ ] `W00.13` `config/` (models.toml, prompts/, roles/, skills/, paths.toml), `evals/`, `design/`; `CARD.md` per crate (template in `VAULT/templates/`)
-- [ ] `W00.14` `justfile` met vaste commando's: `build`, `test`, `check` (fmt + clippy + ruff + eslint + `vault.py check`), `run`, `eval`, `models-up`, `models-down`
-- [ ] `W00.15` `vortex` CLI (binary in `vortex-server` of eigen crate) — begin: `vortex status` (GPU's, modellen, health); groeit per wave mee (eval, model laden, runs bekijken/stoppen)
-- [ ] `W00.16` Lint/format: clippy, rustfmt, ruff, eslint/prettier
+- [x] `W00.10` Rust-workspace met alle crates uit [[20-CODEMAP]] (incl. `vortex-types`, `vortex-crawler`), leeg maar compilerend, afhankelijkheidsrichting afgedwongen — **af 2026-11-02:** 13 crates, `tools/check_deps.py` dwingt richting af
+- [x] `W00.11` `proto/` met eerste contracten (kern ⇄ worker, kern ⇄ GUI) volgens [[15-CONTRACTEN]]; codegen voor Rust, Python en TS — **af 2026-11-02:** 5 contracten; Rust (protox, geen protoc), Python (grpcio-tools), TS (buf + protoc-gen-es)
+- [~] `W00.12` Python-project `worker/` (uv), Tauri-app `app/` — worker af (gRPC Health/Cancel, 3 tests); app-skelet + iconen af, `pnpm build` groen — **Tauri-build nog verifiëren op de PC**
+- [x] `W00.13` `config/` (models.toml, prompts/, roles/, skills/, paths.toml), `evals/`, `design/`; `CARD.md` per crate (template in `VAULT/templates/`)
+- [x] `W00.14` `justfile` met vaste commando's: `build`, `test`, `check` (fmt + clippy + ruff + eslint + `vault.py check`), `run`, `eval`, `models-up`, `models-down`
+- [~] `W00.15` `vortex` CLI (binary in `vortex-server` of eigen crate) — begin: `vortex status` (GPU's, modellen, health); groeit per wave mee (eval, model laden, runs bekijken/stoppen) — `vortex status/serve/runs` werken; GPU-weergave **verifiëren op de PC** (nvidia-smi)
+- [x] `W00.16` Lint/format: clippy, rustfmt, ruff, eslint/prettier
 
 **Modellen**
 - [ ] `W00.17` Downloaden naar SSD: gpt-oss-20b (GGUF), Qwen3-Embedding, Qwen3-Reranker-0.6B, Qwen3.5-2B/4B
 - [ ] `W00.18` `llama-server` op 5060 Ti (gpt-oss-20b, FlashAttention, KV-quant)
 - [ ] `W00.19` `llama-server` op 1060 (embedding + reranker + router)
-- [ ] `W00.20` Start/stop-scripts (`just models-up/down`); health-endpoint getest
+- [~] `W00.20` Start/stop-scripts (`just models-up/down`); health-endpoint getest — `scripts/models-up.ps1` / `models-down.ps1` + `just models-up/down` geschreven — **testen op de PC**
 
 ## W01 — Runtime kern
-Bron: [[waves/W01-runtime-core]] · status: `open`
-- [ ] `W01.01` SQLite (WAL) + migratiesysteem met schemaversie
-- [ ] `W01.02` Event log: append-only tabel, event-typen (bericht, plan, toolcall, retrieval, debat, oordeel, feedback, model/promptversie, lifecycle), outbox + dispatcher, idempotente ontvangers
-- [ ] `W01.03` Feature-logging-velden voor training (features, keuze, uitkomst) vanaf nu in elk beslis-event
-- [ ] `W01.04` Run state machine met overgangsvoorwaarden + tests per overgang
-- [ ] `W01.05` Structured concurrency (scopes, opruimen, losgekoppelde taken met eigenaar)
-- [ ] `W01.06` Cancellation door hele keten met drie statussen
-- [ ] `W01.07` Deadline propagation + budgetten (stappen, tokens, tijd)
-- [ ] `W01.08` Bounded queues + backpressure
-- [ ] `W01.09` Resource ownership registry (GPU-slot, proces, handle, lock)
-- [ ] `W01.10` Allocator (mimalloc/jemalloc), begrensde kanalen/caches overal, tokio-console
-- [ ] `W01.11` Checkpoints + hervatten na crash (crash-test)
-- [ ] `W01.12` Optimistic concurrency + snapshot-reads
-- [ ] `W01.13` Config-systeem: versies, hot-reload, run houdt eigen versie
-- [ ] `W01.14` Secrets broker (OS-keystore), nooit in context/log
-- [ ] `W01.15` Subprocess-supervisie (procesgroepen, outputlimieten)
-- [ ] `W01.16` Tracing (trace/span-IDs) in alle bovenstaande
-- [ ] `W01.17` Crash-rapport: wat voltooid / liep / gestopt / extern mogelijk uitgevoerd / hervatbaar / ingrijpen nodig
-- [ ] `W01.18` Eenvoudige GPU-slot-scheduler: één taak tegelijk op de 5060 Ti, chat voorrang, wachtrij (volledige Dirigent in [[waves/W04-dirigent-performance]])
+Bron: [[waves/W01-runtime-core]] · status: `bezig`
+- [x] `W01.01` SQLite (WAL) + migratiesysteem met schemaversie
+- [x] `W01.02` Event log: append-only tabel, event-typen (bericht, plan, toolcall, retrieval, debat, oordeel, feedback, model/promptversie, lifecycle), outbox + dispatcher, idempotente ontvangers
+- [x] `W01.03` Feature-logging-velden voor training (features, keuze, uitkomst) vanaf nu in elk beslis-event
+- [x] `W01.04` Run state machine met overgangsvoorwaarden + tests per overgang
+- [x] `W01.05` Structured concurrency (scopes, opruimen, losgekoppelde taken met eigenaar)
+- [x] `W01.06` Cancellation door hele keten met drie statussen
+- [x] `W01.07` Deadline propagation + budgetten (stappen, tokens, tijd)
+- [x] `W01.08` Bounded queues + backpressure
+- [x] `W01.09` Resource ownership registry (GPU-slot, proces, handle, lock)
+- [x] `W01.10` Allocator (mimalloc/jemalloc), begrensde kanalen/caches overal, tokio-console
+- [x] `W01.11` Checkpoints + hervatten na crash (crash-test)
+- [x] `W01.12` Optimistic concurrency + snapshot-reads
+- [x] `W01.13` Config-systeem: versies, hot-reload, run houdt eigen versie
+- [~] `W01.14` Secrets broker (OS-keystore), nooit in context/log — broker + redactie af en getest (memory-backend); **OS-keystore (Windows Credential Manager) verifiëren op de PC**
+- [~] `W01.15` Subprocess-supervisie (procesgroepen, outputlimieten) — af en getest op Linux (procesgroep, limiet, boom stoppen < 3 s, timeout); **Windows-pad (taskkill /T) verifiëren op de PC**
+- [x] `W01.16` Tracing (trace/span-IDs) in alle bovenstaande
+- [x] `W01.17` Crash-rapport: wat voltooid / liep / gestopt / extern mogelijk uitgevoerd / hervatbaar / ingrijpen nodig
+- [x] `W01.18` Eenvoudige GPU-slot-scheduler: één taak tegelijk op de 5060 Ti, chat voorrang, wachtrij (volledige Dirigent in [[waves/W04-dirigent-performance]])
 
 ## W02 — Modelbeheer
 Bron: [[waves/W02-modelbeheer]] · status: `open`

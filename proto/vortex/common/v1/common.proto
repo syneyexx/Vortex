@@ -1,0 +1,54 @@
+// Gedeelde typen — spiegel van vortex-types. Alleen velden toevoegen, nooit hergebruiken.
+syntax = "proto3";
+package vortex.common.v1;
+
+// Trace-context; zit in elk verzoek zodat tracing door alle processen loopt.
+message TraceContext {
+  string trace_id = 1;  // "trc_<ULID>"
+  string span_id = 2;   // "spn_<ULID>"
+  string run_id = 3;    // "run_<ULID>", leeg als niet run-gebonden
+}
+
+enum RunState {
+  RUN_STATE_UNSPECIFIED = 0;
+  RUN_STATE_QUEUED = 1;
+  RUN_STATE_STARTING = 2;
+  RUN_STATE_RUNNING = 3;
+  RUN_STATE_WAITING = 4;
+  RUN_STATE_CANCELLING = 5;
+  RUN_STATE_COMPLETED = 6;
+  RUN_STATE_FAILED = 7;
+  RUN_STATE_CANCELLED = 8;
+}
+
+// Annuleren is een eersteklas bericht in elk contract.
+message CancelRequest {
+  TraceContext trace = 1;
+  string reason = 2;
+}
+
+message CancelReply {
+  bool accepted = 1;
+}
+
+message Health {
+  bool ok = 1;
+  string component = 2;
+  string detail = 3;
+  string version = 4;
+}
+
+// Verwijzing naar groot materiaal (nooit grote data in berichten).
+message ArtifactRef {
+  string artifact_id = 1;
+  string path = 2;
+  string media_type = 3;
+  uint64 size_bytes = 4;
+}
+
+message Progress {
+  TraceContext trace = 1;
+  double fraction = 2;  // 0..1, <0 = onbekend
+  string stage = 3;
+  string message = 4;
+}

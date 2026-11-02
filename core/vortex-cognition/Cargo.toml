@@ -1,0 +1,16 @@
+[package]
+name = "vortex-cognition"
+description = "Cognitieve cyclus, Global Workspace, doelstapel, metacognitie."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+vortex-types.workspace = true
+vortex-core.workspace = true
+vortex-context.workspace = true
+vortex-neural.workspace = true
+
+[lints]
+workspace = true

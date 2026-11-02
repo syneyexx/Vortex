@@ -1,0 +1,18 @@
+[package]
+name = "vortex-proto"
+description = "Gegenereerde gRPC-code uit /proto (bron van waarheid). Geen protoc nodig: protox."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+prost.workspace = true
+tonic.workspace = true
+
+[build-dependencies]
+tonic-build.workspace = true
+protox.workspace = true
+
+[lints.rust]
+missing_debug_implementations = "allow"

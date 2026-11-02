@@ -1,0 +1,6 @@
+dist
+src/gen
+src-tauri
+pnpm-lock.yaml
+CARD.md
+app-icon.png

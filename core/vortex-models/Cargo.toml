@@ -1,0 +1,14 @@
+[package]
+name = "vortex-models"
+description = "Model-registry, Backend-trait, lifecycle, templates, toolcall-parsers, wisselen, metingen."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+vortex-types.workspace = true
+vortex-core.workspace = true
+
+[lints]
+workspace = true

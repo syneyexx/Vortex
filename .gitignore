@@ -21,3 +21,6 @@ VAULT/.obsidian/workspace*.json
 # OS
 .DS_Store
 Thumbs.db
+
+# Runtime-data (SQLite, logs)
+/data/

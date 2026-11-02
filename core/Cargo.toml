@@ -1,0 +1,77 @@
+[workspace]
+resolver = "3"
+members = [
+    "vortex-types",
+    "vortex-proto",
+    "vortex-core",
+    "vortex-models",
+    "vortex-memory",
+    "vortex-tools",
+    "vortex-neural",
+    "vortex-crawler",
+    "vortex-context",
+    "vortex-cognition",
+    "vortex-agents",
+    "vortex-eval",
+    "vortex-server",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "LicenseRef-Personal"
+publish = false
+rust-version = "1.90"
+
+[workspace.dependencies]
+# interne crates
+vortex-types = { path = "vortex-types" }
+vortex-proto = { path = "vortex-proto" }
+vortex-core = { path = "vortex-core" }
+vortex-models = { path = "vortex-models" }
+vortex-memory = { path = "vortex-memory" }
+vortex-tools = { path = "vortex-tools" }
+vortex-neural = { path = "vortex-neural" }
+vortex-crawler = { path = "vortex-crawler" }
+vortex-context = { path = "vortex-context" }
+vortex-cognition = { path = "vortex-cognition" }
+vortex-agents = { path = "vortex-agents" }
+vortex-eval = { path = "vortex-eval" }
+
+# extern
+anyhow = "1"
+thiserror = "2"
+serde = { version = "1", features = ["derive", "rc"] }
+serde_json = "1"
+toml = "0.8"
+ulid = { version = "1", features = ["serde"] }
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde", "std"] }
+tokio = { version = "1", features = ["full"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+futures = "0.3"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "fmt"] }
+rusqlite = { version = "0.32", features = ["bundled", "serde_json"] }
+parking_lot = "0.12"
+notify = "6"
+clap = { version = "4", features = ["derive", "env"] }
+mimalloc = { version = "0.1", default-features = false }
+tempfile = "3"
+prost = "0.13"
+tonic = "0.12"
+tonic-build = { version = "0.12", default-features = false, features = ["prost"] }
+protox = "0.7"
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+unwrap_used = "warn"
+expect_used = "warn"
+dbg_macro = "deny"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+debug = "line-tables-only"
