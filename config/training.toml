@@ -1,7 +1,7 @@
 # Training en vliegwiel (W13). Zie VAULT/modules/training.md en core/vortex-server/src/training_api.rs.
 
 # Basismodel (safetensors-map van Hugging Face) voor QLoRA.
-base_model = "E:/vortex-cold/hf/Qwen3.5-9B"
+base_model = "D:/vortex-cold/hf/Qwen3.5-9B"
 # Naam van het model in models.toml waar de adapters bij horen (GGUF-adapters via --lora).
 serve_model = "gpt-oss-20b"
 # Waar adapters en checkpoints komen (relatief = t.o.v. de datamap).

@@ -117,29 +117,59 @@ if ($doGpu) {
 }
 
 # ── 4. GUI ────────────────────────────────────────────────────────────────────
+# pnpm: gewoon `pnpm` als die er is, anders via npx (geen globale installatie/adminrechten nodig).
+function Pnpm([string[]]$argv) {
+  Refresh-Path
+  if (Has "pnpm") { & pnpm @argv } else { & npx --yes pnpm@9 @argv }
+  if ($LASTEXITCODE -ne 0) { throw "pnpm $($argv -join ' ') gaf exitcode $LASTEXITCODE" }
+}
 Step "GUI-dependencies (pnpm)" {
   Push-Location (Join-Path $Root "app")
   try {
-    if (-not (Has "pnpm")) { try { Run "corepack" @("enable"); Refresh-Path } catch { Warn "corepack enable lukte niet (geen adminrechten?): npm-terugval" } }
-    if (-not (Has "pnpm")) { Run "npm" @("install", "-g", "pnpm"); Refresh-Path }
-    Run "pnpm" @("install", "--frozen-lockfile")
+    if (-not (Has "pnpm")) { try { & corepack enable 2>&1 | Out-Null } catch {} }
+    try { Pnpm @("install", "--frozen-lockfile") }
+    catch {
+      Warn "install met vaste lockfile mislukte ($($_.Exception.Message)): opnieuw zonder"
+      Pnpm @("install", "--no-frozen-lockfile")
+    }
   } finally { Pop-Location }
 }
 Step "GUI bouwen (app\dist)" {
   Push-Location (Join-Path $Root "app")
-  try { Run "pnpm" @("build") } finally { Pop-Location }
+  try { Pnpm @("build") } finally { Pop-Location }
 }
 
 # ── 5. Mappen en config ──────────────────────────────────────────────────────
 Step "Mappen en modellen controleren" {
   New-Item -ItemType Directory -Force -Path (Join-Path $Root "data\logs") | Out-Null
   $paths = Get-Content (Join-Path $Root "config\paths.toml") -Raw
+  $pathsFile = Join-Path $Root "config\paths.toml"
+  $defaults = @{ "models_dir" = (Join-Path $Root "models"); "cold_dir" = (Join-Path $Root "data\cold") }
   foreach ($key in "models_dir", "cold_dir") {
+    $paths = Get-Content $pathsFile -Raw
     if ($paths -match "(?m)^$key\s*=\s*`"([^`"]+)`"") {
       $p = $Matches[1]
       $drive = Split-Path -Qualifier $p -ErrorAction SilentlyContinue
-      if ($drive -and -not (Test-Path "$drive\")) { Warn "${key} = ${p}: schijf $drive bestaat niet — pas config\paths.toml aan" }
-      else { New-Item -ItemType Directory -Force -Path $p | Out-Null; Ok "${key}: $p" }
+      if ($drive -and -not (Test-Path "$drive\")) {
+        Warn "${key} = ${p}: schijf $drive bestaat niet."
+        $new = Read-Host "    Andere map voor $key? [Enter = $($defaults[$key])]"
+        if (-not $new) { $new = $defaults[$key] }
+        $new = $new -replace '\\', '/'
+        $old = $p.TrimEnd('/')
+        # Ook afgeleide paden (hf_home, base_model, …) meeverhuizen.
+        foreach ($f in "paths.toml", "training.toml", "media.toml") {
+          $fp = Join-Path $Root "config\$f"
+          if (Test-Path $fp) {
+            $t = Get-Content $fp -Raw
+            $t2 = $t.Replace("`"$old", "`"$new").Replace("= `"$old`"", "= `"$new`"")
+            if ($t2 -ne $t) { [IO.File]::WriteAllText($fp, $t2, (New-Object Text.UTF8Encoding $false)) }
+          }
+        }
+        $p = $new
+        Ok "config aangepast: ${key} = $p"
+      }
+      New-Item -ItemType Directory -Force -Path $p | Out-Null
+      Ok "${key}: $p"
     }
   }
   $models = Get-Content (Join-Path $Root "config\models.toml") -Raw
