@@ -19,6 +19,7 @@ Alles staat in de **model-registry** (config, hot-reload); wisselen = één inst
 | --- | --- | --- |
 | **Standaard ("thuis")**: chat, agents, tools, research | **gpt-oss-20b** (MXFP4, ~12 GB) | Instelbare reasoning, function calling, structured output; ~93K context past; 80–110 tok/s gemeld op 5060 Ti |
 | Deep-modus | Qwen3.6-35B-A3B (MoE, ~21 GB Q4) | Experts deels naar 32 GB RAM; slimmer, trager |
+| Kandidaat (vraag gebruiker 2026-11-02) | Qwen3-30B-A3B-Instruct Q5_K_M (~21–22 GB) | ~13 GB in VRAM + ~8–9 GB experts in RAM via `--n-cpu-moe`; schatting decode ~35–60 tok/s, prefill duidelijk trager dan volledig in VRAM. Meten naast Q4_K_M in W02.10/W02.11 |
 | Alternatief general | Gemma 4 26B-A4B | Past krap |
 | Code | Devstral Small 2 24B (~15 GB Q4) | KV-cache-quantization verplicht |
 | Visie | Qwen3.5-9B | Screenshots, afbeeldingen |
