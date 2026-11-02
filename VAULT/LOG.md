@@ -144,4 +144,9 @@ Nieuwste onderaan. Per sessie 3–5 regels: wat gedaan, wat open, volgende stap.
 - Alles achter `config/frontier.toml` (standaard uit) — gate: alleen aan bij meetbare winst. Quantum-tool op verzoek geschrapt.
 - Klaar voor een test op de PC: install.bat → start_vortex.bat.
 
-**Actieve wave:** alle cloudwaves af (W19/W20 alleen op commando) · volgende = PC-verificatie W00–W18 (`[~]`-items) + 🔒 grote tests op commando
+## 2026-11-02 (installatie + overdracht)
+- `install.bat`/`start_vortex.bat`/`stop_vortex.bat` (scripts in `scripts/`); eerste run bij de gebruiker: geen E:-schijf → nu melding + terugval + **Instellingen → Mappen** in de GUI; pnpm-stap faalde (oorzaak nog onbekend, installer robuuster gemaakt); modellen nog niet gedownload.
+- Quantum-tool en mobiele weergave geschrapt op verzoek. Remote Control naar de lokale map lukte (nog) niet → verder in een nieuwe chat.
+- VAULT volledig bijgewerkt voor de overdracht: [[OVERDRACHT]], [[PC-VERIFICATIE]], [[30-API-EN-CONFIG]] (gegenereerd), architectuur/codemap/functies bijgewerkt.
+
+**Actieve wave:** PC-installatie afronden → [[PC-VERIFICATIE]] (zie [[OVERDRACHT]] §4) · cloudwaves W00–W18 af · W19/W20 alleen op commando

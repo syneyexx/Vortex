@@ -31,3 +31,8 @@ Besluit genomen → regel in [[03-BESLUITEN]] en hier naar "Beantwoord".
 | 11 | `vortex` CLI | ja → `W00.15` |
 | 12 | `justfile` | ja → `W00.14` |
 | 13 | Rookproef-eval vanaf W00 / testen | nee; **regel 7**: kleine tests tussendoor wel, grote tests (24 u, weekruns, suites) alleen op commando |
+
+## Open sinds 2026-11-02 (installatie op de PC)
+- **pnpm-stap in `install.bat` faalde** bij de eerste run — oorzaak onbekend (corepack zonder adminrechten? PATH? lockfile?). Installer heeft nu een npx-/lockfile-terugval; `install.log` bekijken.
+- Welke modelbestanden precies (quant, bron) — zie [[05-MODELLEN]]; nog niet gedownload.
+- `managed = true` (kern beheert llama-server) of `models-up.ps1` als standaard?

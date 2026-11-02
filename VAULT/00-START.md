@@ -6,6 +6,9 @@ updated: 2026-11-02
 
 Tweede brein voor het bouwen van Vortex. Lees dit bestand eerst; open daarna alleen wat de huidige taak nodig heeft.
 
+## Nieuwe chat? Eerst dit
+**Lees [[OVERDRACHT]]** — stand van zaken, hoe alles samenhangt en de opdracht. Daarna [[PC-VERIFICATIE]] (wat nog op de PC moet) en [[30-API-EN-CONFIG]] (alle endpoints, CLI, config) als naslag.
+
 ## Snelstart voor Claude (elke sessie)
 1. Lees [[01-REGELS]] (7 werkregels) en [[12-NAVIGATIE]] (navigatieregels N1–N9).
 2. Lees [[LOG]] onderaan (laatste 2 sessies): waar zijn we gebleven, welke wave loopt.
@@ -15,6 +18,10 @@ Tweede brein voor het bouwen van Vortex. Lees dit bestand eerst; open daarna all
 ## Shortcuts — "ik moet iets weten over…"
 | Vraag | Bestand |
 | --- | --- |
+| Stand van zaken + opdracht | [[OVERDRACHT]] |
+| Wat moet nog op de PC (meten/verifiëren) | [[PC-VERIFICATIE]] |
+| Alle REST-endpoints, CLI-commando's, configbestanden | [[30-API-EN-CONFIG]] (gegenereerd) |
+| Installeren / starten (Windows) | [[OVERDRACHT]] §3 — `install.bat`, `start_vortex.bat` |
 | Wat kan Vortex allemaal (per domein) | [[FUNCTIES]] |
 | Alle taken met ID + voortgang | [[TODO]] (gegenereerd) |
 | Waar staat welke code | [[20-CODEMAP]] |

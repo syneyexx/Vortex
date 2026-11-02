@@ -14,6 +14,8 @@ updated: 2026-10-31
 | SSD | **NVMe**, 250 GB (bevestigd 2026-11-02) | Warm: code (`C:\dev\Vortex`), actieve modellen, DB's, index |
 | HDD | meerdere HDD's, TB-schaal (groottes + letters nog noteren) | Koud: ruwe data, volledige teksten, archief, backups |
 
+**Gebruiker (2026-11-02): geen E:-schijf.** Config wijst nu naar D:; ontbrekende mappen geven geen fout (terugval `data`/`data\cold`), aanpassen in GUI → Instellingen → Mappen.
+
 **Open checks (W00):** Staat Windows op de SSD (vrije ruimte)? HDD-groottes + schijfletters? Moederbord/PCIe-slots (welke GPU op x16)? Voeding? Windows-versie? llama.cpp-build die Pascal (1060) én Blackwell (5060 Ti) ondersteunt. Beide GPU's zichtbaar in `nvidia-smi`.
 
 ## Indeling SSD (warm) — ~15–20% vrij houden

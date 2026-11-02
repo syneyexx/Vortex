@@ -14,13 +14,13 @@ updated: 2026-11-02
 | `vortex-core` | runs, state machine, scheduler (W01) + Dirigent (W04), event log + outbox, config, tracing, secrets, supervisie | [[modules/runtime-core]], [[modules/orkestrator-performance]] | W01, W04 | **ja** |
 | `vortex-models` | registry, `Backend`-trait, lifecycle, templates, toolcall-parsers, wisselen, metingen | [[modules/inference-modelbeheer]] | W02 | **ja** |
 | `vortex-server` | eventstream naar GUI, opdrachten, lokale OpenAI-API, autonomie (taakqueue, triggers, briefing, backups, GPU-bewaker), multimodaal (`media.rs`), `vortex` CLI (admin) | [[modules/gui]], [[modules/autonomie]] | W03, W15 | **ja** (W03–W15) |
-| `vortex-memory` | `MemoryStore`-trait, SQLite + LanceDB, schrijf-/ophaalpipeline, tiering | [[modules/geheugen]] | W05, W12 | **ja** |
+| `vortex-memory` | `MemoryStore`: SQLite + FTS5 + eigen int8-vectorindex (LanceDB optioneel later, W05.02), schrijf-/ophaalpipeline, graaf, dromen, tiering, associatief geheugen | [[modules/geheugen]] | W05, W12, W18 | **ja** |
 | `vortex-eval` *(of `evals/` runner)* | eval-runner, scores per versie, lekkagecontrole | [[modules/observability-eval]] | W06 | **ja** |
 | `vortex-cognition` | cyclus, Global Workspace, doelstapel, metacognitie, wereld-/zelfmodel | [[modules/cognitie]] | W07, W12 | **ja** (W07) |
 | `vortex-context` | context assembly, budgetten, compactie, inspector | [[modules/context]] | W07 | **ja** (adapters + assembler) |
 | `vortex-tools` | toolregistry, contracten, sandbox, MCP-client, skills | [[modules/tools-skills]] | W08 | **ja** (W08) |
 | `vortex-agents` | debatteam, research-team, conflict-team, rollen, wereldmodel (hypotheses, voorspellingen, spelers) | [[modules/redeneren-debat]], [[modules/research-team]], [[modules/research-kennis]] | W09, W10, W14 | **ja** (W09–W14) |
-| `vortex-neural` | ONNX via `ort`, feature logging, hot-swap van layers | [[modules/neurale-layers]] | W11 | **ja** (W11) |
+| `vortex-neural` | eigen pure-Rust ONNX-runtime (MLP-subset), feature logging, registry met schaduw/promotie/rollback, datasets, kalibratie | [[modules/neurale-layers]] | W11, W13 | **ja** |
 | `vortex-crawler` | Scout/Crawler (reqwest), frontier, per-domein tempo, headless browser, wereldmonitor (connectors, clustering, bias) | [[modules/research-kennis]] | W10, W14 | **ja** (W10, W14) |
 
 ## Overige mappen
@@ -31,6 +31,8 @@ updated: 2026-11-02
 | `config/` | `models.toml`, `prompts/`, `roles/`, `skills/` (hot-reload), `world.toml` (bronnen), `autonomy.toml`, `media.toml`, `cloud.toml`, `frontier.toml` | W00+ | **ja** |
 | `evals/` | eval-sets, fixtures, retrieval-tests | W06+ | **ja** (7 suites + retrieval) |
 | `proto/` | gRPC-contracten kern ⇄ worker ⇄ GUI ⇄ CLI — kaart: [[15-CONTRACTEN]] | W00, W03, W10 | **ja** |
+| `tools/vault/` | `vault.py` (todo/check/find/status), `api_overview.py` → [[30-API-EN-CONFIG]] | W00, W17 | **ja** |
+| `scripts/` + `*.bat` | `install.ps1`/`start.ps1`/`stop.ps1` (via `install.bat`, `start_vortex.bat`, `stop_vortex.bat`), `models-up/down.ps1`, `profile-gpu.ps1` | — | **ja** (nog niet op Windows gedraaid) |
 | `tools/visual/` | visuele UI-controle (screenshots vs referentie) | W17 | **ja** |
 | `justfile` | vaste commando's (build, test, check, run, eval, models-up/down) | W00 | **ja** |
 | `design/` | `reference-chat.png`, tokens | W03 | in `VAULT/design/` |

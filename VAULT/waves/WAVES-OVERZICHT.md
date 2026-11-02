@@ -1,6 +1,6 @@
 ---
 type: waves
-updated: 2026-10-31
+updated: 2026-11-02
 ---
 # Bouwplan in waves
 
@@ -35,5 +35,8 @@ Elke wave levert een werkende, geteste Vortex op. **Gate = elk item af tot in de
 2. **W04 Dirigent** vóór geheugen/ingest: vanaf dan draait er meer dan één soort werk tegelijk.
 3. Daarna elke wave een laag slimmer: geheugen → meten → cognitie → tools → debat → research → leren.
 4. **Tests:** zie [[OPEN-VRAGEN]] (vraag over "testen pas als laatst").
+
+## Stand (2026-11-02)
+Alle waves W00–W18 zijn **gebouwd en in de cloud getest**; open/`[~]` = alleen nog op de PC te doen/meten (zie [[PC-VERIFICATIE]]). W19/W20 alleen op commando. Voortgang per wave: `python tools/vault/vault.py status`. Overdracht: [[OVERDRACHT]].
 
 Huidige wave: zie [[LOG]].

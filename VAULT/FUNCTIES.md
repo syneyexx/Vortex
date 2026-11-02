@@ -4,6 +4,8 @@ updated: 2026-11-02
 ---
 # Functies — alles wat Vortex kan (per domein)
 
+> **Stand 2026-11-02:** alles hieronder (W00–W18) is gebouwd; wat nog op de PC geverifieerd moet worden staat in [[PC-VERIFICATIE]], de stand in [[OVERDRACHT]]. Geschrapt op verzoek: mobiele weergave, quantum-tool (Qiskit/IBM). Niet gebouwd: W19, W20 (alleen op commando).
+
 Het overzicht van **wat** Vortex kan. De afvinklijst (**hoe/wanneer bouwen**) staat in [[TODO]] (gegenereerd uit `waves/`). Tussen haakjes de wave(s); details in de module.
 
 ## 1. Chat en interactie — [[modules/gui]], [[modules/context]]
@@ -14,7 +16,7 @@ Het overzicht van **wat** Vortex kan. De afvinklijst (**hoe/wanneer bouwen**) st
 - Sessies opslaan/herstellen, branching/forking, geschiedenis, project-werkruimtes (W03, W05)
 - System prompt + rol-prompts live bewerken, versies + terugzetten (W03)
 - Feedbackknoppen goed/fout/correctie → trainingsdata (W06)
-- Spraak in/uit, voice-modus (W16) · telefoon via Tailscale (W15)
+- Spraak in/uit, voice-modus (W16) · telefoon via Tailscale, gewone GUI zonder aparte mobiele weergave (W15)
 
 ## 2. Denken en redeneren — [[modules/cognitie]], [[modules/redeneren-debat]]
 - Cognitieve cyclus in 8 fasen: waarnemen → aandacht → herinneren → overwegen → handelen → verifiëren → reflecteren → consolideren (W07)

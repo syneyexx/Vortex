@@ -1,6 +1,6 @@
 ---
 type: architectuur
-updated: 2026-10-31
+updated: 2026-11-02
 ---
 # Architectuur
 
@@ -29,12 +29,13 @@ SSD (warm): SQLite, LanceDB, index, modellen     HDD (koud): ruwe data, archief,
 | Laag | Keuze |
 | --- | --- |
 | Core | Rust: tokio, axum, tonic, serde, tracing |
-| Opslag | SQLite (rusqlite/sqlx, WAL, FTS5), LanceDB (Rust crate), moka |
-| Inference | llama.cpp `llama-server` per GPU, OpenAI-compatibele adapter |
-| Neurale layers | ONNX Runtime via `ort` |
-| ML-worker | Python 3.11/3.12 + uv, PyTorch, Unsloth/PEFT, datasets, PyMuPDF, ebooklib |
-| Frontend | Tauri 2 + React + TypeScript, WebGL-shader |
-| Web search | SearXNG (zelf-gehost) |
+| Opslag | één SQLite-db (rusqlite, WAL, FTS5) = event log + alle tabellen (migraties 0001–0015); eigen int8-vectorindex; koude laag zstd-blokken |
+| Inference | llama.cpp `llama-server` per GPU, OpenAI-compatibele adapter (`vortex-models`), optioneel door de kern beheerd (`managed = true`) |
+| Neurale layers | eigen pure-Rust ONNX-runtime (`vortex-neural`), training in de worker (numpy/PyTorch → ONNX) |
+| ML-worker | Python 3.12 + uv (`worker/.venv`), gRPC-jobs: parsers/ingest, OCR, spraak, beeld, video, layer- en LoRA-training, HF-datasets, browser (Playwright), compressie |
+| Frontend | React + TypeScript + Vite (`app/dist`, door de kern geserveerd op :7420); Tauri 2 voor desktop later |
+| Web search | SearXNG (zelf-gehost), crawler met headless browser |
+| Werkelijke stand + alle endpoints | [[OVERDRACHT]], [[30-API-EN-CONFIG]] |
 
 ## Repo
 Repo-root = `vortex/` (GitHub `syneyexx/Vortex`). Actuele kaart met status: [[20-CODEMAP]].
@@ -57,6 +58,9 @@ vortex/
   app/      Tauri + React
   config/   prompts, rollen, skills, modellen (hot-reload)
   evals/    eval-suite, retrieval-tests, fixtures
+  scripts/  install/start/stop (PowerShell), models-up/down, profiling
+  tools/    vault.py, api_overview.py, check_deps.py, visual/ (UI-controle)
+  install.bat · start_vortex.bat · stop_vortex.bat
   design/   reference-chat.png, tokens
   VAULT/    dit tweede brein
 ```
