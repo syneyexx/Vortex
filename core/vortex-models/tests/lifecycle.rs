@@ -73,6 +73,7 @@ fn entry(fx: &Fx, name: &str, content: &str, roles: &[&str]) -> ModelEntry {
         license: None,
         dims: if roles.contains(&"embedding") { Some(512) } else { None },
         extra_args: vec![],
+        loras: vec![],
     }
 }
 

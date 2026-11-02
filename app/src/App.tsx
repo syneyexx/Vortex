@@ -5,6 +5,7 @@ import { LeftColumn } from "./components/LeftColumn.tsx";
 import { DashboardPage } from "./pages/DashboardPage.tsx";
 import { MemoryPage } from "./pages/MemoryPage.tsx";
 import { ResearchPage } from "./pages/ResearchPage.tsx";
+import { TrainingPage } from "./pages/TrainingPage.tsx";
 import { StatusBar } from "./components/StatusBar.tsx";
 import { SubNav, TopNav, type Sub, type Top } from "./components/TopNav.tsx";
 import { ModelsPage, Placeholder, RunsPage, SettingsPage } from "./pages/Pages.tsx";
@@ -68,7 +69,13 @@ export function App() {
     );
   else if (top === "research") body = <ResearchPage />;
   else if (top === "memory") body = <MemoryPage />;
-  else if (top === "models") body = <ModelsPage />;
+  else if (top === "models")
+    body = (
+      <div style={{ display: "grid", gap: 0 }}>
+        <ModelsPage />
+        <TrainingPage />
+      </div>
+    );
   else if (top === "studio")
     body = <Placeholder title="Studio" wave="W16" text="Beeld, audio en multimodale uitvoer." />;
   else if (top === "settings") body = <SettingsPage />;

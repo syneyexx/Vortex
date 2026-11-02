@@ -106,6 +106,9 @@ pub struct ChatRequest {
     pub seed: Option<u64>,
     #[serde(default)]
     pub logprobs: bool,
+    /// LoRA-schalen voor dit verzoek (adapter-ID, schaal).
+    #[serde(default)]
+    pub lora: Option<Vec<(u32, f32)>>,
 }
 
 impl ChatRequest {
@@ -120,6 +123,7 @@ impl ChatRequest {
             reasoning_effort: None,
             seed: None,
             logprobs: false,
+            lora: None,
         }
     }
 }

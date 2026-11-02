@@ -101,6 +101,7 @@ pub fn router(state: AppState, static_dir: Option<PathBuf>) -> Router {
         .merge(crate::research_api::routes())
         .merge(crate::neural_api::routes())
         .merge(crate::memory_adv::routes())
+        .merge(crate::training_api::routes())
         .with_state(state);
     match static_dir {
         Some(d) if d.join("index.html").exists() => api.fallback_service(
@@ -426,7 +427,9 @@ pub fn build_state(kernel: Kernel) -> anyhow::Result<AppState> {
         vortex_core::sampler::SamplerConfig::default(),
         kernel.shutdown_token().child_token(),
     );
-    Ok(AppState { kernel, chat, live, memory, tools: Some(tools) })
+    let state = AppState { kernel: kernel.clone(), chat, live, memory, tools: Some(tools) };
+    crate::training_api::spawn_flywheel(state.clone(), kernel.shutdown_token().child_token());
+    Ok(state)
 }
 
 pub type Shared = Arc<AppState>;

@@ -83,6 +83,27 @@ pub async fn execute_plan(
     results
 }
 
+/// Featurevector voor de PRM-layer (process reward model, W13.05) per planstap.
+pub fn prm_vector(i: usize, n: usize, question: &str, output: &str, flagged: bool) -> Vec<f32> {
+    let l = output.to_lowercase();
+    let hedges =
+        ["misschien", "waarschijnlijk", "onzeker", "mogelijk", "weet niet"].iter().filter(|w| l.contains(*w)).count()
+            as f32;
+    let qt: std::collections::HashSet<String> =
+        question.to_lowercase().split_whitespace().filter(|w| w.len() > 3).map(String::from).collect();
+    let ot: std::collections::HashSet<String> =
+        l.split_whitespace().filter(|w| w.len() > 3).map(String::from).collect();
+    let overlap = qt.intersection(&ot).count() as f32 / qt.len().max(1) as f32;
+    vec![
+        i as f32 / n.max(1) as f32,
+        (output.chars().count() as f32 / 1000.0).min(10.0),
+        if output.chars().any(|c| c.is_ascii_digit()) { 1.0 } else { 0.0 },
+        hedges,
+        overlap,
+        if flagged { 1.0 } else { 0.0 },
+    ]
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Critique {
     pub verdict: String,

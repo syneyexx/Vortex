@@ -3062,6 +3062,7 @@ dependencies = [
  "vortex-crawler",
  "vortex-memory",
  "vortex-models",
+ "vortex-neural",
  "vortex-tools",
  "vortex-types",
 ]

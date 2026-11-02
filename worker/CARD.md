@@ -4,7 +4,7 @@
 **Contract:** `proto/vortex/worker/v1/worker.proto` · **Waves:** W00 (skelet), W10, W13, W14
 
 ## Publieke API
-`WorkerService` (gRPC): `GetHealth`, `Cancel` (W00) · `Parse`, `Ingest` (W10, af) · `Train`: `layer:<naam>` (W11, af: `train_layer.py`, MLP → ONNX); LoRA/DPO volgen in W13.
+`WorkerService` (gRPC): `GetHealth`, `Cancel` (W00) · `Parse`, `Ingest` (W10, af) · `Train`: `layer:<naam>` (W11, af: `train_layer.py`, MLP → ONNX); `lora:sft|dpo` (W13: `train_lora.py`, QLoRA → GGUF-adapter; `validate()` als droogloop).
 `vortex_worker.parsers.parse(path)` → secties met locator; `vortex_worker.ingest.ingest(paths, out_dir)` → JSONL per document (koude schijf).
 
 ## Ingangen

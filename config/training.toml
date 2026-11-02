@@ -1,0 +1,33 @@
+# Training en vliegwiel (W13). Zie VAULT/modules/training.md en core/vortex-server/src/training_api.rs.
+
+# Basismodel (safetensors-map van Hugging Face) voor QLoRA.
+base_model = "E:/vortex-cold/hf/Qwen3.5-9B"
+# Naam van het model in models.toml waar de adapters bij horen (GGUF-adapters via --lora).
+serve_model = "gpt-oss-20b"
+# Waar adapters en checkpoints komen (relatief = t.o.v. de datamap).
+out_dir = "training"
+# llama.cpp-map (voor convert_lora_to_gguf.py / convert_hf_to_gguf.py).
+llama_cpp = "C:/tools/llama.cpp"
+
+# Alleen in idle trainen, automatisch na genoeg nieuwe data.
+idle = true
+min_new_examples = 200
+
+[lora]
+method = "qlora"   # qlora (4-bit) of lora
+r = 16
+alpha = 32
+dropout = 0.05
+epochs = 2
+lr = 0.0002
+max_seq = 2048
+batch = 2
+grad_accum = 8
+
+[gate]
+# Promoveren alleen als een suite ≥ min_gain beter is en geen suite meer dan max_regression slechter.
+min_gain = 0.02
+max_regression = 0.02
+# Schaduwrun: minimaal zoveel vergelijkingen en dit winstpercentage tegen het basismodel.
+shadow_min = 5
+shadow_win_rate = 0.5

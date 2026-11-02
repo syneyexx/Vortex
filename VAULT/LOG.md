@@ -110,4 +110,9 @@ Nieuwste onderaan. Per sessie 3–5 regels: wat gedaan, wat open, volgende stap.
 - Tiering SSD/HDD met zstd-blokken, SSD-cache, prefetch, terughalen; 🔒 `vortex tierbench`. Zelfmodel uit eval → metacognitie. Media-referenties. Experiment Bayes vs kwantum-achtig (kwantum wint bij gekopieerde bronnen, Bayes bij onafhankelijke).
 - Gevonden: dedup bij schrijven keek ook naar verouderde herinneringen; feedback heette good/bad (niet up/down) in de W11-datasets → beide opgelost.
 
-**Actieve wave:** PC-verificatie W00–W12 · cloud: volgende = W13 (training + vliegwiel)
+## 2026-11-02 (W13 training + vliegwiel)
+- Datasets: SFT (team-distillatie, 👍, correcties), DPO (gekozen/verworpen; correctness vs preference), Q&A uit documenten; decontaminatie + versies. Kandidaten van het debat worden nu vastgelegd.
+- Worker `train_lora.py` (Unsloth/PEFT + TRL, checkpoints, GGUF-conversie, droogloop) + gRPC `lora:*`; server: adapter-registry, training alleen in idle met pauzeren/hervatten, hot-swap via `/lora-adapters`, schaduwrun, poortwachter, kalibratie, vliegwiel. Layers `verifier` + `prm`. GUI: Training & evals.
+- Gate-logica getest met nep-llama-server; echte QLoRA kan alleen op de PC (geen torch in de cloud).
+
+**Actieve wave:** PC-verificatie W00–W13 · cloud: volgende = W14 (wereldkennis)

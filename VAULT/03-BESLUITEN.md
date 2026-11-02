@@ -92,4 +92,8 @@ Nieuwste onderaan. Formaat: datum · besluit · waarom.
 | 2026-11-02 | Afgeleide feiten worden per redeneer-ronde volledig opnieuw berekend | Altijd consistent met de basis; weg = weg |
 | 2026-11-02 | Koude laag: blokken van 64 herinneringen (zstd 9) + centroid; treffers worden warm teruggehaald | Snel op HDD (weinig seeks), klein, SSD-cache voor herhaling |
 | 2026-11-02 | Kwantum-achtig kansmodel blijft een experiment; Bayes blijft standaard | A/B: kwantum alleen beter bij gekopieerde bronnen — mogelijk later als correctie voor afhankelijke bronnen |
+| 2026-11-02 | Adapters als GGUF-LoRA in llama-server (geladen met schaal 0, hot-swap via `/lora-adapters`) i.p.v. gemergde modellen per versie | Geen herstart of extra VRAM per versie; terugschakelen in milliseconden |
+| 2026-11-02 | DPO-labels apart: correctness (objectieve check/Judge) vs preference (gebruiker) | Voorkeur ≠ feitelijk correct (zie modules/training) |
+| 2026-11-02 | Poortwachter: winst ≥ 2 pt op een suite, geen regressie > 2 pt, schaduwrun ≥ 50 % | "Een adapter wint op de eval zonder regressie elders" |
+| 2026-11-02 | Training alleen in idle; bij gebruik worker annuleren + checkpoint, later hervatten | GPU direct vrij voor de gebruiker |
 

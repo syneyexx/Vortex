@@ -87,6 +87,13 @@ pub fn llama_args(entry: &ModelEntry, host: &str, port: u16, slot_dir: Option<&P
     if let Some(d) = slot_dir {
         a.extend(["--slot-save-path".into(), d.to_string_lossy().into_owned()]);
     }
+    // LoRA-adapters: laden zonder toe te passen; schaal zetten via /lora-adapters (hot-swap).
+    if !entry.loras.is_empty() {
+        for l in &entry.loras {
+            a.extend(["--lora".into(), l.path.clone()]);
+        }
+        a.push("--lora-init-without-apply".into());
+    }
     a.extend(entry.extra_args.iter().cloned());
     a
 }
@@ -482,8 +489,10 @@ mod tests {
             license: None,
             dims: None,
             extra_args: vec!["--threads".into(), "8".into()],
+            loras: vec![crate::registry::LoraEntry { name: "stijl".into(), path: "a.gguf".into(), scale: 0.0 }],
         };
         let a = llama_args(&e, "127.0.0.1", 8080, Some(Path::new("/s")));
+        assert!(a.join(" ").contains("--lora a.gguf --lora-init-without-apply"));
         let s = a.join(" ");
         for frag in [
             "-m m.gguf",

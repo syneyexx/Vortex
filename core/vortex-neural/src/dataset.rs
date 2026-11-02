@@ -69,6 +69,11 @@ pub fn eval_index(prompts: &[String]) -> HashSet<u64> {
     prompts.iter().flat_map(|p| grams(p, 8)).collect()
 }
 
+/// Deelt de tekst een 8-gram met de eval-set? (decontaminatie voor trainingsdata, W13)
+pub fn contaminated(text: &str, eval: &HashSet<u64>) -> bool {
+    grams(text, 8).iter().any(|g| eval.contains(g))
+}
+
 pub fn is_test(src: &str) -> bool {
     fnv(src.as_bytes()).is_multiple_of(5)
 }

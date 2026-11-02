@@ -12,6 +12,8 @@ use futures::{SinkExt, StreamExt};
 use serde_json::{Value, json};
 use vortex_core::{Kernel, KernelOptions, SecretBroker};
 
+static LORA_SCALE: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+
 /// Nep-llama-server: streamt "Hallo wereld" in stukjes; "slow" streamt lang.
 async fn fake_model() -> String {
     async fn chat(Json(b): Json<Value>) -> Response {
@@ -91,7 +93,20 @@ async fn fake_model() -> String {
         });
         Response::builder().header("content-type", "text/event-stream").body(Body::from_stream(s)).unwrap_or_default()
     }
-    let app = Router::new().route("/health", get(|| async { "ok" })).route("/v1/chat/completions", post(chat));
+    // LoRA-hot-swap (W13.04): één geladen adapter; POST zet de schaal (onthouden in LORA_SCALE).
+    let lora = Router::new().route(
+        "/lora-adapters",
+        get(|| async { axum::Json(json!([{"id": 0, "path": "/adapters/stijl.gguf", "scale": f32::from_bits(LORA_SCALE.load(std::sync::atomic::Ordering::SeqCst))}])) }).post(
+            |Json(b): Json<Value>| async move {
+                if let Some(sc) = b[0]["scale"].as_f64() {
+                    LORA_SCALE.store((sc as f32).to_bits(), std::sync::atomic::Ordering::SeqCst);
+                }
+                axum::Json(json!({"success": true}))
+            },
+        ),
+    );
+    let app =
+        Router::new().route("/health", get(|| async { "ok" })).route("/v1/chat/completions", post(chat)).merge(lora);
     let l = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap_or_else(|e| panic!("{e}"));
     let addr = l.local_addr().unwrap_or_else(|e| panic!("{e}"));
     tokio::spawn(async move { axum::serve(l, app).await });
@@ -826,4 +841,70 @@ async fn advanced_memory_endpoints() {
     assert_eq!(bytes.headers().get("content-type").and_then(|v| v.to_str().ok()), Some("image/png"));
     let sm = fx.get("/api/selfmodel").await;
     assert!(sm["by_task"].is_object(), "{sm}");
+}
+
+#[tokio::test]
+async fn training_datasets_hot_swap_gate_and_worker_job() {
+    let fx = setup().await;
+    // Team-run in deep mode → kandidaten vastgelegd; daarna 👍 → SFT-voorbeeld.
+    let sid = fx.post("/api/sessions", json!({})).await["id"].as_str().unwrap_or_default().to_string();
+    fx.post(
+        &format!("/api/sessions/{sid}/messages"),
+        json!({"text": "Vergelijk SQLite en Postgres voor Vortex", "mode": "deep"}),
+    )
+    .await;
+    let m = fx.wait_message(&sid, 1, "complete").await;
+    fx.post(&format!("/api/messages/{}/feedback", m["id"].as_str().unwrap_or("")), json!({"rating": "good"})).await;
+    // Extra DPO-paar met duidelijk scoreverschil.
+    let e = vortex_types::Event::new(
+        vortex_types::EventKind::CandidatesRecorded,
+        vortex_types::TraceId::new(),
+        json!({"question": "Wat is 2+2?", "verdict": {"verdict": "accept", "confidence": 0.9}, "candidates": [
+            {"id": "k1", "text": "4", "score": 0.9, "chosen": true, "objective": true},
+            {"id": "k2", "text": "5", "score": 0.1, "chosen": false, "objective": false}]}),
+    );
+    fx.kernel.events().append(e).unwrap_or_default();
+    let sft = fx.post("/api/training/datasets/sft", json!({})).await;
+    assert!(sft["n"].as_i64().unwrap_or(0) >= 1, "{sft}");
+    let dpo = fx.post("/api/training/datasets/dpo", json!({})).await;
+    assert!(dpo["n"].as_i64().unwrap_or(0) >= 1, "{dpo}");
+    // Adapter registreren (zoals na training) → hot-swap aan/uit via /lora-adapters.
+    let now = vortex_types::now().to_rfc3339();
+    fx.kernel
+        .events()
+        .db()
+        .write(|tx| {
+            tx.execute(
+                "INSERT INTO adapters(id, base_model, kind, dataset, settings, gguf_path, status, created_at, updated_at) VALUES ('ad_test', 'base', 'sft', ?1, '{}', '/adapters/stijl.gguf', 'trained', ?2, ?2)",
+                rusqlite::params![sft["version"].as_str().unwrap_or(""), now],
+            )?;
+            Ok(())
+        })
+        .unwrap_or_else(|e| panic!("{e}"));
+    let r = fx.post("/api/training/adapters/ad_test/scale", json!({"scale": 1.0})).await;
+    assert_eq!(r["status"], "active", "{r}");
+    assert_eq!(f32::from_bits(LORA_SCALE.load(std::sync::atomic::Ordering::SeqCst)), 1.0);
+    // Poortwachter zonder basis-eval: geen winst aantoonbaar → afgewezen, adapter weer uit.
+    let g = fx.post("/api/training/adapters/ad_test/gate", json!({})).await;
+    assert_eq!(g["status"], "rejected", "{g}");
+    assert_eq!(f32::from_bits(LORA_SCALE.load(std::sync::atomic::Ordering::SeqCst)), 0.0);
+    // Kalibratie vraagt genoeg gelabelde oordelen.
+    let c = fx.post("/api/training/calibrate", json!({})).await;
+    assert!(c["error"].as_str().unwrap_or("").contains("te weinig"), "{c}");
+    let st = fx.get("/api/training").await;
+    assert!(st["datasets"].as_array().is_some_and(|d| d.len() >= 2));
+    // Training via de echte worker: valideert de dataset; zonder PyTorch in de cloud → nette fout.
+    if let Some(mut w) = start_worker(&fx).await {
+        let t = fx.post("/api/training/train", json!({"kind": "sft", "dataset": sft["version"]})).await;
+        let err = t["error"].as_str().unwrap_or("");
+        assert!(err.contains("PyTorch") || err.contains("torch") || t["gguf"].is_string(), "{t}");
+        let st = fx.get("/api/training").await;
+        assert!(
+            st["adapters"]
+                .as_array()
+                .is_some_and(|a| a.iter().any(|x| x["status"] == "failed" || x["status"] == "trained")),
+            "{st}"
+        );
+        let _ = w.kill().await;
+    }
 }

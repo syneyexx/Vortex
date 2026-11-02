@@ -16,3 +16,4 @@ pub mod research_api;
 pub mod sessions;
 pub mod team_api;
 pub mod tools_api;
+pub mod training_api;

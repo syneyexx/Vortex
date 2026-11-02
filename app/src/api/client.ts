@@ -249,6 +249,22 @@ export const api = {
       theta: number[];
       lambda: number;
     }>("GET", "/api/memory/belief-experiment?n=400"),
+  training: () => req<TrainingStatus>("GET", "/api/training"),
+  buildDataset: (kind: string) =>
+    req<{ version: string; n: number; decontaminated: number }>("POST", `/api/training/datasets/${kind}`, {}),
+  trainAdapter: (kind: string, dataset: string) =>
+    req<Record<string, unknown>>("POST", "/api/training/train", { kind, dataset }),
+  gateAdapter: (id: string) =>
+    req<{ status: string; gains: number; regressions: unknown[] }>(
+      "POST",
+      `/api/training/adapters/${id}/gate`,
+      {},
+    ),
+  shadowAdapter: (id: string) =>
+    req<{ n: number; wins: number; win_rate: number }>("POST", `/api/training/adapters/${id}/shadow`, {}),
+  scaleAdapter: (id: string, scale: number) =>
+    req<{ status: string }>("POST", `/api/training/adapters/${id}/scale`, { scale }),
+  calibrate: () => req<Record<string, unknown>>("POST", "/api/training/calibrate", {}),
 };
 
 export interface ResearchDetail {
@@ -339,4 +355,31 @@ export interface MetaReport {
   derived_facts: number;
   strongest: { name: string; facts: number; mentions: number; avg_confidence: number }[];
   gaps: { name: string; facts: number; mentions: number; avg_confidence: number }[];
+}
+
+export interface TrainingStatus {
+  datasets: {
+    version: string;
+    kind: string;
+    n: number;
+    decontaminated: number;
+    stats: Record<string, number>;
+    created_at: string;
+  }[];
+  adapters: {
+    id: string;
+    kind: string;
+    dataset: string;
+    status: string;
+    scores: Record<string, { adapter: number; base: number }>;
+    regressions: { suite: string; base: number; adapter: number }[];
+    shadow: { n?: number; win_rate?: number };
+    metrics: Record<string, unknown>;
+    created_at: string;
+  }[];
+  calibrator: {
+    test_raw: { ece: number; brier: number; n: number };
+    test_calibrated: { ece: number; brier: number; n: number };
+  } | null;
+  config: { base_model: string; idle: boolean; min_new_examples: number };
 }

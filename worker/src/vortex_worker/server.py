@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import os
 import threading
@@ -102,10 +103,14 @@ class WorkerService(worker_pb2_grpc.WorkerServiceServicer):
                 self.cancels.forget(trace.trace_id)
 
     def Train(self, request, context):
-        """W11: `layer:<naam>` (MLP → ONNX). LoRA/DPO volgen in W13."""
-        if not request.job_kind.startswith("layer:"):
-            context.abort(grpc.StatusCode.UNIMPLEMENTED, f"{request.job_kind} volgt in W13")
+        """W11: `layer:<naam>` (MLP → ONNX). W13: `lora:sft` / `lora:dpo` (QLoRA → GGUF-adapter)."""
         import tomllib
+
+        if request.job_kind.startswith("lora:"):
+            yield from self._train_lora(request, tomllib.loads(request.config_toml or ""))
+            return
+        if not request.job_kind.startswith("layer:"):
+            context.abort(grpc.StatusCode.UNIMPLEMENTED, f"onbekende trainingssoort {request.job_kind}")
 
         from vortex_worker.train_layer import train
 
@@ -134,6 +139,66 @@ class WorkerService(worker_pb2_grpc.WorkerServiceServicer):
             metrics=metrics,
         )
         yield worker_pb2.TrainUpdate(done=True, metrics=metrics)
+
+
+def _lora_updates(self_, request, cfg: dict):
+    """LoRA-training in een thread; voortgang via een queue; annuleren via de trace-vlag."""
+    import queue
+
+    from vortex_worker.train_lora import LoraCfg, train, validate
+
+    trace = request.trace
+    c = LoraCfg.from_dict({**cfg, "kind": request.job_kind.split(":", 1)[1]})
+    try:
+        stats = validate(c)
+    except ValueError as e:
+        yield worker_pb2.TrainUpdate(error=f"dataset/instellingen: {e}")
+        yield worker_pb2.TrainUpdate(done=True)
+        return
+    yield worker_pb2.TrainUpdate(
+        progress=common_pb2.Progress(trace=trace, fraction=0.0, stage="gevalideerd", message=json.dumps(stats))
+    )
+    flag = self_.cancels.flag(trace.trace_id) if trace.trace_id else threading.Event()
+    q: queue.Queue = queue.Queue()
+    result: dict = {}
+
+    def run() -> None:
+        try:
+            result.update(train(c, cancel=flag, progress=lambda f, m: q.put((f, m))))
+        except ImportError as e:
+            result["error"] = f"training vereist de extra 'train' (PyTorch/transformers/peft/trl): {e}"
+        except Exception as e:
+            result["error"] = str(e)
+        finally:
+            q.put(None)
+
+    threading.Thread(target=run, daemon=True).start()
+    while (item := q.get()) is not None:
+        yield worker_pb2.TrainUpdate(
+            progress=common_pb2.Progress(trace=trace, fraction=item[0], stage="trainen", message=item[1])
+        )
+    if trace.trace_id:
+        self_.cancels.forget(trace.trace_id)
+    if "error" in result:
+        yield worker_pb2.TrainUpdate(error=result["error"])
+    elif result.get("paused"):
+        yield worker_pb2.TrainUpdate(
+            progress=common_pb2.Progress(
+                trace=trace, fraction=-1, stage="gepauzeerd", message=result.get("checkpoint", "")
+            )
+        )
+    else:
+        metrics = {k: float(v) for k, v in result.items() if isinstance(v, (int, float))}
+        yield worker_pb2.TrainUpdate(
+            artifact=common_pb2.ArtifactRef(
+                artifact_id=result.get("adapter_dir", ""), path=result.get("gguf", ""), media_type="application/gguf"
+            ),
+            metrics=metrics,
+        )
+    yield worker_pb2.TrainUpdate(done=True)
+
+
+WorkerService._train_lora = _lora_updates  # type: ignore[attr-defined]
 
 
 def build_server(address: str, max_workers: int = 4, out_dir: Path | None = None) -> tuple[grpc.Server, int]:

@@ -17,7 +17,8 @@ use crate::api::{ApiError, AppState};
 use crate::chat::Mode;
 
 /// Waves waarvan de functies in deze build aanwezig zijn (voor `requires` in eval-taken).
-pub const FEATURES: &[&str] = &["W01", "W02", "W03", "W04", "W05", "W06", "W07", "W08", "W09", "W10", "W11", "W12"];
+pub const FEATURES: &[&str] =
+    &["W01", "W02", "W03", "W04", "W05", "W06", "W07", "W08", "W09", "W10", "W11", "W12", "W13"];
 
 #[derive(Debug)]
 pub struct VortexSubject {
@@ -80,7 +81,7 @@ pub fn evals_dir() -> PathBuf {
     std::env::var("VORTEX_EVALS").map(PathBuf::from).unwrap_or_else(|_| PathBuf::from("../evals"))
 }
 
-fn python() -> String {
+pub(crate) fn python() -> String {
     if std::process::Command::new("python3").arg("-V").output().is_ok() { "python3".into() } else { "python".into() }
 }
 

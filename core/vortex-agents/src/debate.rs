@@ -37,6 +37,10 @@ pub struct DebateDeps {
     pub workspace: Option<Workspace>,
     /// Context van de cyclus (herinneringen, sturing) als materiaal voor de rollen.
     pub material: Vec<String>,
+    /// Neurale layers (W11/W13): verifier.
+    pub scorer: vortex_core::Scorer,
+    /// Kalibratie van de Judge-zekerheid (W13.06).
+    pub calibrator: Option<vortex_neural::calibration::Calibrator>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -158,6 +162,46 @@ async fn review(d: &DebateDeps, team: &TeamPlan, question: &str, c: &mut Candida
         _ => None,
     };
     c.score = verifier_score(c);
+    // Verifier/reward model (W13.05): geleerd net of de heuristische score.
+    let reference = format!("{}:{}", d.exec.run.map(|r| r.to_string()).unwrap_or_default(), c.id);
+    let h = (c.score.clamp(-1.0, 1.5) + 1.0) / 2.5;
+    if let Some(v) =
+        vortex_core::neural::decide(&d.scorer, "verifier", &verifier_vector(c, None, 1), vec![h as f32], &reference)
+            .first()
+        && (f64::from(*v) - h).abs() > 1e-6
+    {
+        c.score = f64::from(*v) * 2.5 - 1.0;
+    }
+}
+
+/// Featurevector voor de verifier-layer (volgorde = `vortex-neural::spec` "verifier").
+pub fn verifier_vector(c: &Candidate, judge_confidence: Option<f64>, rounds: usize) -> Vec<f32> {
+    let cites = c.text.matches('[').count().min(20) as f32;
+    let l = c.text.to_lowercase();
+    let hedges = ["misschien", "waarschijnlijk", "ik weet niet", "onzeker", "mogelijk", "maybe", "not sure"]
+        .iter()
+        .filter(|w| l.contains(*w))
+        .count() as f32;
+    let n = c.evidence.len().max(1) as f32;
+    let sup = c.evidence.iter().filter(|e| e.label == crate::Label::Supported).count() as f32 / n;
+    let con = c.evidence.iter().filter(|e| e.label == crate::Label::Contradicted).count() as f32 / n;
+    let obj = match c.specialist.as_ref().and_then(|s| s.passed) {
+        Some(true) => 1.0,
+        Some(false) => 0.0,
+        None => 0.5,
+    };
+    vec![
+        (c.text.chars().count() as f32 / 1000.0).min(10.0),
+        cites,
+        hedges,
+        judge_confidence.unwrap_or(0.5) as f32,
+        c.critic.iter().filter(|(s, _)| s == "high").count() as f32,
+        c.critic.iter().filter(|(s, _)| s == "medium").count() as f32,
+        sup,
+        con,
+        obj,
+        rounds as f32,
+    ]
 }
 
 /// Verifier-guided selectie: objectieve checks wegen het zwaarst.
@@ -339,6 +383,9 @@ pub async fn run(d: &DebateDeps, question: &str, team: &TeamPlan) -> DebateOutco
         // 4. Judge-gate.
         rep.started("Judge", &format!("ronde {rounds}"));
         verdict = judge(d, question, &best, &cands[1..]).await;
+        if let Some(c) = &d.calibrator {
+            verdict.confidence = c.apply(verdict.confidence);
+        }
         rep.emit(
             EventKind::JudgeVerdict,
             json!({"round": rounds, "verdict": verdict, "candidate": best.id, "score": best.score}),

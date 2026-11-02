@@ -31,6 +31,17 @@ pub struct ServerEntry {
     pub reserve_mib: Option<u64>,
 }
 
+/// Eén LoRA-adapter bij een model.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LoraEntry {
+    /// Naam (adapter-ID in de registry).
+    pub name: String,
+    /// GGUF-adapterbestand (convert_lora_to_gguf.py).
+    pub path: String,
+    #[serde(default)]
+    pub scale: f32,
+}
+
 /// Eén model.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ModelEntry {
@@ -64,6 +75,9 @@ pub struct ModelEntry {
     /// Extra llama-server-argumenten.
     #[serde(default)]
     pub extra_args: Vec<String>,
+    /// LoRA-adapters (W13.04): bij start geladen met schaal 0, hot-swappen via `/lora-adapters`.
+    #[serde(default)]
+    pub loras: Vec<LoraEntry>,
 }
 
 fn default_parser() -> String {

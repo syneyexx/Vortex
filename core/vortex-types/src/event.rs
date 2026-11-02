@@ -84,6 +84,12 @@ event_kinds! {
     AgentRoleCompleted => "agent.role.completed",
     JudgeVerdict => "agent.judge.verdict",
     EvidenceCompiled => "agent.evidence.compiled",
+    CandidatesRecorded => "agent.candidates.recorded",
+    // training (W13)
+    DatasetBuilt => "training.dataset.built",
+    TrainingProgress => "training.job.progress",
+    AdapterRegistered => "training.adapter.registered",
+    AdapterDecided => "training.adapter.decided",
     SkillProposed => "tool.skill.proposed",
     SkillsReloaded => "tool.skills.reloaded",
     McpConnected => "tool.mcp.connected",

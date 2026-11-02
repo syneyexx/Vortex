@@ -85,6 +85,31 @@ impl OpenAiBackend {
         Ok(props)
     }
 
+    /// Geladen LoRA-adapters (llama-server `GET /lora-adapters`): (id, pad, schaal).
+    pub async fn lora_adapters(&self) -> Result<Vec<(u32, String, f32)>> {
+        let v = self.get_json("/lora-adapters").await?;
+        Ok(v.as_array()
+            .map(|a| {
+                a.iter()
+                    .map(|x| {
+                        (
+                            x["id"].as_u64().unwrap_or(0) as u32,
+                            x["path"].as_str().unwrap_or("").to_string(),
+                            x["scale"].as_f64().unwrap_or(0.0) as f32,
+                        )
+                    })
+                    .collect()
+            })
+            .unwrap_or_default())
+    }
+
+    /// Schalen van LoRA-adapters zetten (hot-swap, W13.04). Niet genoemde adapters → 0.
+    pub async fn set_lora(&self, scales: &[(u32, f32)]) -> Result<()> {
+        let body = Value::Array(scales.iter().map(|(id, s)| json!({"id": id, "scale": s})).collect());
+        self.post("/lora-adapters", &body, &CancellationToken::new()).await?;
+        Ok(())
+    }
+
     async fn get_json(&self, path: &str) -> Result<Value> {
         let r = self.client.get(format!("{}{path}", self.base)).send().await?;
         let status = r.status();
@@ -158,6 +183,10 @@ impl OpenAiBackend {
         }
         if req.logprobs {
             b["logprobs"] = json!(true);
+        }
+        if let Some(l) = &req.lora {
+            // LoRA per verzoek (nieuwere llama-server); anders geldt de globale schaal.
+            b["lora"] = Value::Array(l.iter().map(|(id, sc)| json!({"id": id, "scale": sc})).collect());
         }
         if let Some(e) = &req.reasoning_effort {
             b["reasoning_effort"] = json!(e);

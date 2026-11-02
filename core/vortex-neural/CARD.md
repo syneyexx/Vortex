@@ -10,7 +10,8 @@
 | `onnx::mlp_to_onnx` | MLP → ONNX vanuit Rust (tests/hulpnetten) |
 | `LayerRegistry::{open, install, promote, rollback, set_mode, record_eval, auto_decide, status}` | versies per layer; implementeert `vortex_core::LayerScorer` |
 | `spec::{specs, get, LayerSpec, LayerKind}` | de 7 layers: kenmerken (volgorde = contract), klassen, waar gebruikt |
-| `dataset::{write, read, evaluate, eval_index, Example, EvalReport}` | datasets (versie, decontaminatie, split) + net vs heuristiek |
+| `dataset::{write, read, evaluate, eval_index, contaminated, Example, EvalReport}` | datasets (versie, decontaminatie, split) + net vs heuristiek |
+| `calibration::{Calibrator, Platt, measure}` | kalibratie (W13.06) |
 
 ## Haak
 `vortex_core::LayerScorer::decide(layer, x, heuristiek, referentie)` — consumenten: cognition (router, salience), memory (importance, usefulness, entity, decay), tools (skill).

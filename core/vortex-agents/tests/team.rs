@@ -138,6 +138,8 @@ async fn objective_check_picks_correct_candidate_and_judge_accepts() {
         exec: ExecOptions { run: Some(run_id), ..Default::default() },
         workspace: None,
         material: vec![],
+        scorer: None,
+        calibrator: None,
     };
     let o = run(&deps, "Bereken 17 × 23 + 4", &team(Some("math"), false, 2)).await;
     assert!(o.trusted);
@@ -178,6 +180,8 @@ async fn judge_gate_revises_then_reports_uncertainty() {
         exec: ExecOptions::default(),
         workspace: None,
         material: vec![],
+        scorer: None,
+        calibrator: None,
     };
     let o = run(&deps, "Leg uit en vergelijk", &team(None, false, 3)).await;
     assert_eq!(o.rounds, 2);
@@ -215,6 +219,8 @@ async fn offline_fact_check_is_local_and_labelled() {
         exec: ExecOptions::default(),
         workspace: None,
         material: vec![],
+        scorer: None,
+        calibrator: None,
     };
     let o = run(&deps, "Waar draait Vortex en waarom?", &team(None, true, 2)).await;
     assert_eq!(o.scope, "lokaal");

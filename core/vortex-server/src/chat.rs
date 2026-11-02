@@ -295,6 +295,8 @@ impl ChatEngine {
                         },
                         workspace: None,
                         material: vec![sys.clone()],
+                        scorer: self.scorer.clone(),
+                        calibrator: self.calibrator(),
                     };
                     let out = vortex_agents::debate::run(&deps, prompt, &team).await;
                     sys.push_str("\n\n");

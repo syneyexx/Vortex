@@ -405,6 +405,8 @@ impl ChatEngine {
                     exec: ExecOptions { run: Some(run_id), trace, cancel: ctx.token().child_token(), ..Default::default() },
                     workspace: Some(ws.clone()),
                     material,
+                    scorer: self.scorer.clone(),
+                    calibrator: self.calibrator(),
                 };
                 let out = vortex_agents::debate::run(&deps, &question, t).await;
                 let _ = ctx.checkpoint(&serde_json::json!({"team": t.roles(), "judge": out.verdict, "trusted": out.trusted}));
@@ -421,6 +423,20 @@ impl ChatEngine {
                     let _ = ctx.checkpoint(&serde_json::json!({"plan_step": i, "step": step}));
                 })
                 .await;
+                // Process reward model (W13.05): zwakke tussenstappen markeren.
+                let n_steps = results.len();
+                let mut weak: Vec<String> = Vec::new();
+                for (i, (st, out)) in results.iter().enumerate() {
+                    let l = out.to_lowercase();
+                    let h = if out.trim().is_empty() || ["weet niet", "onzeker", "geen idee"].iter().any(|w| l.contains(w)) { 0.3 } else { 0.7 };
+                    let x = vortex_cognition::planning::prm_vector(i, n_steps, &question, out, false);
+                    if vortex_core::neural::decide(&self.scorer, "prm", &x, vec![h], &format!("{run_id}:stap{i}")).first().is_some_and(|v| *v < 0.5) {
+                        weak.push(st.clone());
+                    }
+                }
+                if !weak.is_empty() {
+                    guidance.push(format!("Deze tussenstappen zijn mogelijk zwak — controleer ze of zeg dat ze onzeker zijn: {}", weak.join("; ")));
+                }
                 let mut worked = String::from("Uitgewerkte stappen (gebruik dit als basis voor je antwoord; herhaal ze niet letterlijk):\n");
                 for (s, r) in &results {
                     worked.push_str(&format!("## {s}\n{r}\n"));

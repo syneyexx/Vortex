@@ -6,6 +6,7 @@
 // VX:W11.04
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
 
+pub mod calibration;
 pub mod dataset;
 pub mod onnx;
 pub mod registry;

@@ -30,6 +30,7 @@
 | `ingest.rs`: `ChatEngine::ingest` (worker of Rust-fallback → geheugen met locator → samenvattingen, incrementeel) · `research_api.rs`: `POST/GET /api/research`, `GET /api/research/:id[/export?format=csv|jsonl|parquet]`, `POST /api/research/corpus`, `POST /api/ingest`, `GET /api/ingest/documents`; chat: pad Research → research-team | |
 | `neural_api.rs`: registry koppelen (`attach`), `build_examples`, `bootstrap`, `train_layer` (worker → install → eval → auto_decide), idle-training, reranker-dataset; REST `GET /api/neural`, `POST /api/neural/:layer/{train,bootstrap,promote,rollback,mode,label}`, `POST /api/neural/reranker/dataset` | |
 | `memory_adv.rs`: zelfmodel, dromen + tiering in idle, procedures, few-shot, media; REST `/api/memory/{graph,graph/history,reason,dream,dreams,meta,procedures,tier,tier/demote,media,:id/media,belief-experiment}`, `/api/selfmodel`; 🔒 CLI `vortex tierbench` | |
+| `training_api.rs`: `build_{sft,dpo,qa}`, `train_adapter` (worker, idle, pauzeren/hervatten), `set_adapter_scale` (hot-swap), `shadow_compare`, `gate`, `calibrate`, vliegwiel; REST `/api/training`, `/api/training/{datasets/:kind,train,calibrate}`, `/api/training/adapters/:id/{gate,shadow,scale}` | |
 | CLI: `vortex serve [--listen 127.0.0.1:7420] [--app-dist ../app/dist]`, `vortex status`, `vortex runs` | |
 
 ## Events (schrijft)
@@ -43,4 +44,4 @@
 `src/api.rs` · `src/chat.rs` · `src/cognitive.rs` · `src/observe_api.rs` · `src/sessions.rs` · `src/live.rs` · `src/main.rs` (CLI) · schema: `vortex-core/migrations/0002_sessions.sql`
 
 ## Tests
-`cargo test -p vortex-server` — `tests/api.rs` (17): chat end-to-end, resume zonder gaten, stop midden in stream (+ herladen tijdens streamen), verbinding weg, fork, prompts met versies, geheugen, eval, diep pad met plan + kritiek, persoonlijke vraag zonder geheugen, bijsturen midden in een stream, diep pad met debatteam (Judge vóór het antwoord, lokaal bewijs), chat met tools (kaarten, preview, skill-voorstel), ingest + research-API, EPUB via de echte Python-worker (gate W10), neurale layer trainen → promoveren → terugdraaien via de worker (gate W11).
+`cargo test -p vortex-server` — `tests/api.rs` (18): chat end-to-end, resume zonder gaten, stop midden in stream (+ herladen tijdens streamen), verbinding weg, fork, prompts met versies, geheugen, eval, diep pad met plan + kritiek, persoonlijke vraag zonder geheugen, bijsturen midden in een stream, diep pad met debatteam (Judge vóór het antwoord, lokaal bewijs), chat met tools (kaarten, preview, skill-voorstel), ingest + research-API, EPUB via de echte Python-worker (gate W10), neurale layer trainen → promoveren → terugdraaien via de worker (gate W11).
