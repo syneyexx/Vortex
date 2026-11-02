@@ -6,11 +6,11 @@ modules: [observability-eval, inference-modelbeheer, tools-skills, cognitie]
 # W17 — Kwaliteit en performance
 
 - [ ] `W17.01` Record/replay voor tooltests (simulatie vs live)
-- [ ] `W17.02` Ablation tests per component; overbodige complexiteit verwijderen
+- [ ] `W17.02` Ablation tests per component; overbodige complexiteit verwijderen — **🔒 GROTE TEST: alleen op commando** (zie [[01-REGELS]] regel 7)
 - [ ] `W17.03` Shadow execution van nieuwe configs
 - [ ] `W17.04` Metamorfische + counterfactual tests
 - [ ] `W17.05` A/B van prompts, modellen, strategieën
-- [ ] `W17.06` Fault injection (crash, volle schijf, verbinding weg, trage tool, kapotte uitvoer, OOM)
+- [ ] `W17.06` Fault injection (crash, volle schijf, verbinding weg, trage tool, kapotte uitvoer, OOM) — **🔒 GROTE TEST: alleen op commando** (zie [[01-REGELS]] regel 7) (kleine fault-tests per component mogen wel)
 - [ ] `W17.07` Positionele contexttests per model
 - [ ] `W17.08` Speculative decoding (alleen bij gemeten winst), chunked prefill/continuous batching bij eigen backend, logprob-diagnostiek
 - [ ] `W17.09` Eigen llama.cpp-bindings indien nodig (KV, logits, LoRA-hotswap)
@@ -24,4 +24,4 @@ modules: [observability-eval, inference-modelbeheer, tools-skills, cognitie]
 - [ ] `W17.17` Optionele cloud-escalatie (alleen als gebruiker aanzet)
 
 ## Gate
-Ablations tonen per component meetbare waarde; fault injection herstelt altijd correct.
+🔒 Ablations tonen per component meetbare waarde; fault injection herstelt altijd correct (beide op commando).

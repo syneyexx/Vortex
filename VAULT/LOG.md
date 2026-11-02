@@ -44,4 +44,9 @@ Nieuwste onderaan. Per sessie 3–5 regels: wat gedaan, wat open, volgende stap.
 - 32 tests groen (nep-server in axum + Python-test-dubbel van llama-server). Bug gevonden en opgelost: draining hield de lock vast, waardoor nieuwe verzoeken wachtten i.p.v. geweigerd te worden.
 - Open (PC): echte llama-server-protocol per model, wisseltijden, piek-VRAM, MoE-benchmark, quant-shootout, 1060 int8, speculative, specialisten (W02.10–13, W02.16).
 
-**Actieve wave:** W00/W01/W02 PC-verificatie · cloud: verder met W03 (GUI + server)
+## 2026-11-02 (afspraak testen)
+- Regel 7 vastgelegd: kleine tests tussendoor altijd; grote tests (24 u soak, weekruns, volledige eval/performance-suites, ablations, fault-injection, TB-simulatie) alleen op commando. Gemarkeerd met 🔒 in W06, W12, W14, W15, W17 en in [[GEPARKEERD]] §1b.
+- GUI-referentie (`design/reference-chat.png`) naar gebruiker gestuurd.
+- Gestopt na W02-code: volgende gate (W00) vraagt de PC.
+
+**Actieve wave:** W00/W01/W02 PC-verificatie (19:00) · daarna W03 (GUI + chat)

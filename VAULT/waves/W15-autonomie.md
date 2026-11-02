@@ -18,4 +18,4 @@ Zie [[modules/autonomie]].
 - [ ] `W15.10` Automatische backups + restore-test
 
 ## Gate
-Vortex draait een week zelfstandig (leren, briefings, backups) zonder handwerk; GPU wijkt altijd voor de gebruiker.
+🔒 (weekrun op commando) Vortex draait een week zelfstandig (leren, briefings, backups) zonder handwerk; GPU wijkt altijd voor de gebruiker.

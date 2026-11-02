@@ -166,8 +166,8 @@ Bron: [[waves/W06-eval-observability]] · status: `open`
 - [ ] `W06.08` Session replay uit event log
 - [ ] `W06.09` Error analysis-overzicht, tool/memory analytics
 - [ ] `W06.10` Dashboard-begin: scores over tijd
-- [ ] `W06.11` Performance-tests voor alle prestatiedoelen (TTFT, retrieval p95, stop-latency, 60 fps, idle-CPU) — achteruitgang = rood
-- [ ] `W06.12` 24-uurs soak-test met geheugen-telemetrie per proces; vlakke RSS-trend vereist
+- [ ] `W06.11` Performance-tests voor alle prestatiedoelen (TTFT, retrieval p95, stop-latency, 60 fps, idle-CPU) — achteruitgang = rood — **🔒 GROTE TEST: alleen op commando** (zie [[01-REGELS]] regel 7) (harnas bouwen mag; suite draaien op commando)
+- [ ] `W06.12` 24-uurs soak-test met geheugen-telemetrie per proces; vlakke RSS-trend vereist — **🔒 GROTE TEST: alleen op commando** (zie [[01-REGELS]] regel 7) (harnas bouwen mag)
 - [ ] `W06.13` Profiling-setup: flamegraphs (Tracy/Superluminal), criterion-benchmarks hete paden
 
 ## W07 — Cognitie en context
@@ -310,11 +310,11 @@ Bron: [[waves/W16-multimodaal]] · status: `open`
 ## W17 — Kwaliteit en performance
 Bron: [[waves/W17-kwaliteit-performance]] · status: `open`
 - [ ] `W17.01` Record/replay voor tooltests (simulatie vs live)
-- [ ] `W17.02` Ablation tests per component; overbodige complexiteit verwijderen
+- [ ] `W17.02` Ablation tests per component; overbodige complexiteit verwijderen — **🔒 GROTE TEST: alleen op commando** (zie [[01-REGELS]] regel 7)
 - [ ] `W17.03` Shadow execution van nieuwe configs
 - [ ] `W17.04` Metamorfische + counterfactual tests
 - [ ] `W17.05` A/B van prompts, modellen, strategieën
-- [ ] `W17.06` Fault injection (crash, volle schijf, verbinding weg, trage tool, kapotte uitvoer, OOM)
+- [ ] `W17.06` Fault injection (crash, volle schijf, verbinding weg, trage tool, kapotte uitvoer, OOM) — **🔒 GROTE TEST: alleen op commando** (zie [[01-REGELS]] regel 7) (kleine fault-tests per component mogen wel)
 - [ ] `W17.07` Positionele contexttests per model
 - [ ] `W17.08` Speculative decoding (alleen bij gemeten winst), chunked prefill/continuous batching bij eigen backend, logprob-diagnostiek
 - [ ] `W17.09` Eigen llama.cpp-bindings indien nodig (KV, logits, LoRA-hotswap)

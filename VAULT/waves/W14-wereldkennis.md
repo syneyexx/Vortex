@@ -17,4 +17,4 @@ Zie [[modules/research-kennis]].
 - [ ] `W14.09` HF-datasets: streamen, schema, mapping-voorstel + bevestiging, filter, dedup (MinHash), decontaminatie, licentie, bestemming kiezen, catalogus
 
 ## Gate
-Wereldmonitor draait dagen stabiel; voorspellingen worden automatisch getoetst; een HF-dataset gaat end-to-end naar elke bestemming.
+🔒 (meerdaagse run op commando) Wereldmonitor draait dagen stabiel; voorspellingen worden automatisch getoetst; een HF-dataset gaat end-to-end naar elke bestemming.

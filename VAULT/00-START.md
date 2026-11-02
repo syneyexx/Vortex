@@ -7,7 +7,7 @@ updated: 2026-11-02
 Tweede brein voor het bouwen van Vortex. Lees dit bestand eerst; open daarna alleen wat de huidige taak nodig heeft.
 
 ## Snelstart voor Claude (elke sessie)
-1. Lees [[01-REGELS]] (6 werkregels) en [[12-NAVIGATIE]] (navigatieregels N1–N9).
+1. Lees [[01-REGELS]] (7 werkregels) en [[12-NAVIGATIE]] (navigatieregels N1–N9).
 2. Lees [[LOG]] onderaan (laatste 2 sessies): waar zijn we gebleven, welke wave loopt.
 3. Open de actieve wave in `waves/` en alleen de modules waar die wave naar linkt. Code zoeken via [[20-CODEMAP]] → `CARD.md` → `vault.py find <ID>`.
 4. Na werk: vink items af in de wave, `python tools/vault/vault.py todo`, 3–5 regels in [[LOG]], besluiten in [[03-BESLUITEN]], `vault.py check` groen.
@@ -33,7 +33,7 @@ Tweede brein voor het bouwen van Vortex. Lees dit bestand eerst; open daarna all
 | Volgorde van bouwen | [[waves/WAVES-OVERZICHT]] |
 | Wat bewust NIET nu | [[GEPARKEERD]] |
 | Originele input Grok / Astra | `bronnen/` |
-| GUI-referentie | `design/reference-chat.png` |
+| GUI-referentie (1-op-1 nabouwen, W03) | `design/reference-chat.png` — beschrijving in [[modules/gui]] |
 
 ## Modules
 - [[modules/runtime-core]] — run state machine, cancellation, event log
@@ -55,5 +55,6 @@ Tweede brein voor het bouwen van Vortex. Lees dit bestand eerst; open daarna all
 ## Harde afspraken (nooit vergeten)
 - Trading pas bij letterlijk **"TRADING NU MAKEN"**.
 - Remmen/beperkingen pas bij **"WE GAAN DE ETHICS EN SECURITY LAYER MAKEN"**.
+- Grote tests (24 u soak, weekruns, volledige suites) pas op commando (bv. **"GROTE TESTEN NU"**); kleine tests altijd (regel 7).
 - Gate groen = álles af tot elk detail.
 - Gebruiker schrijft Nederlands; antwoorden in het Nederlands.

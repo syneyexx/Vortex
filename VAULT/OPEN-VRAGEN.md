@@ -7,7 +7,6 @@ updated: 2026-11-02
 Besluit genomen → regel in [[03-BESLUITEN]] en hier naar "Beantwoord".
 
 ## Open
-- [ ] **Testen "pas als laatst" (antwoord 13, 2026-11-02) — wat precies?** Afgewezen is in elk geval de rookproef-eval vanaf W00. Onduidelijk: geldt het ook voor unit-tests per item? Dat botst met regel 5 en de Definition of Done in [[01-REGELS]] ("tests geschreven en groen"). Tot de gebruiker antwoordt: unit-/integratietests blijven per item (goedkoop, vangen fouten vroeg); grote eval-suites en soak-tests op hun geplande plek.
 - [ ] **PC-details:** moederbord (PCIe-slots: welke GPU op x16?), voeding (genoeg voor 5060 Ti + 1060 onder trainingslast?), Windows-versie, HDD-groottes + schijfletters.
 - [ ] **RAM-budget** (model-RAM-cache 12 GB vs worker vs DB-caches) — vastzetten na metingen in W00/W04.
 - [ ] **250 GB SSD is krap** (~60–70 GB modellen + index + training-basismodel) — bewaken vanaf W00; zo nodig modelarchief naar HDD.
@@ -28,4 +27,4 @@ Besluit genomen → regel in [[03-BESLUITEN]] en hier naar "Beantwoord".
 | 10 | Debatteam traag op één GPU | meten in W09; Solvers parallel via slots in `llama-server` |
 | 11 | `vortex` CLI | ja → `W00.15` |
 | 12 | `justfile` | ja → `W00.14` |
-| 13 | Rookproef-eval vanaf W00 | nee — "testen pas als laatst" (zie Open) |
+| 13 | Rookproef-eval vanaf W00 / testen | nee; **regel 7**: kleine tests tussendoor wel, grote tests (24 u, weekruns, suites) alleen op commando |

@@ -4,7 +4,7 @@ Dit is het project **Vortex**: een persoonlijk, lokaal AI-framework (harness) �
 
 ## Begin elke sessie zo (lees NIET het hele project)
 1. `VAULT/00-START.md` — index + shortcuts.
-2. `VAULT/01-REGELS.md` (werkregels 1–6) en `VAULT/12-NAVIGATIE.md` (navigatieregels N1–N9).
+2. `VAULT/01-REGELS.md` (werkregels 1–7) en `VAULT/12-NAVIGATIE.md` (navigatieregels N1–N9).
 3. Onderaan `VAULT/LOG.md`: laatste 2 sessies + actieve wave.
 4. Alleen de actieve wave in `VAULT/waves/` en de modules waar die naar linkt.
 5. Code zoeken: `VAULT/20-CODEMAP.md` → `CARD.md` van de crate → `python tools/vault/vault.py find <item-ID>`.
@@ -18,6 +18,7 @@ Dit is het project **Vortex**: een persoonlijk, lokaal AI-framework (harness) �
 
 ## Nooit vergeten
 - Gate groen = élk item af tot in detail (regel 5).
+- Kleine tests altijd; grote tests (24 u soak, weekruns, volledige suites, ablations, fault-injection) alleen op commando, bv. **"GROTE TESTEN NU"** (regel 7, 🔒 in de waves).
 - Geen remmen/beperkingen bouwen tot de gebruiker zegt: **"WE GAAN DE ETHICS EN SECURITY LAYER MAKEN"**.
 - Trading pas bij **"TRADING NU MAKEN"**.
 - One brain: elke module aangesloten op event log, Global Workspace, geheugen en metacognitie (`VAULT/11-ONE-BRAIN.md`).

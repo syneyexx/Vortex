@@ -18,4 +18,4 @@ Zie [[modules/geheugen]], [[modules/cognitie]].
 - [ ] `W12.10` Memory-based few-shot (voorbeelden uit geheugen in context)
 
 ## Gate
-Zoeklatency blijft binnen doel bij gesimuleerde 3–4 TB; dreaming verbetert retrieval-eval.
+🔒 (TB-simulatie op commando) Zoeklatency blijft binnen doel bij gesimuleerde 3–4 TB; dreaming verbetert retrieval-eval.

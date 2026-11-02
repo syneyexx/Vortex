@@ -52,3 +52,4 @@ Nieuwste onderaan. Formaat: datum · besluit · waarom.
 | 2026-11-02 | Debatteam: snelheid meten in W09, Solvers zo nodig parallel via slots | Eén hoofd-GPU |
 | 2026-11-02 | `vortex` CLI (`W00.15`) en `justfile` (`W00.14`) | Debuggen + Claude kan zelf status/eval draaien |
 | 2026-11-02 | Geen rookproef-eval vanaf W00 ("testen pas als laatst"); reikwijdte voor unit-tests nog open in [[OPEN-VRAGEN]] | Gebruikerskeuze |
+| 2026-11-02 | Regel 7: kleine tests tussendoor bij elk item; grote tests (24 u soak, weekruns, volledige eval/performance-suites, ablations, fault-injection, TB-simulatie) alleen op commando van de gebruiker | Antwoord op vraag 13: fouten vroeg vangen zonder lange runs |

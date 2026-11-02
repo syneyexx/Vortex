@@ -18,6 +18,10 @@ Verzamelde items (hooks bestaan al, policies niet):
 - Ethiek-richtlijnen voor gedrag, onderzoek naar personen, autonome acties
 - Veilige scheiding van wallets/sleutels bij autonome acties
 
+## 1b. Grote tests
+**Trigger:** gebruiker zegt het (bv. **"GROTE TESTEN NU"**). Zie [[01-REGELS]] regel 7.
+Klaarzetten mag, starten niet: 24-uurs soak (`W06.12`), performance-suite (`W06.11`), volledige eval-runs, ablations (`W17.02`), fault-injection-campagne (`W17.06`), TB-schaal-simulatie (W12-gate), meerdaagse/weekruns (W14/W15-gates).
+
 ## Bewust geschrapt (één gebruiker, één PC)
 Horizontal scaling, failover/high availability, multi-user isolatie, conversation sharing/collaboration, kosten per gebruiker, worker leases met fencing tokens (pas bij meerdere workers), prefill/decode disaggregation, complexe GPU-topologieplaatsing (vaste rolverdeling volstaat). Terughalen als de situatie verandert.
 

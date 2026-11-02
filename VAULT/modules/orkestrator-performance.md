@@ -71,7 +71,7 @@ Harde caps per proces (Windows Job Objects); boven de cap: netjes herstarten na 
 
 **Bewaking**
 - Geheugen-telemetrie per proces in tracing; GPU-VRAM vergeleken met verwacht budget.
-- **Soak-test**: 24 uur draaien met gesimuleerd gebruik; RSS-trend moet vlak zijn, anders gate rood.
+- **Soak-test** 🔒 (alleen op commando, regel 7): 24 uur draaien met gesimuleerd gebruik; RSS-trend moet vlak zijn, anders gate rood.
 - Heap-profiling (dhat/heaptrack-achtig) bij elke afwijking.
 
 ## Snelheidstechnieken
@@ -91,7 +91,7 @@ Harde caps per proces (Windows Job Objects); boven de cap: netjes herstarten na 
 | GUI tijdens streamen | 60 fps |
 | CPU in rust (idle, geen P3) | < 2% |
 | RSS-groei over 24 h soak | ~0 |
-Elke doelstelling wordt een **performance-test**; achteruitgang = gate rood.
+Elke doelstelling wordt een **performance-test**; achteruitgang = gate rood. De volledige performance-suite draait 🔒 op commando (regel 7); losse snelle metingen (bv. stoplatency-test) mogen tussendoor.
 
 ## Profiling
 Tracing-spans → flamegraphs (Tracy of Superluminal op Windows, cargo-flamegraph), criterion-benchmarks voor hete paden, GPU-metingen per stap.
