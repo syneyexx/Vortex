@@ -133,4 +133,45 @@ export const api = {
       profile: { style: string[]; facts: string[]; goals: string[]; feedback: Record<string, number> };
       prompt: string | null;
     }>("GET", "/api/profile"),
+  tools: () =>
+    req<{
+      tools: {
+        name: string;
+        description: string;
+        effect: string;
+        origin: string;
+        core: boolean;
+        idempotent: boolean;
+      }[];
+      mcp: Record<string, string>;
+    }>("GET", "/api/tools"),
+  reloadTools: () =>
+    req<{ skills: number; tools: number; mcp: Record<string, string> }>("POST", "/api/tools/reload", {}),
+  skills: () =>
+    req<{
+      dir: string;
+      skills: {
+        name: string;
+        description: string;
+        origin: string;
+        version: string;
+        globs: string[];
+        always_apply: boolean;
+        scripts: string[];
+        stats: { uses: number; successes: number; failures: number; status: string } | null;
+      }[];
+    }>("GET", "/api/skills"),
+  importSkill: (path: string) => req<{ imported: string[] }>("POST", "/api/skills/import", { path }),
+  exportSkill: (name: string, format: string, dir: string) =>
+    req<{ path: string }>("POST", `/api/skills/${name}/export`, { format, dir }),
+  skillStatus: (name: string, status: string) =>
+    req<unknown>("POST", `/api/skills/${name}/status`, { status }),
+  deleteSkill: (name: string) => req<unknown>("DELETE", `/api/skills/${name}`),
+  proposals: () =>
+    req<{ id: string; name: string; description: string; body: string; seen: number }[]>(
+      "GET",
+      "/api/skills/proposals",
+    ),
+  decideProposal: (id: string, status: string) =>
+    req<{ name: string }>("POST", `/api/skills/proposals/${id}`, { status }),
 };

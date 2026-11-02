@@ -68,4 +68,9 @@ Nieuwste onderaan. Formaat: datum · besluit · waarom.
 | 2026-11-02 | Metacognitie vraagt niet terug op korte invoer; alleen sturing "vraag kort na als het onduidelijk is" | Korte vragen ("traag", "welke prompt?") werden geblokkeerd |
 | 2026-11-02 | Router-LM-label alleen bij heuristische zekerheid < 0,65, timeout 1,5 s | Snelheid: meeste beurten geen extra modelaanroep |
 | 2026-11-02 | Bijsturen = huidige generatie annuleren, gedeeltelijk antwoord + nieuwe instructie meegeven, verder streamen in hetzelfde bericht | Geen nieuwe run; gebruiker ziet één doorlopend antwoord |
+| 2026-11-02 | Idempotentie per actie-ID in een eigen `tool_ledger` (niet de run-gebonden `effects`), sleutel = `<run>:<call-id>` in de chat | Werkt ook buiten runs (handmatig, eval); replay i.p.v. tweede effect |
+| 2026-11-02 | Lokale schrijftools altijd via een transactie (staging → postcondities → atomair); dry-run = preview | Toolsucces ≠ doel bereikt; nooit half toegepast |
+| 2026-11-02 | Tool discovery: vaste kernset met schema, rest via `describe_tool` + `call_tool` | Prompt klein bij veel MCP-/API-tools; prefix stabiel voor prompt caching |
+| 2026-11-02 | Skills op schijf in `config/skills/` in Claude-compatibel formaat (+ extra frontmatter); Cursor/AGENTS.md via converters | Uitwisselbaar met bestaande ecosystemen; hot-reload via de map |
+| 2026-11-02 | Capability handle standaard volledig open | Geen remmen tot "WE GAAN DE ETHICS EN SECURITY LAYER MAKEN" (W19) |
 

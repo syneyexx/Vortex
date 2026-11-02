@@ -27,6 +27,10 @@ pub struct ProcessSpec {
     /// Wachttijd tussen netjes stoppen en hard doden.
     pub kill_grace: Duration,
     pub stdin: Option<Vec<u8>>,
+    /// Harde geheugenlimiet (sandbox, W08.06): Unix via `ulimit -v`, Windows via Job Object.
+    pub max_memory_bytes: Option<u64>,
+    /// CPU-secondenlimiet (Unix `ulimit -t`; Windows: timeout geldt).
+    pub max_cpu_secs: Option<u64>,
 }
 
 impl ProcessSpec {
@@ -40,6 +44,8 @@ impl ProcessSpec {
             timeout: None,
             kill_grace: Duration::from_millis(500),
             stdin: None,
+            max_memory_bytes: None,
+            max_cpu_secs: None,
         }
     }
     pub fn arg(mut self, a: impl Into<String>) -> Self {
@@ -116,9 +122,8 @@ impl Supervisor {
         cancel: CancellationToken,
     ) -> Result<ProcessOutcome> {
         let started = tokio::time::Instant::now();
-        let mut cmd = Command::new(&spec.program);
-        cmd.args(&spec.args)
-            .stdin(if spec.stdin.is_some() { Stdio::piped() } else { Stdio::null() })
+        let mut cmd = limited_command(&spec);
+        cmd.stdin(if spec.stdin.is_some() { Stdio::piped() } else { Stdio::null() })
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .kill_on_drop(true);
@@ -131,6 +136,8 @@ impl Supervisor {
         new_process_group(&mut cmd);
         let mut child = cmd.spawn().map_err(|e| CoreError::Process(format!("{}: {e}", spec.program)))?;
         let pid = child.id().unwrap_or(0);
+        #[cfg(windows)]
+        let _job = spec.max_memory_bytes.and_then(|m| crate::platform::cap_memory(pid, m).ok());
         let _guard = self.resources.acquire(
             ResourceKind::Process,
             &spec.program,
@@ -207,6 +214,28 @@ impl Supervisor {
         self.log.append(e)?;
         Ok(outcome)
     }
+}
+
+/// Command met limieten. Unix: `sh -c 'ulimit …; exec "$0" "$@"'` zodat de limiet het
+/// programma zelf raakt (en kinderen erven hem).
+fn limited_command(spec: &ProcessSpec) -> Command {
+    #[cfg(unix)]
+    if spec.max_memory_bytes.is_some() || spec.max_cpu_secs.is_some() {
+        let mut script = String::new();
+        if let Some(m) = spec.max_memory_bytes {
+            script.push_str(&format!("ulimit -v {} 2>/dev/null; ", (m / 1024).max(1)));
+        }
+        if let Some(t) = spec.max_cpu_secs {
+            script.push_str(&format!("ulimit -t {} 2>/dev/null; ", t.max(1)));
+        }
+        script.push_str("exec \"$0\" \"$@\"");
+        let mut c = Command::new("sh");
+        c.arg("-c").arg(script).arg(&spec.program).args(&spec.args);
+        return c;
+    }
+    let mut c = Command::new(&spec.program);
+    c.args(&spec.args);
+    c
 }
 
 #[cfg(unix)]

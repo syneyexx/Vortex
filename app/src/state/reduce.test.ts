@@ -56,6 +56,23 @@ describe("applyEvents", () => {
     expect(s.lastSeq).toBe(e.seq);
   });
 
+  it("bouwt tool-kaarten per run", () => {
+    const s = applyEvents(loaded(), [
+      ev("tool.call.started", { action_id: "a1", tool: "write_file", input: { path: "x" } }, "r1"),
+      ev("tool.call.started", { action_id: "a2", tool: "read_file" }, "r1"),
+      ev("tool.call.completed", { action_id: "a1", tool: "write_file", ms: 4, preview: "+x" }, "r1"),
+      ev(
+        "tool.call.failed",
+        { action_id: "a2", tool: "read_file", error: { message: "bestaat niet" } },
+        "r1",
+      ),
+    ]);
+    const t = s.tools.r1 ?? [];
+    expect(t.map((x) => x.status)).toEqual(["ok", "error"]);
+    expect(t[0]?.preview).toBe("+x");
+    expect(t[1]?.error).toBe("bestaat niet");
+  });
+
   it("volgt de cognitieve cyclus per run", () => {
     const s = applyEvents(loaded(), [
       ev(

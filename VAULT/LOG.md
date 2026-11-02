@@ -79,4 +79,10 @@ Nieuwste onderaan. Per sessie 3–5 regels: wat gedaan, wat open, volgende stap.
 - Chat = `ChatEngine::run` (cognitive.rs); bijsturen tijdens streamen. GUI: agentpaneel live (fasen/plan/verificatie), Enter = bijsturen tijdens antwoord, leeragenda op dashboard, "Over jou" op Memory-pagina.
 - Gevonden: "SQLite" werd code (substring "sql"); vragen-terug bij ≤2 woorden brak korte vragen → nu alleen sturing. 12 server-tests + 13 cognitie-tests groen.
 
-**Actieve wave:** PC-verificatie W00–W07 · cloud: volgende = W08 (tools + skills)
+## 2026-11-02 (W08 tools + skills)
+- `vortex-tools`: registry + contracten, getypeerde acties, pre/postcondities, idempotentie-ledger (migratie 0006), transacties met diff/preview, effectanalyse (parallel/sequentieel + chaining), sandbox (tijd/CPU/geheugen/uitvoer), 17 ingebouwde tools, MCP-client (stdio + HTTP/SSE), discovery, filters + cache, herstelhints, capability handles.
+- Skills: eigen formaat + converters Claude ⇄ Cursor ⇄ AGENTS.md, selectie (trefwoord/embedding/glob), hot-reload, scripts in sandbox, statistiek + uitzetten, voorstellen uit geslaagde runs.
+- Chat gebruikt tools (toolrondes via de executor); GUI: live tool-kaarten met diff + Instellingen → Tools & skills. `config/tools.toml`.
+- Gevonden: hot-reload miste bestanden (debounce te vroeg) → naloop-debounce; diff-volgorde; `app/**`-glob. 28 tools-tests + 13 server-tests groen; Windows-check groen.
+
+**Actieve wave:** PC-verificatie W00–W08 · cloud: volgende = W09 (debatteam)

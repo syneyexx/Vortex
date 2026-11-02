@@ -33,11 +33,39 @@ async fn fake_model() -> String {
             return axum::Json(json!({"choices":[{"message":{"content": content},"finish_reason":"stop"}],"usage":{"prompt_tokens":3,"completion_tokens":2}})).into_response();
         }
         let last = if last.starts_with("Bijsturing van de gebruiker") { "na-bijsturing".to_string() } else { last };
+        // Toolflow (W08): "TOOLTEST <pad>" → model vraagt write_file + read_file; na toolresultaten → eindantwoord.
+        let last_role =
+            b["messages"].as_array().and_then(|m| m.last()).and_then(|m| m["role"].as_str()).unwrap_or("").to_string();
+        let has_tools = b["tools"].as_array().is_some_and(|t| !t.is_empty());
+        if let (Some(path), true, false) = (last.strip_prefix("TOOLTEST "), has_tools, last_role == "tool") {
+            let calls = json!([
+                {"index": 0, "id": "c1", "type": "function", "function": {"name": "write_file", "arguments": json!({"path": path, "content": "hallo uit een tool\n"}).to_string()}},
+                {"index": 1, "id": "c2", "type": "function", "function": {"name": "read_file", "arguments": json!({"path": path}).to_string()}}
+            ]);
+            let chunks: Vec<Vec<u8>> = vec![
+                format!("data: {}\n\n", json!({"choices":[{"delta":{"content": "Ik schrijf het bestand. "}}]})).into_bytes(),
+                format!("data: {}\n\n", json!({"choices":[{"delta":{"tool_calls": calls}}]})).into_bytes(),
+                format!("data: {}\n\n", json!({"choices":[{"delta":{},"finish_reason":"tool_calls"}],"usage":{"prompt_tokens":5,"completion_tokens":3}})).into_bytes(),
+                b"data: [DONE]\n\n".to_vec(),
+            ];
+            let s = futures::stream::iter(chunks.into_iter().map(Ok::<_, std::io::Error>));
+            return Response::builder()
+                .header("content-type", "text/event-stream")
+                .body(Body::from_stream(s))
+                .unwrap_or_default();
+        }
+        let last = if last_role == "tool" {
+            format!("Klaar, gelezen: {}", last.lines().last().unwrap_or("").trim())
+        } else {
+            last
+        };
         let sys = b["messages"][0]["content"].as_str().unwrap_or("").to_string();
         let words: Vec<String> = if last == "slow" {
             (0..400).map(|i| format!("w{i} ")).collect()
         } else if last == "welke prompt?" {
             vec![sys]
+        } else if last.starts_with("Klaar") {
+            vec![last.clone()]
         } else {
             vec!["Hal".into(), "lo ".into(), "wereld".into()]
         };
@@ -481,4 +509,52 @@ async fn steering_mid_stream_continues_with_new_instruction() {
     assert!(ag.is_array());
     let pr = fx.get("/api/profile").await;
     assert!(pr["profile"].is_object());
+}
+
+#[tokio::test]
+async fn chat_uses_tools_with_cards_and_proposes_skill() {
+    let fx = setup().await;
+    let target = fx._dir.path().join("werk/notitie.txt");
+    let sid = fx.post("/api/sessions", json!({})).await["id"].as_str().unwrap_or_default().to_string();
+    let r = fx
+        .post(
+            &format!("/api/sessions/{sid}/messages"),
+            json!({"text": format!("TOOLTEST {}", target.display()), "mode": "quick"}),
+        )
+        .await;
+    let run = r["run_id"].as_str().unwrap_or_default().to_string();
+    let m = fx.wait_message(&sid, 1, "complete").await;
+    assert_eq!(std::fs::read_to_string(&target).unwrap_or_default(), "hallo uit een tool\n");
+    let text = m["content"].as_str().unwrap_or("");
+    assert!(text.starts_with("Ik schrijf het bestand."), "{text}");
+    assert!(text.contains("Klaar, gelezen:") && text.contains("hallo uit een tool"), "{text}");
+    // Tool-kaarten: events met run_id, write vóór read (effectanalyse), preview bij write.
+    let ev = events_of(&fx, &run).await;
+    let done: Vec<&vortex_types::Event> =
+        ev.iter().filter(|e| e.kind == vortex_types::EventKind::ToolCallCompleted).collect();
+    assert_eq!(done.len(), 2);
+    assert_eq!(done[0].payload["tool"], "write_file");
+    assert!(done[0].payload["preview"].as_str().unwrap_or("").contains("+hallo uit een tool"));
+    // Tools-API.
+    let tools = fx.get("/api/tools").await;
+    assert!(tools["tools"].as_array().is_some_and(|t| t.iter().any(|x| x["name"] == "memory_search")));
+    // Skill-voorstel uit deze geslaagde trace (2 stappen).
+    let props = fx.get("/api/skills/proposals").await;
+    let p = props.as_array().and_then(|a| a.first()).cloned().unwrap_or_default();
+    assert!(p["body"].as_str().unwrap_or("").contains("`write_file`"), "{props}");
+    let acc = fx
+        .post(&format!("/api/skills/proposals/{}", p["id"].as_str().unwrap_or("")), json!({"status": "accepted"}))
+        .await;
+    assert_eq!(acc["ok"], true);
+    let sk = fx.get("/api/skills").await;
+    assert!(sk["skills"].as_array().is_some_and(|a| a.iter().any(|s| s["name"] == acc["name"])));
+    // Handmatig aanroepen met preview (dry run): niets toegepast.
+    let r = fx
+        .post(
+            "/api/tools/write_file/call",
+            json!({"input": {"path": target.display().to_string(), "content": "anders"}, "dry_run": true}),
+        )
+        .await;
+    assert_eq!(r["ok"], true);
+    assert_eq!(std::fs::read_to_string(&target).unwrap_or_default(), "hallo uit een tool\n");
 }

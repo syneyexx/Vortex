@@ -123,6 +123,10 @@ pub struct ChatEngine {
     /// Global Workspace per lopende run.
     pub(crate) workspaces: Arc<Mutex<HashMap<RunId, vortex_cognition::Workspace>>>,
     pub(crate) agenda: vortex_cognition::Agenda,
+    /// Tools + skills (W08); `None` = chat zonder tools.
+    pub tools: Option<Arc<vortex_tools::ToolHub>>,
+    /// Embeddings van skillbeschrijvingen (cache voor skillselectie).
+    pub(crate) skill_vecs: Arc<Mutex<HashMap<String, Vec<f32>>>>,
 }
 
 /// Maximale tijd voor geheugen-ophalen vóór een antwoord (chat wacht nooit langer).
@@ -142,6 +146,8 @@ impl ChatEngine {
             steer: Arc::new(Mutex::new(HashMap::new())),
             workspaces: Arc::new(Mutex::new(HashMap::new())),
             agenda,
+            tools: None,
+            skill_vecs: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 

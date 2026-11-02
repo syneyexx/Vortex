@@ -17,6 +17,19 @@ export interface Cognition {
   verify?: { ok: boolean; issues: string[] };
 }
 
+export interface ToolCard {
+  id: string;
+  tool: string;
+  input?: unknown;
+  status: "running" | "ok" | "error";
+  ms?: number;
+  preview?: string;
+  output?: string;
+  error?: string;
+  replayed?: boolean;
+  cached?: boolean;
+}
+
 export interface Toast {
   id: number;
   text: string;
@@ -34,6 +47,8 @@ export interface State {
   runs: Record<string, RunInfo>;
   streamStats: Record<string, StreamStat>;
   toasts: Toast[];
+  /** Toolaanroepen per run (tool-kaarten in de chat). */
+  tools: Record<string, ToolCard[]>;
   /** Cognitieve cyclus per run (Agent collaboration-paneel). */
   cognition: Record<string, Cognition>;
   /** Opgehaalde herinneringen per run (Retrieved memory-paneel). */
@@ -50,6 +65,7 @@ export const initialState: State = {
   runs: {},
   streamStats: {},
   retrievals: {},
+  tools: {},
   cognition: {},
   toasts: [],
   dirty: [],
@@ -179,6 +195,35 @@ export function applyEvents(state: State, events: VxEvent[], now = Date.now()): 
         else if (e.kind === "cognition.plan.step_completed") n = { ...c, stepsDone: c.stepsDone + 1 };
         else n = { ...c, verify: { ok: Boolean(p.ok), issues: (p.issues as string[] | undefined) ?? [] } };
         s = { ...s, cognition: { ...s.cognition, [e.run_id]: n } };
+        break;
+      }
+      case "tool.call.started":
+      case "tool.call.completed":
+      case "tool.call.failed":
+      case "tool.call.invalid": {
+        if (!e.run_id) break;
+        const list = s.tools[e.run_id] ?? [];
+        const id = str(p.action_id);
+        const i = list.findIndex((t) => t.id === id);
+        const prev: ToolCard = list[i] ?? { id, tool: str(p.tool), status: "running" };
+        let card: ToolCard = prev;
+        if (e.kind === "tool.call.started") card = { ...prev, input: p.input, status: "running" };
+        else if (e.kind === "tool.call.completed")
+          card = {
+            ...prev,
+            status: "ok",
+            ms: Number(p.ms ?? 0),
+            preview: (p.preview as string | null | undefined) ?? undefined,
+            output: (p.output as string | undefined) ?? undefined,
+            replayed: Boolean(p.replayed),
+            cached: Boolean(p.cached),
+          };
+        else {
+          const err = p.error as { message?: string } | undefined;
+          card = { ...prev, status: "error", error: err?.message ?? "fout" };
+        }
+        const next = i >= 0 ? list.map((t, k) => (k === i ? card : t)) : [...list, card];
+        s = { ...s, tools: { ...s.tools, [e.run_id]: next } };
         break;
       }
       case "memory.retrieval.performed":

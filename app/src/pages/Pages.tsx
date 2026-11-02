@@ -1,5 +1,6 @@
 // Pagina's buiten de chat. Functies die later komen tonen een lege staat — nooit nep-data.
 import { useEffect, useState } from "react";
+import { ToolsSettings } from "./ToolsSettings.tsx";
 import { api } from "../api/client.ts";
 import type { ModelInfo, RunRecord } from "../api/types.ts";
 import { Inspector } from "../components/Inspector.tsx";
@@ -307,6 +308,7 @@ export function SettingsPage() {
           ))}
         </div>
       </div>
+      <ToolsSettings />
       <Placeholder
         title=""
         wave="W04 / W07"

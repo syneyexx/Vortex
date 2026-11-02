@@ -60,6 +60,10 @@ event_kinds! {
     ToolCallCompleted => "tool.call.completed",
     ToolCallFailed => "tool.call.failed",
     ToolCallInvalid => "tool.call.invalid",
+    SkillLoaded => "tool.skill.loaded",
+    SkillProposed => "tool.skill.proposed",
+    SkillsReloaded => "tool.skills.reloaded",
+    McpConnected => "tool.mcp.connected",
     // geheugen
     RetrievalPerformed => "memory.retrieval.performed",
     MemoryWritten => "memory.item.written",

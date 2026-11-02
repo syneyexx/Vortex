@@ -8,7 +8,7 @@ generated: true
 > daarna `python tools/vault/vault.py todo`. Legenda: `[ ]` open · `[~]` bezig · `[x]` af.
 > Functionaliteiten per domein (wat Vortex *kan*): [[FUNCTIES]].
 
-**Totaal: 76/235 af.**
+**Totaal: 91/235 af.**
 
 | Wave | Status | Af | Open |
 | --- | --- | --- | --- |
@@ -20,7 +20,7 @@ generated: true
 | [[waves/W05-geheugen-kern\|W05 — Geheugen kern]] | bezig | 12 | 2 |
 | [[waves/W06-eval-observability\|W06 — Eval en observability]] | bezig | 11 | 2 |
 | [[waves/W07-cognitie-context\|W07 — Cognitie en context]] | af | 12 | 0 |
-| [[waves/W08-tools-skills\|W08 — Tools en skills]] | open | 0 | 15 |
+| [[waves/W08-tools-skills\|W08 — Tools en skills]] | af | 15 | 0 |
 | [[waves/W09-debatteam\|W09 — Debatteam]] | open | 0 | 11 |
 | [[waves/W10-research-ingest\|W10 — Research en ingest]] | open | 0 | 14 |
 | [[waves/W11-neurale-layers\|W11 — Neurale layers]] | open | 0 | 9 |
@@ -186,22 +186,22 @@ Bron: [[waves/W07-cognitie-context]] · status: `af`
 - [x] `W07.12` User model: voorkeuren leren over tijd, stijl- en toonaanpassing, lange-termijndoelen, projectvoorkeuren, gepersonaliseerde retrieval — `UserProfile` uit gebruikersgeheugen + feedback → stijlblok in elke prompt; persoonlijke vragen halen user/project-geheugen voorrang; GUI "Over jou"
 
 ## W08 — Tools en skills
-Bron: [[waves/W08-tools-skills]] · status: `open`
-- [ ] `W08.01` Toolregistry + contracten (schema, bijwerkingen, timeout, annuleerbaar, herhaalbaar, resources)
-- [ ] `W08.02` Getypeerde actie-representatie + validatie
-- [ ] `W08.03` Pre/postconditions-framework
-- [ ] `W08.04` Idempotentie (taak-ID), transactionele uitvoering, diff/preview, checkpoints
-- [ ] `W08.05` Effectanalyse → parallel/sequentieel, chaining
-- [ ] `W08.06` Sandbox-procesgroep (Python, shell) met resource-limieten
-- [ ] `W08.07` Tools: bestanden (lezen/schrijven/bewerken/zoeken), lokale mappen doorzoeken, web search (SearXNG), pagina lezen, code interpreter, SQLite-tool, generiek API-calling framework, geheugen-tools
-- [ ] `W08.08` MCP-client (stdio + HTTP), MCP-tools in registry
-- [ ] `W08.09` Tool discovery (naam+beschrijving, schema bij gebruik)
-- [ ] `W08.10` Resultaatfiltering met code, tool result caching
-- [ ] `W08.11` Herstel bij toolfouten
-- [ ] `W08.12` Capability handles per run (technisch)
-- [ ] `W08.13` Skills: eigen formaat, converters Claude Skills ⇄ Cursor rules ⇄ AGENTS.md, import/export, progressive disclosure, selectie (embeddings + globs), scripts in sandbox, hot-reload
-- [ ] `W08.14` Skill-voorstellen uit geslaagde traces (basis)
-- [ ] `W08.15` Tool-kaarten in GUI live
+Bron: [[waves/W08-tools-skills]] · status: `af`
+- [x] `W08.01` Toolregistry + contracten (schema, bijwerkingen, timeout, annuleerbaar, herhaalbaar, resources) — `ToolRegistry` + `ToolContract` (schema in/uit, effect lezen/lokaal/extern, timeout, annuleerbaar, idempotent, resources, netwerkbestemmingen, herkomst, versie)
+- [x] `W08.02` Getypeerde actie-representatie + validatie — `Action` (doel, invoer, verwacht, afhankelijkheden, pre/post) + JSON-schema-validatie met milde coercie
+- [x] `W08.03` Pre/postconditions-framework — `Condition` (pad bestaat/afwezig, bestand bevat, uitvoer bevat, veld); postcondities zien de klaargezette transactie
+- [x] `W08.04` Idempotentie (taak-ID), transactionele uitvoering, diff/preview, checkpoints — `tool_ledger` (migratie 0006): retry = replay, zelfde ID + andere invoer = geweigerd, onderbroken externe actie nooit blind herhaald; `FileTxn` (staging → diff → atomair toepassen, rollback); dry-run/preview; checkpoint per toolronde
+- [x] `W08.05` Effectanalyse → parallel/sequentieel, chaining — `plan::stages` (lezers parallel, schrijvers op zelfde doel/resource na elkaar, barrières) + chaining `$ref`/`${a.text}`
+- [x] `W08.06` Sandbox-procesgroep (Python, shell) met resource-limieten — `Sandbox` via de Supervisor: eigen procesgroep, tijd/CPU/geheugen (Unix ulimit, Windows Job Object)/uitvoer-limieten, schone omgeving, annuleren stopt de boom
+- [x] `W08.07` Tools: bestanden (lezen/schrijven/bewerken/zoeken), lokale mappen doorzoeken, web search (SearXNG), pagina lezen, code interpreter, SQLite-tool, generiek API-calling framework, geheugen-tools — read/write/edit/delete_file, list_dir, search_files, find_files, web_search (SearXNG), web_fetch (HTML→tekst), python, shell, sqlite_query/exec, http_get/http_request + API's uit `config/tools.toml`, memory_search/write/forget (server)
+- [x] `W08.08` MCP-client (stdio + HTTP), MCP-tools in registry — `McpClient` stdio + streamable HTTP (JSON/SSE, sessie-ID), paginering, effect uit annotaties, herverbinden; tools als `mcp__server__tool`
+- [x] `W08.09` Tool discovery (naam+beschrijving, schema bij gebruik) — kernset met schema, rest naam+beschrijving in de prompt; `describe_tool` + `call_tool`
+- [x] `W08.10` Resultaatfiltering met code, tool result caching — `ResultFilter` (pointer/grep/head/tail/max), automatisch inkorten (begin+eind), `ToolCache` (TTL) voor leestools
+- [x] `W08.11` Herstel bij toolfouten — `ToolError` met soort + hint voor het model (schema, bijna-match bij edit, dichtstbijzijnde toolnaam); retry met backoff alleen bij idempotent
+- [x] `W08.12` Capability handles per run (technisch) — `CapabilityHandle` (mappen, netwerk, schrijven, processen, toolglobs); standaard alles open (geen remmen tot W19)
+- [x] `W08.13` Skills: eigen formaat, converters Claude Skills ⇄ Cursor rules ⇄ AGENTS.md, import/export, progressive disclosure, selectie (embeddings + globs), scripts in sandbox, hot-reload — eigen formaat (superset Claude), converters Claude ⇄ Cursor ⇄ AGENTS.md (heen en terug getest), progressive disclosure (`load_skill`), selectie (trefwoorden + embeddings + globs + alwaysApply), scripts in de sandbox (`run_skill_script`), hot-reload, statistiek + automatisch uitzetten
+- [x] `W08.14` Skill-voorstellen uit geslaagde traces (basis) — `propose::observe` na geslaagde runs met ≥ 2 toolstappen; zelfde patroon telt op; accepteren → skill (GUI Instellingen)
+- [x] `W08.15` Tool-kaarten in GUI live — tool-kaarten live per run (status, duur, doel; klik = invoer, diff, uitvoer/fout) + beheer in Instellingen → Tools & skills
 
 ## W09 — Debatteam
 Bron: [[waves/W09-debatteam]] · status: `open`

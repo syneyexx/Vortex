@@ -4,9 +4,10 @@ import { api } from "../api/client.ts";
 import type { ChatMessage, Mode, ModelInfo } from "../api/types.ts";
 import { getState, newSession, openSession, setError, useStore } from "../state/store.ts";
 import { Composer } from "./Composer.tsx";
-import { IcCheck, IcClock, IcFork, IcPlus, IcUser } from "./Icons.tsx";
+import { IcClock, IcFork, IcPlus, IcUser } from "./Icons.tsx";
 import { Inspector } from "./Inspector.tsx";
 import { Markdown } from "./Markdown.tsx";
+import { ToolCards } from "./ToolCards.tsx";
 import { Replay } from "./Replay.tsx";
 import { TaskBar } from "./TaskBar.tsx";
 import { VortexMark } from "./VortexShader.tsx";
@@ -94,16 +95,7 @@ function Assistant({ m, sessionId }: { m: ChatMessage; sessionId: string }) {
             {m.reasoning}
           </details>
         )}
-        {m.tool_calls.length > 0 && (
-          <div className="tool-cards">
-            {m.tool_calls.map((_, i) => (
-              <div className="tool-card" key={i}>
-                <IcCheck />
-                <div className="t">Tool</div>
-              </div>
-            ))}
-          </div>
-        )}
+        {m.run_id && <ToolCards runId={m.run_id} />}
         <Markdown text={m.content} streaming={streaming} />
         {streaming && (
           <div className="writing">

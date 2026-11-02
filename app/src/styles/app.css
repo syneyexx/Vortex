@@ -1168,3 +1168,42 @@ a {
   color: var(--vx-text);
   background: var(--vx-panel-hi);
 }
+
+/* W08: tool-kaarten + tools/skills-beheer */
+button.tool-card {
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.tool-card.error {
+  border-color: color-mix(in srgb, var(--vx-err) 50%, var(--vx-border));
+}
+.tool-card.running {
+  border-color: color-mix(in srgb, var(--vx-accent) 50%, var(--vx-border));
+}
+.tool-detail {
+  margin-bottom: 16px;
+}
+.tool-detail pre,
+.skill-row pre {
+  max-height: 320px;
+  overflow: auto;
+  font-size: 12px;
+  background: var(--vx-panel-hi);
+  padding: 10px;
+  border-radius: var(--vx-r-sm, 6px);
+  white-space: pre-wrap;
+}
+.diff .add {
+  color: var(--vx-ok);
+}
+.diff .del {
+  color: var(--vx-err);
+}
+.skill-row {
+  display: grid;
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid var(--vx-border);
+}

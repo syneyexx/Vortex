@@ -1,0 +1,43 @@
+# Tools en skills (W08). Zie VAULT/modules/tools-skills.md en core/vortex-tools/CARD.md.
+
+# Lokale SearXNG voor web_search (privé zoeken). Leeg = web_search geeft een duidelijke fout.
+# searxng_url = "http://127.0.0.1:8888"
+
+# Python voor de code interpreter (Windows: "python" of het pad naar je venv).
+# python = "python"
+
+# Werkmap van de sandbox (relatief = t.o.v. de datamap).
+workdir = "sandbox"
+
+# Skills-map (relatief = t.o.v. config/). Hot-reload: wijzigingen worden vanzelf opgepakt.
+skills_dir = "skills"
+
+# Tools die het model met volledig schema krijgt; de rest via describe_tool/call_tool.
+# core = ["read_file", "write_file", "edit_file", "list_dir", "search_files", "find_files", "python", "shell", "web_search", "web_fetch", "memory_search", "memory_write", "load_skill", "describe_tool", "call_tool"]
+
+[limits]
+timeout_ms = 60000
+max_memory_mb = 4096
+max_cpu_secs = 300
+max_output_bytes = 262144
+
+# MCP-servers (stdio of HTTP). Voorbeeld:
+# [mcp.servers.filesystem]
+# command = "npx"
+# args = ["-y", "@modelcontextprotocol/server-filesystem", "D:/Projecten"]
+#
+# [mcp.servers.remote]
+# url = "http://127.0.0.1:9000/mcp"
+# headers = { Authorization = "Bearer ..." }
+
+# Generieke API's: elke endpoint wordt een tool `api__<naam>__<endpoint>`.
+# Secrets: "secret:NAAM" haalt de waarde uit de OS-keystore.
+# [apis.weer]
+# base_url = "https://api.open-meteo.com/v1"
+# description = "Weersverwachting"
+# [apis.weer.endpoints.verwachting]
+# method = "GET"
+# path = "/forecast"
+# description = "Weersverwachting per uur voor een locatie"
+# params = { latitude = "number", longitude = "number", hourly = "string" }
+# required = ["latitude", "longitude"]

@@ -10,3 +10,4 @@ pub mod live;
 pub mod memory_api;
 pub mod observe_api;
 pub mod sessions;
+pub mod tools_api;

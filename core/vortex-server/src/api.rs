@@ -29,6 +29,8 @@ pub struct AppState {
     pub chat: ChatEngine,
     pub live: Live,
     pub memory: crate::memory_api::MemoryHandle,
+    /// Tools + skills (W08).
+    pub tools: Option<Arc<vortex_tools::ToolHub>>,
 }
 
 #[derive(Debug)]
@@ -94,6 +96,7 @@ pub fn router(state: AppState, static_dir: Option<PathBuf>) -> Router {
         .merge(crate::memory_api::routes())
         .merge(crate::eval_api::routes())
         .merge(crate::observe_api::routes())
+        .merge(crate::tools_api::routes())
         .with_state(state);
     match static_dir {
         Some(d) if d.join("index.html").exists() => api.fallback_service(
@@ -394,7 +397,9 @@ async fn restore_prompt(State(s): State<AppState>, Json(b): Json<RestoreBody>) -
 pub fn build_state(kernel: Kernel) -> anyhow::Result<AppState> {
     let memory = crate::memory_api::build(&kernel)?;
     crate::memory_api::spawn_maintenance(memory.clone(), kernel.shutdown_token().child_token());
-    let chat = ChatEngine::new(kernel.clone(), Some(memory.clone()));
+    let mut chat = ChatEngine::new(kernel.clone(), Some(memory.clone()));
+    let tools = crate::tools_api::build(&kernel, Some(memory.clone()));
+    chat.tools = Some(tools.clone());
     if let Ok(n) = chat.sessions().repair_streaming(kernel.runs())
         && n > 0
     {
@@ -408,7 +413,7 @@ pub fn build_state(kernel: Kernel) -> anyhow::Result<AppState> {
         vortex_core::sampler::SamplerConfig::default(),
         kernel.shutdown_token().child_token(),
     );
-    Ok(AppState { kernel, chat, live, memory })
+    Ok(AppState { kernel, chat, live, memory, tools: Some(tools) })
 }
 
 pub type Shared = Arc<AppState>;

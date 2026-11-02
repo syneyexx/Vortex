@@ -310,7 +310,7 @@ export function MemoryPage() {
           </button>
         ))}
       </div>
-      {tab !== "conflicts" && (
+      {(tab === "list" || tab === "search") && (
         <div className="row" style={{ marginBottom: 12 }}>
           <input
             className="btn"

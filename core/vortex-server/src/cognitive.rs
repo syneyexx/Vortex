@@ -14,10 +14,12 @@ use vortex_cognition::{
     CogLlm, Cycle, GenOpts, Path, Phase, PlanStyle, Prediction, Signals, UserProfile, Workspace, decide, route,
     salience,
 };
-use vortex_context::{AssemblyInput, Budget, MemItem, Turn, assemble};
+use vortex_context::{AssemblyInput, Budget, MemItem, ToolBrief, Turn, assemble};
 use vortex_core::{CoreError, RunContext};
-use vortex_models::backend::{Backend, ChatRequest, Message, ResponseFormat, Role, StreamEvent};
+use vortex_models::backend::{Backend, ChatRequest, Message, ResponseFormat, Role, StreamEvent, ToolCall, ToolSpec};
 use vortex_models::{ModelError, OpenAiBackend};
+use vortex_tools::skills::propose::Step;
+use vortex_tools::{Action, ExecOptions, ToolHub};
 use vortex_types::{DecisionRecord, Event, EventId, EventKind, MessageId, Priority, RunId, SessionId};
 
 use crate::chat::{COALESCE_CHARS, COALESCE_MS, ChatEngine, ChatError, MEMORY_TIMEOUT_MS, Mode};
@@ -73,6 +75,52 @@ fn admits_unknown(a: &str) -> bool {
 }
 
 impl ChatEngine {
+    /// Embedding-gelijkenis vraag ⇄ skillbeschrijving (0..1), met cache. Kort timeout: de
+    /// chat wacht hier nooit lang op.
+    async fn skill_semantic(&self, h: &ToolHub, q: &str) -> std::collections::HashMap<String, f64> {
+        let mut out = std::collections::HashMap::new();
+        let Some(mem) = &self.memory else { return out };
+        let skills = h.skills.list();
+        if skills.is_empty() {
+            return out;
+        }
+        let emb = mem.store.embedder();
+        let key = |s: &vortex_tools::Skill| format!("{}|{}", s.name, s.description);
+        let need: Vec<(String, String)> = {
+            let c = self.skill_vecs.lock();
+            skills
+                .iter()
+                .filter(|s| !c.contains_key(&key(s)))
+                .map(|s| (key(s), format!("{}: {}", s.name.replace('-', " "), s.description)))
+                .collect()
+        };
+        if !need.is_empty() {
+            let texts: Vec<String> = need.iter().map(|(_, t)| t.clone()).collect();
+            if let Ok(Ok(vs)) = tokio::time::timeout(Duration::from_millis(1500), emb.embed(&texts)).await {
+                let mut c = self.skill_vecs.lock();
+                for ((k, _), v) in need.into_iter().zip(vs) {
+                    c.insert(k, v);
+                }
+            }
+        }
+        let Ok(Ok(qv)) = tokio::time::timeout(Duration::from_millis(800), emb.embed(&[q.to_string()])).await else {
+            return out;
+        };
+        let Some(qv) = qv.into_iter().next() else { return out };
+        let c = self.skill_vecs.lock();
+        for s in &skills {
+            if let Some(v) = c.get(&key(s)) {
+                let dot: f32 = v.iter().zip(&qv).map(|(a, b)| a * b).sum();
+                let na: f32 = v.iter().map(|x| x * x).sum::<f32>().sqrt();
+                let nb: f32 = qv.iter().map(|x| x * x).sum::<f32>().sqrt();
+                if na > 0.0 && nb > 0.0 {
+                    out.insert(s.name.clone(), f64::from((dot / (na * nb)).max(0.0)));
+                }
+            }
+        }
+        out
+    }
+
     /// Nieuwste samenvatting van deze sessie uit het geheugen (W05 `summarize_session`).
     fn session_summary(&self, session: SessionId) -> Option<String> {
         let mem = self.memory.as_ref()?;
@@ -161,6 +209,10 @@ impl ChatEngine {
         let ws = Workspace::new(run_id, trace, &question, Some(log.clone()));
         self.workspaces.lock().insert(run_id, ws.clone());
 
+        // Tools (W08): stappen voor skill-voorstellen, gebruikte skills, verificatie-uitkomst.
+        let mut tool_steps: Vec<Step> = Vec::new();
+        let mut used_skills: Vec<String> = Vec::new();
+        let mut verified_ok = false;
         let outcome: Result<Option<serde_json::Value>, ChatError> = async {
             ctx.start()?;
             // 1. Waarnemen
@@ -251,8 +303,31 @@ impl ChatEngine {
             // 5. Handelen
             cyc.enter(Phase::Act);
             let profile = self.memory.as_ref().map(|m| UserProfile::build(&m.store, None)).and_then(|p| p.prompt_block());
-            let sys = ctx.config().file("prompts/system.md").map(|s| s.trim().to_string()).unwrap_or_default();
+            let mut sys = ctx.config().file("prompts/system.md").map(|s| s.trim().to_string()).unwrap_or_default();
             let mut guidance = strategy.guidance.clone();
+            // Tools + skills (W08): kernset met schema; rest via discovery; passende skills laden.
+            let hub = self.tools.clone().filter(|_| crate::eval_api::FEATURES.contains(&"W08") && backend.capabilities().tools);
+            let mut briefs: Vec<ToolBrief> = Vec::new();
+            if let Some(h) = &hub {
+                let sem = self.skill_semantic(h, &question).await;
+                for sel in h.skills.select(&question, &[], &sem, 3) {
+                    if sel.score >= 0.6
+                        && let Some(sk) = h.skills.get(&sel.name)
+                    {
+                        h.skills.record_use(&sk.name);
+                        used_skills.push(sk.name.clone());
+                        guidance.push(format!("Actieve skill '{}' ({}):\n{}", sk.name, sel.reason, sk.body.trim()));
+                    }
+                }
+                let core = h.core_set();
+                briefs = h.registry.briefs().into_iter().filter(|b| !core.contains(&b.name)).map(|b| ToolBrief { name: b.name, description: b.description }).collect();
+                let sk = h.skills.briefs_text();
+                if !sk.is_empty() {
+                    sys.push_str("\n\nSkills (laad de instructies met load_skill als er een past):\n");
+                    sys.push_str(&sk);
+                }
+                sys.push_str("\n\nJe kunt tools gebruiken. Doe dat als het antwoord daardoor beter of controleerbaar wordt (bestanden, berekeningen, zoeken, geheugen). Tools uit de lijst 'Beschikbare tools' roep je aan via call_tool (schema eerst met describe_tool). Na een fout: lees de melding en pas je aanpak aan.");
+            }
             let llm = BackendLlm { backend: backend.clone(), cancel: ctx.token().child_token() };
             let _gpu = ctx.gpu(Priority::P0).await?;
             if strategy.path != Path::Fast && strategy.prediction != Prediction::AskUser {
@@ -293,6 +368,7 @@ impl ChatEngine {
                 history,
                 user: question.clone(),
                 guidance,
+                tools: briefs,
                 ..Default::default()
             };
             let assembled = assemble(&input, &Budget::default());
@@ -312,11 +388,19 @@ impl ChatEngine {
             } else {
                 let mut messages = assembled.messages;
                 let effort = strategy.reasoning_effort.clone();
+                const MAX_TOOL_ROUNDS: usize = 8;
+                let mut tool_rounds = 0usize;
                 loop {
                     let mut req = ChatRequest::new(messages.clone());
                     if backend.capabilities().reasoning_effort {
                         req.reasoning_effort = Some(effort.clone());
                     }
+                    if let Some(h) = &hub
+                        && tool_rounds < MAX_TOOL_ROUNDS
+                    {
+                        req.tools = h.specs().into_iter().map(|(name, description, parameters)| ToolSpec { name, description, parameters }).collect();
+                    }
+                    let mut calls: Vec<ToolCall> = Vec::new();
                     let gen_token = ctx.token().child_token();
                     let mut stream = backend.chat_stream(&req, gen_token.clone()).await?;
                     let (mut buf_t, mut buf_r) = (String::new(), String::new());
@@ -357,6 +441,7 @@ impl ChatEngine {
                                             log.append(m.to_event(trace, Some(run_id)))?;
                                             got_metrics = Some(serde_json::json!({"metrics": m, "usage": usage, "finish_reason": finish_reason, "strategy": strategy.path}));
                                         }
+                                        Ok(StreamEvent::ToolCallReady(c)) => calls.push(c),
                                         Ok(_) => {}
                                         Err(e) => return Err(e.into()),
                                     },
@@ -385,6 +470,48 @@ impl ChatEngine {
                             continue;
                         }
                         None => {
+                            if let (Some(h), false) = (&hub, calls.is_empty()) {
+                                // Toolronde: model vroeg tools → uitvoeren (effectanalyse: parallel waar veilig) → resultaten terug.
+                                tool_rounds += 1;
+                                let partial = text[start_len..].to_string();
+                                let mut am = Message::assistant(partial.clone());
+                                am.tool_calls = calls.clone();
+                                messages.push(am);
+                                let actions: Vec<Action> = calls
+                                    .iter()
+                                    .map(|c| {
+                                        let (n, a) = h.unwrap_call(&c.name, c.arguments.clone());
+                                        Action::new(format!("{run_id}:{}", c.id), n, a)
+                                    })
+                                    .collect();
+                                let opts = ExecOptions { run: Some(run_id), trace, cancel: ctx.token().child_token(), ..Default::default() };
+                                let results = h.executor.execute_plan(actions.clone(), &opts).await;
+                                for ((c, a), r) in calls.iter().zip(actions.iter()).zip(results.iter()) {
+                                    messages.push(Message::tool_result(c.id.clone(), c.name.clone(), r.for_model()));
+                                    if r.ok {
+                                        tool_steps.push(Step { tool: r.tool.clone(), input: a.input.clone() });
+                                        if r.tool == "load_skill"
+                                            && let Some(n) = a.input.get("name").and_then(|n| n.as_str())
+                                        {
+                                            used_skills.push(n.to_string());
+                                        }
+                                    }
+                                    ws.add_note(&format!("tool {}: {}", r.tool, if r.ok { "ok" } else { "fout" }));
+                                }
+                                let _ = ctx.checkpoint(&serde_json::json!({"tool_round": tool_rounds, "tools": calls.iter().map(|c| c.name.clone()).collect::<Vec<_>>()}));
+                                if tool_rounds >= MAX_TOOL_ROUNDS {
+                                    messages.push(Message::user("Maximum aantal toolrondes bereikt. Geef nu je eindantwoord met wat je hebt."));
+                                }
+                                if !partial.trim().is_empty() {
+                                    let sep = "\n\n";
+                                    text.push_str(sep);
+                                    log.append(
+                                        Event::new(EventKind::MessageDelta, trace, serde_json::json!({"session_id": session, "message_id": msg, "text": sep, "reasoning": ""}))
+                                            .for_run(run_id),
+                                    )?;
+                                }
+                                continue;
+                            }
                             metrics = got_metrics;
                             break;
                         }
@@ -406,6 +533,7 @@ impl ChatEngine {
                 issues.push("geen geheugen maar wel een stellig antwoord (mogelijk verzonnen)");
                 ws.add_uncertainty("antwoord zonder onderbouwing uit geheugen");
             }
+            verified_ok = issues.is_empty();
             let _ = log.append(Event::new(EventKind::VerificationDone, trace, serde_json::json!({"ok": issues.is_empty(), "issues": issues})).for_run(run_id));
             cyc.finish(serde_json::json!({"issues": issues.len()}));
 
@@ -465,6 +593,21 @@ impl ChatEngine {
         // 8. Consolideren
         cyc.enter(Phase::Consolidate);
         if status == "complete" {
+            if let Some(h) = &self.tools {
+                // Skill-voorstel uit deze trace + succes/falen van gebruikte skills (W08.13/14).
+                let _ = vortex_tools::skills::propose::observe(
+                    &log,
+                    &question,
+                    &tool_steps,
+                    verified_ok,
+                    Some(run_id.to_string()),
+                );
+                used_skills.sort();
+                used_skills.dedup();
+                for s in &used_skills {
+                    h.skills.record_outcome(s, verified_ok);
+                }
+            }
             self.remember_exchange(session, question, text.clone());
             if let Some(mem) = self.memory.clone() {
                 // Elke 8 beurten de sessiesamenvatting vernieuwen (achtergrond).
