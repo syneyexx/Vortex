@@ -131,6 +131,8 @@ pub struct ChatEngine {
     pub online: Arc<vortex_agents::connectivity::Connectivity>,
     /// Webcrawler (W10), lui aangemaakt.
     pub(crate) crawler: Arc<Mutex<Option<Arc<vortex_crawler::Crawler>>>>,
+    /// Wereldmonitor (W14), lui aangemaakt.
+    pub(crate) world: Arc<Mutex<Option<Arc<vortex_crawler::world::WorldMonitor>>>>,
     /// Neurale layers (W11): scorer voor router/salience + registry.
     pub scorer: vortex_core::Scorer,
     pub layers: Option<Arc<vortex_neural::LayerRegistry>>,
@@ -159,6 +161,7 @@ impl ChatEngine {
             skill_vecs: Arc::new(Mutex::new(HashMap::new())),
             online: Arc::new(vortex_agents::connectivity::Connectivity::new(None)),
             crawler: Arc::new(Mutex::new(None)),
+            world: Arc::new(Mutex::new(None)),
             scorer: None,
             layers: None,
             self_model: Arc::new(parking_lot::RwLock::new(vortex_cognition::SelfModel::default())),

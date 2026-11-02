@@ -2100,6 +2100,11 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+hf = [
+    { name = "datasets" },
+    { name = "huggingface-hub" },
+    { name = "pyarrow" },
+]
 ingest = [
     { name = "ebooklib" },
     { name = "pyarrow" },
@@ -2132,9 +2137,11 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "datasets", marker = "extra == 'hf'", specifier = ">=3" },
     { name = "datasets", marker = "extra == 'train'" },
     { name = "ebooklib", marker = "extra == 'ingest'", specifier = ">=0.18" },
     { name = "grpcio", specifier = ">=1.66" },
+    { name = "huggingface-hub", marker = "extra == 'hf'", specifier = ">=0.24" },
     { name = "huggingface-hub", marker = "extra == 'train'" },
     { name = "numpy", marker = "extra == 'layers'", specifier = ">=1.26" },
     { name = "numpy", marker = "extra == 'train'" },
@@ -2142,13 +2149,14 @@ requires-dist = [
     { name = "onnx", marker = "extra == 'train'" },
     { name = "peft", marker = "extra == 'train'" },
     { name = "protobuf", specifier = ">=5.28" },
+    { name = "pyarrow", marker = "extra == 'hf'", specifier = ">=17" },
     { name = "pyarrow", marker = "extra == 'ingest'", specifier = ">=17" },
     { name = "pymupdf", marker = "extra == 'ingest'", specifier = ">=1.24" },
     { name = "torch", marker = "extra == 'train'" },
     { name = "trafilatura", marker = "extra == 'ingest'", specifier = ">=1.12" },
     { name = "transformers", marker = "extra == 'train'" },
 ]
-provides-extras = ["ingest", "layers", "train"]
+provides-extras = ["ingest", "layers", "hf", "train"]
 
 [package.metadata.requires-dev]
 dev = [

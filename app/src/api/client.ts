@@ -265,6 +265,48 @@ export const api = {
   scaleAdapter: (id: string, scale: number) =>
     req<{ status: string }>("POST", `/api/training/adapters/${id}/scale`, { scale }),
   calibrate: () => req<Record<string, unknown>>("POST", "/api/training/calibrate", {}),
+  // Wereldkennis (W14)
+  world: () => req<WorldStatus>("GET", "/api/world"),
+  worldFetch: (source?: string) => req<Record<string, unknown>>("POST", "/api/world/fetch", { source }),
+  worldEvents: (q: { status?: string; hours?: number; theme?: string; region?: string }) =>
+    req<WorldEvent[]>(
+      "GET",
+      `/api/world/events?${new URLSearchParams(
+        Object.entries(q)
+          .filter(([, v]) => v !== undefined && v !== "")
+          .map(([k, v]) => [k, String(v)]),
+      ).toString()}`,
+    ),
+  worldEvent: (id: string) => req<WorldEventDetail>("GET", `/api/world/events/${id}`),
+  worldBias: () => req<WorldBias[]>("GET", "/api/world/bias"),
+  hypotheses: () => req<Hypothesis[]>("GET", "/api/world/hypotheses"),
+  predictions: (status?: string) =>
+    req<Prediction[]>("GET", `/api/world/predictions${status ? `?status=${status}` : ""}`),
+  addPrediction: (p: { claim: string; probability: number; criteria: string; resolve_by: string }) =>
+    req<Prediction>("POST", "/api/world/predictions", p),
+  resolvePredictions: () => req<Prediction[]>("POST", "/api/world/predictions/resolve", {}),
+  worldCalibration: () => req<WorldCalibration>("GET", "/api/world/calibration"),
+  worldSummaries: (period: string, group_by: string) =>
+    req<WorldSummary[]>("POST", "/api/world/summaries", { period, group_by }),
+  players: () => req<Player[]>("GET", "/api/world/players"),
+  addPlayer: (p: { name: string; sector: string; kind: string; public_role: string }) =>
+    req<Player>("POST", "/api/world/players", p),
+  studyPlayer: (id: string) => req<Record<string, unknown>[]>("POST", `/api/world/players/${id}/study`, {}),
+  predictPlayer: (id: string, situation: string, horizon_days: number) =>
+    req<Prediction>("POST", `/api/world/players/${id}/predict`, { situation, horizon_days }),
+  follow: (url: string, interval_hours: number, remove = false) =>
+    req<Record<string, unknown>>("POST", "/api/world/follow", { url, interval_hours, remove }),
+  hfCatalog: () => req<HfCatalogRow[]>("GET", "/api/world/datasets"),
+  hfInspect: (source: string, license?: string) =>
+    req<HfInspect>("POST", "/api/world/datasets/inspect", { source, license: license || undefined }),
+  hfImport: (b: {
+    source: string;
+    destination: string;
+    mapping: Record<string, string>;
+    kind?: string;
+    license?: string;
+    limit?: number;
+  }) => req<{ id: string; stats: Record<string, unknown> }>("POST", "/api/world/datasets/import", b),
 };
 
 export interface ResearchDetail {
@@ -382,4 +424,126 @@ export interface TrainingStatus {
     test_calibrated: { ece: number; brier: number; n: number };
   } | null;
   config: { base_model: string; idle: boolean; min_new_examples: number };
+}
+
+export interface WorldSource {
+  name: string;
+  kind: string;
+  url: string;
+  enabled: boolean;
+  interval_min: number;
+  country?: string;
+  orientation?: string;
+  terms: string;
+  min_gap_s: number;
+  stats: { last_ok?: string; items?: number; errors?: number; last_error?: string | null };
+}
+
+export interface WorldStatus {
+  enabled: boolean;
+  sources: WorldSource[];
+  counts?: { items: number; events: number; confirmed: number; open_predictions: number; hypotheses: number };
+  steps: { name: string; last_ok: string }[];
+  followed: { url: string; interval_hours: number; last_fetch?: string; changes: number }[];
+}
+
+export interface WorldEvent {
+  id: string;
+  title: string;
+  summary: string;
+  first_seen: string;
+  last_seen: string;
+  status: "reported" | "confirmed";
+  n_items: number;
+  region?: string;
+  theme?: string;
+  memory_id?: string;
+  entities?: { name?: string; qid?: string; label?: string; description?: string }[];
+}
+
+export interface WorldEventDetail extends WorldEvent {
+  groups: string[];
+  items: { source: string; title: string; url?: string; published?: string; country?: string }[];
+}
+
+export interface WorldBias {
+  source: string;
+  items: number;
+  confirmed_share: number;
+  regions: number;
+  orientation?: string;
+  home?: string;
+}
+
+export interface Hypothesis {
+  id: string;
+  cause: string;
+  effect: string;
+  confidence: number;
+  support: number;
+  contra: number;
+  last_seen: string;
+}
+
+export interface Prediction {
+  id: string;
+  claim: string;
+  probability: number;
+  criteria: string;
+  resolve_by: string;
+  actor?: string;
+  origin: string;
+  status: "open" | "true" | "false" | "unresolvable";
+  evidence?: string;
+  created_at: string;
+  resolved_at?: string;
+}
+
+export interface WorldCalibration {
+  overall: { n: number; ece: number; brier: number; accuracy: number };
+  by: Record<string, { n: number; ece: number; brier: number; accuracy: number }>;
+  counts: Record<string, number>;
+}
+
+export interface WorldSummary {
+  key: string;
+  period: string;
+  group_by: string;
+  events: number;
+  confirmed: number;
+  summary: string;
+}
+
+export interface Player {
+  id: string;
+  name: string;
+  sector: string;
+  kind: string;
+  sources: string[];
+  notes: string;
+}
+
+export interface HfInspect {
+  schema: { kind: string; fields: Record<string, string> };
+  mapping: Record<string, string>;
+  lm_mapping?: Record<string, string>;
+  lm_kind?: string;
+  lm_why?: string;
+  sample: Record<string, string>[];
+  license?: string | null;
+  destinations: string[];
+}
+
+export interface HfCatalogRow {
+  id: string;
+  source: string;
+  schema: string;
+  destination: string;
+  license?: string;
+  rows: number;
+  kept: number;
+  deduped: number;
+  decontaminated: number;
+  version: string;
+  created_at: string;
 }

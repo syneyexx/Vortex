@@ -109,6 +109,9 @@ class WorkerService(worker_pb2_grpc.WorkerServiceServicer):
         if request.job_kind.startswith("lora:"):
             yield from self._train_lora(request, tomllib.loads(request.config_toml or ""))
             return
+        if request.job_kind.startswith("dataset:"):
+            yield from _dataset_updates(request, tomllib.loads(request.config_toml or ""))
+            return
         if not request.job_kind.startswith("layer:"):
             context.abort(grpc.StatusCode.UNIMPLEMENTED, f"onbekende trainingssoort {request.job_kind}")
 
@@ -139,6 +142,46 @@ class WorkerService(worker_pb2_grpc.WorkerServiceServicer):
             metrics=metrics,
         )
         yield worker_pb2.TrainUpdate(done=True, metrics=metrics)
+
+
+def _dataset_updates(request, cfg: dict):
+    """W14.09: `dataset:inspect` (schema, mapping-voorstel, voorbeeld, licentie → JSON) en
+    `dataset:import` (filter, dedup, decontaminatie → JSONL voor de bestemming)."""
+    from vortex_worker import hf_datasets as hf
+
+    trace = request.trace
+    try:
+        if request.job_kind == "dataset:inspect":
+            info = hf.inspect(
+                cfg["source"], cfg.get("split", "train"), cfg.get("config"), int(cfg.get("n", 50)), cfg.get("license")
+            )
+            out = Path(cfg["out"])
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(json.dumps(info, ensure_ascii=False), encoding="utf-8")
+            yield worker_pb2.TrainUpdate(
+                artifact=common_pb2.ArtifactRef(artifact_id="inspect", path=str(out), media_type="application/json")
+            )
+        elif request.job_kind == "dataset:import":
+            c = hf.ImportCfg.from_dict(cfg)
+
+            def prog(f: float, m: str) -> None:
+                pass
+
+            r = hf.run_import(c, prog)
+            meta = Path(c.out).with_suffix(".meta.json")
+            meta.write_text(json.dumps(r, ensure_ascii=False), encoding="utf-8")
+            metrics = {k: float(v) for k, v in r.items() if isinstance(v, int | float)}
+            yield worker_pb2.TrainUpdate(
+                artifact=common_pb2.ArtifactRef(
+                    artifact_id=r["version"], path=str(meta), media_type="application/json"
+                ),
+                metrics=metrics,
+            )
+        else:
+            yield worker_pb2.TrainUpdate(error=f"onbekende datasetactie {request.job_kind}")
+    except Exception as e:
+        yield worker_pb2.TrainUpdate(error=f"{type(e).__name__}: {e}")
+    yield worker_pb2.TrainUpdate(done=True, progress=common_pb2.Progress(trace=trace, fraction=1.0, stage="klaar"))
 
 
 def _lora_updates(self_, request, cfg: dict):

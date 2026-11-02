@@ -40,11 +40,22 @@ impl ChatEngine {
         if let Some(c) = g.as_ref() {
             return c.clone();
         }
+        let conf = self.kernel.config().current();
+        let browser = conf
+            .get::<String>("paths.browser")
+            .ok()
+            .flatten()
+            .filter(|s| !s.is_empty())
+            .map(PathBuf::from)
+            .or_else(vortex_crawler::crawl::find_browser);
         let cfg = CrawlConfig {
-            raw_dir: Some(cold_dir(&self.kernel.config().current(), &self.data_dir()).join("crawl")),
+            raw_dir: Some(cold_dir(&conf, &self.data_dir()).join("crawl")),
+            browser,
             ..Default::default()
         };
-        let c = Arc::new(Crawler::new(self.kernel.events().clone(), cfg));
+        let mut c = Crawler::new(self.kernel.events().clone(), cfg);
+        c.scorer = self.scorer.clone();
+        let c = Arc::new(c);
         *g = Some(c.clone());
         c
     }

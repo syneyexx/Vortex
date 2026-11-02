@@ -1871,6 +1871,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "quick-xml"
+version = "0.36.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f7649a7b4df05aed9ea7ec6f628c67c9953a43869b8bc50929569b2999d443fe"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "quinn"
 version = "0.11.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3046,6 +3055,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "axum",
+ "chrono",
  "futures",
  "parking_lot",
  "reqwest",
@@ -3137,8 +3147,10 @@ name = "vortex-crawler"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "chrono",
  "futures",
  "parking_lot",
+ "quick-xml",
  "reqwest",
  "rusqlite",
  "serde",
@@ -3146,6 +3158,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "tokio-util",
+ "toml",
  "tracing",
  "vortex-core",
  "vortex-types",

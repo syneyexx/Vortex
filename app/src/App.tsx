@@ -6,6 +6,7 @@ import { DashboardPage } from "./pages/DashboardPage.tsx";
 import { MemoryPage } from "./pages/MemoryPage.tsx";
 import { ResearchPage } from "./pages/ResearchPage.tsx";
 import { TrainingPage } from "./pages/TrainingPage.tsx";
+import { WorldPage } from "./pages/WorldPage.tsx";
 import { StatusBar } from "./components/StatusBar.tsx";
 import { SubNav, TopNav, type Sub, type Top } from "./components/TopNav.tsx";
 import { ModelsPage, Placeholder, RunsPage, SettingsPage } from "./pages/Pages.tsx";
@@ -29,6 +30,24 @@ function Toasts() {
           {t.text}
         </div>
       ))}
+    </div>
+  );
+}
+
+/// Research + wereldmonitor (W14) onder één tab.
+function ResearchArea() {
+  const [view, setView] = useState<"research" | "world">("research");
+  return (
+    <div>
+      <div className="chat-tabs" style={{ display: "inline-flex", margin: "12px 24px 0" }}>
+        <button className={view === "research" ? "active" : ""} onClick={() => setView("research")}>
+          Research
+        </button>
+        <button className={view === "world" ? "active" : ""} onClick={() => setView("world")}>
+          Wereldmonitor
+        </button>
+      </div>
+      {view === "research" ? <ResearchPage /> : <WorldPage />}
     </div>
   );
 }
@@ -67,7 +86,7 @@ export function App() {
         text="Het debatteam draait live in het Agent collaboration-paneel; rollen en prompts bewerk je in Instellingen (config/roles/)."
       />
     );
-  else if (top === "research") body = <ResearchPage />;
+  else if (top === "research") body = <ResearchArea />;
   else if (top === "memory") body = <MemoryPage />;
   else if (top === "models")
     body = (

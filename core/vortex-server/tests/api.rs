@@ -908,3 +908,87 @@ async fn training_datasets_hot_swap_gate_and_worker_job() {
         let _ = w.kill().await;
     }
 }
+
+/// W14: wereldmonitor via de API (nepbronnen), gevolgde site, voorspellingen, spelers en een
+/// HF-dataset (lokaal bestand) via de echte worker naar kennis, SFT en layer + catalogus.
+#[tokio::test]
+async fn world_monitor_api_and_hf_import() {
+    let fx = setup().await;
+    let now = chrono::Utc::now().to_rfc2822();
+    let n2 = now.clone();
+    let app = axum::Router::new()
+        .route("/a", axum::routing::get(move || { let d = now.clone(); async move { format!("<rss><channel><item><title>Strong earthquake strikes coast of Japan</title><link>https://a.example/1</link><pubDate>{d}</pubDate></item><item><title>Dutch cabinet presents budget plan</title><link>https://a.example/2</link><pubDate>{d}</pubDate></item></channel></rss>") } }))
+        .route("/b", axum::routing::get(move || { let d = n2.clone(); async move { format!("<rss><channel><item><title>Earthquake strikes Japan coast, tsunami warning</title><link>https://b.example/1</link><pubDate>{d}</pubDate></item></channel></rss>") } }))
+        .route("/page", axum::routing::get(|| async { axum::response::Html("<html><title>Blog</title><main><p>Nieuwe post over modellen en geheugen, lang genoeg om als tekst te tellen voor de extractor van Vortex.</p></main></html>") }));
+    let l = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap_or_else(|e| panic!("{e}"));
+    let web = format!("http://{}", l.local_addr().unwrap_or_else(|e| panic!("{e}")));
+    tokio::spawn(async move { axum::serve(l, app).await });
+    std::fs::write(
+        fx.cfg.join("world.toml"),
+        format!("enabled = false\n[[sources]]\nname = \"a\"\nkind = \"rss\"\nurl = \"{web}/a\"\ncountry = \"NL\"\n[[sources]]\nname = \"b\"\nkind = \"rss\"\nurl = \"{web}/b\"\ncountry = \"UK\"\n"),
+    )
+    .unwrap_or_else(|e| panic!("{e}"));
+    fx.kernel.config().reload().unwrap_or_else(|e| panic!("{e}"));
+    let f = fx.post("/api/world/follow", json!({"url": format!("{web}/page"), "interval_hours": 1})).await;
+    assert_eq!(f["followed"].as_array().map(Vec::len), Some(1), "{f}");
+    let r = fx.post("/api/world/fetch", json!({})).await;
+    assert_eq!(r["fetched"].as_array().map(Vec::len), Some(2), "{r}");
+    assert_eq!(r["cluster"]["confirmed"], 1, "{r}");
+    assert_eq!(r["followed_changed"].as_array().map(Vec::len), Some(1), "{r}");
+    let st = fx.get("/api/world").await;
+    assert!(st["sources"][0]["terms"].as_str().unwrap_or("").contains("RSS"), "{st}");
+    let ev = fx.get("/api/world/events?status=confirmed").await;
+    let id = ev[0]["id"].as_str().unwrap_or_default().to_string();
+    assert_eq!(fx.get(&format!("/api/world/events/{id}")).await["items"].as_array().map(Vec::len), Some(2));
+    assert!(fx.get("/api/world/bias").await.as_array().is_some_and(|b| b.len() >= 2));
+    assert!(fx.get("/api/world/items?q=earthquake").await.as_array().is_some_and(|v| v.len() == 2));
+    // Voorspelling met verlopen deadline → toetsen → niet meer open.
+    let p = fx.post("/api/world/predictions", json!({"claim": "Japan meldt een naschok", "probability": 0.7, "criteria": "earthquake Japan", "resolve_by": "2000-01-01"})).await;
+    assert_eq!(p["status"], "open", "{p}");
+    let res = fx.post("/api/world/predictions/resolve", json!({})).await;
+    assert_ne!(res[0]["status"], "open", "{res}");
+    assert!(fx.get("/api/world/calibration").await["counts"].is_object());
+    // Spelers: privépersoon zonder publieke rol geweigerd.
+    let bad = fx
+        .http
+        .post(format!("{}/api/world/players", fx.base))
+        .json(&json!({"name": "Piet", "sector": "x", "kind": "person"}))
+        .send()
+        .await
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(bad.status(), 400);
+    let pl = fx.post("/api/world/players", json!({"name": "Acme", "sector": "chips", "kind": "organization"})).await;
+    assert!(pl["id"].as_str().is_some());
+
+    // HF-dataset via de worker.
+    let Some(mut worker) = start_worker(&fx).await else { return };
+    let src = fx._dir.path().join("qa.jsonl");
+    let rows: String = (0..12).map(|i| format!("{}\n", json!({"question": format!("Wat is de uitkomst van {i} keer drie, stap voor stap?"), "answer": format!("Het antwoord is {}", i * 3), "label": "math"}))).collect();
+    std::fs::write(&src, rows).unwrap_or_else(|e| panic!("{e}"));
+    let info =
+        fx.post("/api/world/datasets/inspect", json!({"source": src.display().to_string(), "license": "cc0"})).await;
+    assert_eq!(info["schema"]["kind"], "qa", "{info}");
+    let mapping = info["mapping"].clone();
+    for dest in ["knowledge", "sft"] {
+        let r = fx
+            .post(
+                "/api/world/datasets/import",
+                json!({"source": src.display().to_string(), "destination": dest, "mapping": mapping, "license": "cc0"}),
+            )
+            .await;
+        assert_eq!(r["stats"]["kept"], 12, "{dest}: {r}");
+    }
+    let lay = fx.post("/api/world/datasets/import", json!({"source": src.display().to_string(), "destination": "layer", "kind": "text", "mapping": {"text": "question", "label": "label"}})).await;
+    assert_eq!(lay["stats"]["kept"], 12, "{lay}");
+    let none = fx
+        .post(
+            "/api/world/datasets/import",
+            json!({"source": src.display().to_string(), "destination": "sft", "mapping": {}}),
+        )
+        .await;
+    assert!(none["stats"].is_null(), "zonder bevestigde mapping geen import");
+    let cat = fx.get("/api/world/datasets").await;
+    assert_eq!(cat.as_array().map(Vec::len), Some(3), "{cat}");
+    assert!(cat.as_array().is_some_and(|c| c.iter().any(|x| x["license"] == "cc0")));
+    let _ = worker.kill().await;
+}

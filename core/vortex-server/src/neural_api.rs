@@ -150,6 +150,32 @@ fn retrieved_at(log: &EventLog) -> HashMap<String, String> {
     out
 }
 
+/// Uitkomst per gescoorde link (`taak|url`): 1 = pagina bewaard door de Curator, 0 = opgehaald
+/// maar verworpen, mislukt of geblokkeerd; nog in de wachtrij = onbekend (W14.03).
+fn crawl_outcomes(log: &EventLog) -> HashMap<String, f32> {
+    log.db()
+        .read(|c| {
+            let mut kept = std::collections::HashSet::new();
+            let mut st = c.prepare("SELECT json_extract(payload, '$.task'), json_extract(payload, '$.url') FROM events WHERE kind = 'crawl.page.fetched'")?;
+            for r in st.query_map([], |r| Ok((r.get::<_, Option<String>>(0)?, r.get::<_, Option<String>>(1)?)))? {
+                if let Ok((Some(t), Some(u))) = r {
+                    kept.insert(format!("{t}|{u}"));
+                }
+            }
+            let mut st = c.prepare("SELECT task_id, url, status FROM crawl_frontier WHERE status != 'queued'")?;
+            let v = st
+                .query_map([], |r| Ok((format!("{}|{}", r.get::<_, String>(0)?, r.get::<_, String>(1)?), r.get::<_, String>(2)?)))?
+                .filter_map(|x| x.ok())
+                .map(|(k, _)| {
+                    let y = if kept.contains(&k) { 1.0 } else { 0.0 };
+                    (k, y)
+                })
+                .collect::<HashMap<_, _>>();
+            Ok(v)
+        })
+        .unwrap_or_default()
+}
+
 /// Vraagtekst van een run (voor bootstrap-labels en decontaminatie).
 fn run_question(chat: &ChatEngine, run: &str) -> Option<String> {
     chat.kernel
@@ -226,12 +252,14 @@ pub fn build_examples(chat: &ChatEngine, layer: &str) -> Vec<Example> {
         }
         _ => {
             let fb = feedback(log);
+            let crawl = if layer == "crawl_rank" { crawl_outcomes(log) } else { HashMap::new() };
             for (x, h, r) in examples_from_log(log, layer) {
                 let label = match lab.get(&r) {
                     Some((y, s)) => Some((*y, s.clone())),
                     None if layer == "usefulness" => {
                         r.split(':').next().and_then(|run| fb.get(run)).map(|y| (*y, "outcome".to_string()))
                     }
+                    None if layer == "crawl_rank" => crawl.get(&r).map(|y| (*y, "outcome".to_string())),
                     None => None,
                 };
                 let Some((y, src)) = label else { continue };
@@ -247,6 +275,40 @@ pub fn build_examples(chat: &ChatEngine, layer: &str) -> Vec<Example> {
                     text,
                 });
             }
+            if layer == "router" {
+                out.extend(hf_router_examples(&layers_dir(chat).join("hf")));
+            }
+        }
+    }
+    out
+}
+
+/// Gelabelde HF-data (W14.09, bestemming "layer"): `{text, label}` met een router-klasse.
+fn hf_router_examples(dir: &std::path::Path) -> Vec<Example> {
+    let mut out = Vec::new();
+    for f in std::fs::read_dir(dir).into_iter().flatten().filter_map(|e| e.ok()) {
+        for (i, line) in std::fs::read_to_string(f.path()).unwrap_or_default().lines().enumerate() {
+            let Ok(v) = serde_json::from_str::<Value>(line) else { continue };
+            let Some(text) = v["text"].as_str() else { continue };
+            let y = match &v["label"] {
+                Value::String(l) => spec::ROUTER_CLASSES.iter().position(|c| c.eq_ignore_ascii_case(l)),
+                Value::Number(n) => n.as_u64().map(|n| n as usize).filter(|n| *n < spec::ROUTER_CLASSES.len()),
+                _ => None,
+            };
+            let Some(y) = y else { continue };
+            let r = vortex_cognition::router::route(text);
+            let h = vortex_cognition::router::TASKS.iter().position(|t| *t == r.task).unwrap_or(0);
+            let mut hv = vec![0.0; spec::ROUTER_CLASSES.len()];
+            hv[h] = 1.0;
+            out.push(Example {
+                x: vortex_cognition::router::vector(&r.features),
+                y: y as f32,
+                h: hv,
+                w: 1.0,
+                src: format!("hf:{}:{i}", f.path().display()),
+                label_source: "human".into(),
+                text: Some(text.chars().take(500).collect()),
+            });
         }
     }
     out

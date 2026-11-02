@@ -96,4 +96,8 @@ Nieuwste onderaan. Formaat: datum · besluit · waarom.
 | 2026-11-02 | DPO-labels apart: correctness (objectieve check/Judge) vs preference (gebruiker) | Voorkeur ≠ feitelijk correct (zie modules/training) |
 | 2026-11-02 | Poortwachter: winst ≥ 2 pt op een suite, geen regressie > 2 pt, schaduwrun ≥ 50 % | "Een adapter wint op de eval zonder regressie elders" |
 | 2026-11-02 | Training alleen in idle; bij gebruik worker annuleren + checkpoint, later hervatten | GPU direct vrij voor de gebruiker |
-
+| 2026-11-02 | Wereldmonitor: bronnen als data (`config/world.toml`), tempo/voorwaarden per bronsoort in code | Bronnen toevoegen zonder code; voorwaarden zichtbaar in de GUI |
+| 2026-11-02 | Event "bevestigd" = ≥ 2 onafhankelijke brongroepen (domein), anders "gemeld" | Eenvoudig, uitlegbaar; kopieën van één uitgever tellen niet dubbel |
+| 2026-11-02 | Voorspellingen altijd met toetscriteria + datum; toetsen alleen waar/onwaar als het bewijs het beslist, anders "niet te beslissen" (telt niet mee in de kalibratie) | Eerlijke kalibratie van het wereldmodel |
+| 2026-11-02 | Spelers alleen organisaties en publieke figuren met publieke rol | Geen profilering van privépersonen |
+| 2026-11-02 | HF-import alleen na bevestigde mapping; dedup ook tegen eerdere imports per bestemming | "LM stelt voor, gebruiker bevestigt"; geen dubbele trainingsdata |

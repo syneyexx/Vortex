@@ -71,6 +71,11 @@ event_kinds! {
     ResearchRecord => "research.record.extracted",
     ResearchReport => "research.report.written",
     CrawlPageFetched => "crawl.page.fetched",
+    WorldFetched => "world.source.fetched",
+    WorldEvent => "world.event.updated",
+    PredictionMade => "world.prediction.made",
+    PredictionResolved => "world.prediction.resolved",
+    DatasetImported => "world.dataset.imported",
     // neurale layers (W11)
     NeuralShadow => "neural.shadow.compared",
     NeuralExample => "neural.example.logged",

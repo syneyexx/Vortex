@@ -127,7 +127,7 @@ fn feedback_by_run(log: &vortex_core::EventLog) -> HashMap<String, String> {
 }
 
 /// Dataset wegschrijven: dedup, decontaminatie t.o.v. de eval-set, versie = inhoudshash.
-fn save_dataset(
+pub(crate) fn save_dataset(
     chat: &ChatEngine,
     kind: &str,
     rows: Vec<Value>,

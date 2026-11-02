@@ -19,6 +19,7 @@ pub mod research;
 pub mod roles;
 pub mod specialist;
 pub mod team;
+pub mod world;
 
 use std::sync::Arc;
 

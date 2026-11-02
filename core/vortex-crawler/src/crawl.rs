@@ -16,7 +16,7 @@ use vortex_core::{EventLog, NegativeCache};
 use vortex_types::{Event, EventKind, RunId, TraceId};
 
 use crate::extract::extract;
-use crate::rank::{hamming, novelty, score_link, simhash, terms};
+use crate::rank::{hamming, link_vector, novelty, score_link, simhash, terms};
 use crate::robots::Robots;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,6 +37,9 @@ pub struct CrawlConfig {
     pub concurrency: usize,
     pub cache_hours: i64,
     pub min_score: f64,
+    /// Headless browser (Chromium/Chrome/Edge) voor JS-pagina's (W14.03): als de HTML vrijwel
+    /// geen tekst oplevert maar wel scripts bevat → `--headless --dump-dom`.
+    pub browser: Option<PathBuf>,
 }
 
 impl Default for CrawlConfig {
@@ -54,6 +57,7 @@ impl Default for CrawlConfig {
             concurrency: 4,
             cache_hours: 24,
             min_score: 0.15,
+            browser: None,
         }
     }
 }
@@ -94,6 +98,8 @@ pub struct Crawler {
     robots: Mutex<HashMap<String, Arc<Robots>>>,
     next_slot: Mutex<HashMap<String, Instant>>,
     negative: NegativeCache<String>,
+    /// Ranker als neurale layer `crawl_rank` (W14.03); geen = heuristiek.
+    pub scorer: vortex_core::Scorer,
 }
 
 fn fnv(b: &[u8]) -> u64 {
@@ -136,6 +142,7 @@ impl Crawler {
             robots: Mutex::new(HashMap::new()),
             next_slot: Mutex::new(HashMap::new()),
             negative: NegativeCache::new(Duration::from_secs(1800), 10_000),
+            scorer: None,
         }
     }
 
@@ -304,11 +311,21 @@ impl Crawler {
         }
         let html = String::from_utf8_lossy(&bytes).to_string();
         let base = Url::parse(&final_url).unwrap_or(u);
-        let ex = if ct.contains("html") || html.trim_start().starts_with('<') {
+        let mut ex = if ct.contains("html") || html.trim_start().starts_with('<') {
             extract(&html, &base)
         } else {
             crate::extract::Extracted { title: String::new(), text: html.clone(), links: vec![] }
         };
+        // JS-pagina: weinig tekst, wel scripts → headless browser.
+        if let Some(b) = &self.cfg.browser
+            && needs_browser(&html, &ex.text)
+            && let Some(dom) = render(b, &final_url, 30).await
+        {
+            let r = extract(&dom, &base);
+            if r.text.len() > ex.text.len() {
+                ex = r;
+            }
+        }
         let (mut raw_path, mut text_path) = (None, None);
         if let Some(d) = &raw_dir {
             let rp = d.join("raw").join(format!("{hash}.html"));
@@ -443,11 +460,17 @@ impl Crawler {
                                 .take(200)
                                 .map(|(l, a)| {
                                     let d = host(l);
-                                    (
-                                        l.clone(),
-                                        a.clone(),
-                                        score_link(&q, l, a, depth + 1, domains.contains(&d), self.reliability(&d)),
-                                    )
+                                    let (seen, rel) = (domains.contains(&d), self.reliability(&d));
+                                    let h = score_link(&q, l, a, depth + 1, seen, rel);
+                                    let x = link_vector(&q, l, a, depth + 1, seen, rel);
+                                    let s = vortex_core::neural::decide(
+                                        &self.scorer,
+                                        "crawl_rank",
+                                        &x,
+                                        vec![h as f32],
+                                        &format!("{task_id}|{l}"),
+                                    );
+                                    (l.clone(), a.clone(), f64::from(s.first().copied().unwrap_or(h as f32)))
                                 })
                                 .filter(|(_, _, s)| *s >= self.cfg.min_score)
                                 .collect();
@@ -503,4 +526,46 @@ impl Crawler {
 
 fn chrono_parse(s: &str) -> Option<vortex_types::Timestamp> {
     s.parse().ok()
+}
+
+// VX:W14.03
+/// Lijkt dit een JS-pagina? (weinig zichtbare tekst, wel scripts of een lege app-root)
+pub fn needs_browser(html: &str, text: &str) -> bool {
+    let l = html.to_lowercase();
+    text.chars().count() < 200
+        && (l.matches("<script").count() >= 1 || l.contains("id=\"root\"") || l.contains("id=\"app\""))
+}
+
+/// DOM na JavaScript via een headless browser (`--headless --dump-dom`).
+pub async fn render(browser: &std::path::Path, url: &str, timeout_s: u64) -> Option<String> {
+    let mut cmd = tokio::process::Command::new(browser);
+    cmd.args([
+        "--headless",
+        "--disable-gpu",
+        "--no-sandbox",
+        "--no-first-run",
+        "--disable-extensions",
+        "--virtual-time-budget=8000",
+        "--dump-dom",
+        url,
+    ])
+    .stdin(std::process::Stdio::null())
+    .stderr(std::process::Stdio::null())
+    .kill_on_drop(true);
+    let out = tokio::time::timeout(Duration::from_secs(timeout_s), cmd.output()).await.ok()?.ok()?;
+    out.status.success().then(|| String::from_utf8_lossy(&out.stdout).to_string()).filter(|s| !s.trim().is_empty())
+}
+
+/// Zoek een headless-geschikte browser op de gangbare plekken.
+pub fn find_browser() -> Option<PathBuf> {
+    let cands = [
+        "/opt/pw-browsers/chromium",
+        "/usr/bin/chromium",
+        "/usr/bin/chromium-browser",
+        "/usr/bin/google-chrome",
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+        r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+    ];
+    cands.iter().map(PathBuf::from).find(|p| p.is_file())
 }

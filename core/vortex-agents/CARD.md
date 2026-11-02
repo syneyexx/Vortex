@@ -18,9 +18,11 @@
 | `research::{run, ResearchDeps, ResearchMode, choose_mode}` | research-team (W10): plan → vind → lees/extraheer → analyseer → verifieer → oordeel → rapport → leer |
 | `research::corpus_synthesis` | vraag over een hele verzameling documenten |
 | `records::{validate, schema, render, KINDS}` | extractor-schema's |
+| `world::{integrate, hypothesize, hypotheses, add_prediction, predict, predictions, resolve_due, calibration, summarize, events, event_detail}` | wereldmodel (W14): KG-integratie, hypotheses, voorspellingen + toetsen + kalibratie, samenvattingen |
+| `world::{add_player, players, player, study_player, predict_player}` | spelers per sector (alleen publiek), "wat zou X doen?" |
 
 ## Events (schrijft)
-`agent.team.composed`, `agent.role.{started,completed}`, `agent.judge.verdict`, `agent.evidence.compiled`, `research.{run.started,subquestion.updated,source.found,record.extracted,report.written}`; via geheugen: `memory.conflict.{resolved,rolled_back}`.
+`agent.team.composed`, `agent.role.{started,completed}`, `agent.judge.verdict`, `agent.evidence.compiled`, `research.{run.started,subquestion.updated,source.found,record.extracted,report.written}`, `world.prediction.{made,resolved}`; via geheugen: `memory.conflict.{resolved,rolled_back}`.
 
 ## Invarianten
 - Objectieve checks wegen zwaarder dan overeenstemming; antwoord pas na het Judge-oordeel.
@@ -28,4 +30,4 @@
 - Elke conflictbeslissing is terug te draaien (`conflict_history`).
 
 ## Tests
-`cargo test -p vortex-agents` — unit (team, rollen, json, specialist) + `tests/team.rs` (rekencheck kiest juiste kandidaat, Judge-revise/onzeker, offline lokaal bewijs, conflict-team: regel/periodes/rollback/betwist) + `tests/research.rs` (standaard end-to-end met nep-SearXNG en twee domeinen, offline lokaal, corpus).
+`cargo test -p vortex-agents` — unit (team, rollen, json, specialist) + `tests/team.rs` (rekencheck kiest juiste kandidaat, Judge-revise/onzeker, offline lokaal bewijs, conflict-team: regel/periodes/rollback/betwist) + `tests/research.rs` (standaard end-to-end met nep-SearXNG en twee domeinen, offline lokaal, corpus) + `tests/world.rs` (KG-integratie, hypotheses, voorspellen + toetsen + kalibratie, samenvattingen, spelers).

@@ -158,6 +158,25 @@ pub fn specs() -> Vec<LayerSpec> {
             used_in: "vortex-memory::maintenance::decay",
             hidden: 12,
         },
+        LayerSpec {
+            name: "crawl_rank",
+            description: "Levert deze link een bewaarde, nuttige pagina op? (focused crawling, W14.03)",
+            kind: LayerKind::Binary,
+            features: &[
+                "relevance",
+                "reliability",
+                "new_domain",
+                "depth",
+                "is_pdf",
+                "anchor_words",
+                "anchor_hits",
+                "url_len",
+                "has_query",
+            ],
+            classes: &[],
+            used_in: "vortex-crawler::crawl::run (frontier-score)",
+            hidden: 12,
+        },
     ]
 }
 

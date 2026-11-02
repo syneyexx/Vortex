@@ -19,16 +19,16 @@ updated: 2026-11-02
 | `vortex-cognition` | cyclus, Global Workspace, doelstapel, metacognitie, wereld-/zelfmodel | [[modules/cognitie]] | W07, W12 | **ja** (W07) |
 | `vortex-context` | context assembly, budgetten, compactie, inspector | [[modules/context]] | W07 | **ja** (adapters + assembler) |
 | `vortex-tools` | toolregistry, contracten, sandbox, MCP-client, skills | [[modules/tools-skills]] | W08 | **ja** (W08) |
-| `vortex-agents` | debatteam, research-team, conflict-team, rollen | [[modules/redeneren-debat]], [[modules/research-team]] | W09, W10 | **ja** (W09) |
+| `vortex-agents` | debatteam, research-team, conflict-team, rollen, wereldmodel (hypotheses, voorspellingen, spelers) | [[modules/redeneren-debat]], [[modules/research-team]], [[modules/research-kennis]] | W09, W10, W14 | **ja** (W09–W14) |
 | `vortex-neural` | ONNX via `ort`, feature logging, hot-swap van layers | [[modules/neurale-layers]] | W11 | **ja** (W11) |
-| `vortex-crawler` | Scout/Crawler (reqwest), frontier, per-domein tempo | [[modules/research-kennis]] | W10, W14 | **ja** (W10) |
+| `vortex-crawler` | Scout/Crawler (reqwest), frontier, per-domein tempo, headless browser, wereldmonitor (connectors, clustering, bias) | [[modules/research-kennis]] | W10, W14 | **ja** (W10, W14) |
 
 ## Overige mappen
 | Map | Inhoud | Waves | Bestaat |
 | --- | --- | --- | --- |
-| `worker/` | Python (uv): ingest, parsers, training, datasets, layer-training → ONNX | W10, W11, W13, W14 | **ja** (gRPC + parsers/ingest W10) |
+| `worker/` | Python (uv): ingest, parsers, training, HF-datasets, layer-training → ONNX | W10, W11, W13, W14 | **ja** (W10–W14) |
 | `app/` | Tauri 2 + React + TS, design tokens, WebGL-vortex | W03+ | **ja** (chat-GUI) |
-| `config/` | `models.toml`, `prompts/`, `roles/`, `skills/` (hot-reload) | W00+ | **ja** |
+| `config/` | `models.toml`, `prompts/`, `roles/`, `skills/` (hot-reload), `world.toml` (bronnen) | W00+ | **ja** |
 | `evals/` | eval-sets, fixtures, retrieval-tests | W06+ | **ja** (7 suites + retrieval) |
 | `proto/` | gRPC-contracten kern ⇄ worker ⇄ GUI ⇄ CLI — kaart: [[15-CONTRACTEN]] | W00, W03, W10 | **ja** |
 | `justfile` | vaste commando's (build, test, check, run, eval, models-up/down) | W00 | **ja** |

@@ -13,6 +13,8 @@ dependencies = [
 ingest = ["pymupdf>=1.24", "ebooklib>=0.18", "trafilatura>=1.12", "pyarrow>=17"]
 # Neurale layers (W11): numpy-trainer + ONNX-export (licht). PyTorch wordt gebruikt als het er is.
 layers = ["numpy>=1.26", "onnx>=1.16"]
+# HF-datasets (W14.09): streamen + licentie uit de dataset-card.
+hf = ["datasets>=3", "huggingface_hub>=0.24", "pyarrow>=17"]
 train = ["torch", "transformers", "peft", "datasets", "huggingface_hub", "onnx", "numpy"]
 
 [project.scripts]

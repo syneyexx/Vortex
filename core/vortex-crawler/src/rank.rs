@@ -33,6 +33,33 @@ pub fn score_link(query: &[String], url: &str, anchor: &str, depth: usize, domai
     s.clamp(0.0, 1.0)
 }
 
+/// Kenmerken voor de neurale ranker `crawl_rank` (volgorde = contract met `vortex-neural::spec`).
+pub fn link_vector(
+    query: &[String],
+    url: &str,
+    anchor: &str,
+    depth: usize,
+    domain_seen: bool,
+    reliability: f64,
+) -> Vec<f32> {
+    let hay: HashSet<String> =
+        terms(&format!("{anchor} {}", url.replace(['/', '-', '_', '.'], " "))).into_iter().collect();
+    let hits = query.iter().filter(|q| hay.contains(*q)).count();
+    let rel = if query.is_empty() { 0.3 } else { (hits as f64 / query.len().min(5) as f64).min(1.0) };
+    let anchor_hits = terms(anchor).iter().filter(|w| query.contains(w)).count();
+    vec![
+        rel as f32,
+        reliability as f32,
+        if domain_seen { 0.0 } else { 1.0 },
+        depth as f32 / 5.0,
+        if url.ends_with(".pdf") { 1.0 } else { 0.0 },
+        (anchor.split_whitespace().count() as f32 / 10.0).min(1.0),
+        (anchor_hits as f32 / 3.0).min(1.0),
+        (url.len() as f32 / 200.0).min(1.0),
+        if url.contains('?') { 1.0 } else { 0.0 },
+    ]
+}
+
 /// 64-bits simhash over woord-3-grammen.
 pub fn simhash(text: &str) -> u64 {
     let w: Vec<&str> = text.split_whitespace().collect();

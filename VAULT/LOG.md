@@ -115,4 +115,10 @@ Nieuwste onderaan. Per sessie 3–5 regels: wat gedaan, wat open, volgende stap.
 - Worker `train_lora.py` (Unsloth/PEFT + TRL, checkpoints, GGUF-conversie, droogloop) + gRPC `lora:*`; server: adapter-registry, training alleen in idle met pauzeren/hervatten, hot-swap via `/lora-adapters`, schaduwrun, poortwachter, kalibratie, vliegwiel. Layers `verifier` + `prm`. GUI: Training & evals.
 - Gate-logica getest met nep-llama-server; echte QLoRA kan alleen op de PC (geen torch in de cloud).
 
-**Actieve wave:** PC-verificatie W00–W13 · cloud: volgende = W14 (wereldkennis)
+## 2026-11-02 (W14 wereldkennis)
+- `vortex-crawler::world`: 12 bronsoorten met voorwaarden + tempo, opslag met dedup, inhaal-modus, event-clustering (gemeld vs bevestigd), bronbias, Wikidata-koppeling, gevolgde sites; crawler: headless browser voor JS-pagina's + layer `crawl_rank`.
+- `vortex-agents::world`: KG-integratie, hypotheses, voorspellingen + automatisch toetsen + kalibratie, dag/week/maand-samenvattingen, spelers (alleen publiek). Server: `world_api` + planner (P3-runs); GUI: Research → Wereldmonitor.
+- Worker `hf_datasets.py` (schema, mapping + bevestiging, MinHash, decontaminatie, licentie, 5 bestemmingen) + catalogus. Alle tests groen; Windows-check groen.
+- Cloud-proxy blokkeert nieuwsbronnen en huggingface.co → W14.01/W14.09 live op de PC verifiëren.
+
+**Actieve wave:** PC-verificatie W00–W14 · cloud: volgende = W15 (autonomie)

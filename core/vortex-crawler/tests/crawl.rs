@@ -120,3 +120,39 @@ async fn stops_on_page_budget() {
     assert_eq!(rep.pages.len(), 2);
     assert_eq!(rep.stopped, "paginabudget bereikt");
 }
+
+/// W14.03: JS-pagina (inhoud pas na script) → headless browser levert de tekst.
+#[tokio::test]
+async fn js_page_via_headless_browser() {
+    let Some(browser) = vortex_crawler::crawl::find_browser() else { return };
+    let app = Router::new().route(
+        "/",
+        get(|| async {
+            axum::response::Html("<html><head><title>App</title></head><body><div id=\"root\"></div><script>document.getElementById('root').innerHTML = '<main><p>' + 'Gerenderde inhoud over geheugenarchitectuur en retrieval in Vortex. '.repeat(12) + '</p></main>';</script></body></html>")
+        }),
+    );
+    let l = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = l.local_addr().unwrap();
+    tokio::spawn(async move { axum::serve(l, app).await.unwrap() });
+    let html = reqwest::get(format!("http://{addr}/")).await.unwrap().text().await.unwrap();
+    assert!(vortex_crawler::crawl::needs_browser(&html, ""));
+    let Some(dom) = vortex_crawler::crawl::render(&browser, &format!("http://{addr}/"), 60).await else {
+        eprintln!("browser start niet in deze omgeving");
+        return;
+    };
+    assert!(dom.contains("Gerenderde inhoud"), "{dom}");
+    // Via de crawler zelf.
+    let c = Crawler::new(log(), CrawlConfig { browser: Some(browser), domain_interval_ms: 10, ..Default::default() });
+    let rep = c
+        .crawl(
+            "t-js",
+            "geheugenarchitectuur retrieval",
+            vec![format!("http://{addr}/")],
+            None,
+            TraceId::new(),
+            Default::default(),
+        )
+        .await;
+    assert_eq!(rep.pages.len(), 1, "{rep:?}");
+    assert!(rep.pages[0].text.contains("Gerenderde inhoud"));
+}

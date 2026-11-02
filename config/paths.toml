@@ -5,3 +5,4 @@ cold_dir = "E:/vortex-cold"             # ruwe data, archief, backups (HDD)
 hf_home = "E:/vortex-cold/hf"           # Hugging Face-cache (HDD)
 llama_server = "C:/tools/llama.cpp/llama-server.exe"
 worker_address = "127.0.0.1:50061"         # Python-worker (ingest/parsers): `just worker`
+browser = ""                             # headless browser voor JS-pagina's (leeg = automatisch zoeken: Chrome/Edge/Chromium)

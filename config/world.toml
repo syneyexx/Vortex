@@ -1,0 +1,188 @@
+# Wereldmonitor (W14). Zie VAULT/modules/research-kennis.md en core/vortex-server/src/world_api.rs.
+# Elke bron: soort, URL (instelbaar), interval, land + richting (voor bronbias). Tempo en
+# voorwaarden per soort staan in vortex-crawler::world::terms (zichtbaar in de GUI).
+
+enabled = true
+cluster_threshold = 0.34      # gelijkenis om artikelen tot één event samen te voegen
+window_hours = 72             # clustervenster
+hypothesize_every_hours = 6
+predict_every_hours = 12
+horizon_days = 30
+
+# ── Nieuws: meerdere landen en richtingen ────────────────────────────────────
+[[sources]]
+name = "nos"
+kind = "rss"
+url = "https://feeds.nos.nl/nosnieuwsalgemeen"
+country = "NL"
+orientation = "publiek"
+interval_min = 30
+
+[[sources]]
+name = "nu"
+kind = "rss"
+url = "https://www.nu.nl/rss/Algemeen"
+country = "NL"
+orientation = "commercieel"
+interval_min = 30
+
+[[sources]]
+name = "bbc-world"
+kind = "rss"
+url = "https://feeds.bbci.co.uk/news/world/rss.xml"
+country = "UK"
+orientation = "publiek"
+interval_min = 30
+
+[[sources]]
+name = "guardian-world"
+kind = "rss"
+url = "https://www.theguardian.com/world/rss"
+country = "UK"
+orientation = "links-liberaal"
+interval_min = 60
+
+[[sources]]
+name = "fox-world"
+kind = "rss"
+url = "https://moxie.foxnews.com/google-publisher/world.xml"
+country = "US"
+orientation = "rechts-conservatief"
+interval_min = 60
+
+[[sources]]
+name = "npr-world"
+kind = "rss"
+url = "https://feeds.npr.org/1004/rss.xml"
+country = "US"
+orientation = "publiek"
+interval_min = 60
+
+[[sources]]
+name = "dw"
+kind = "rss"
+url = "https://rss.dw.com/rdf/rss-en-all"
+country = "DE"
+orientation = "publiek (staatsgefinancierd)"
+interval_min = 60
+
+[[sources]]
+name = "france24"
+kind = "rss"
+url = "https://www.france24.com/en/rss"
+country = "FR"
+orientation = "publiek (staatsgefinancierd)"
+interval_min = 60
+
+[[sources]]
+name = "aljazeera"
+kind = "rss"
+url = "https://www.aljazeera.com/xml/rss/all.xml"
+country = "QA"
+orientation = "staatsgefinancierd"
+interval_min = 60
+
+[[sources]]
+name = "times-of-india"
+kind = "rss"
+url = "https://timesofindia.indiatimes.com/rssfeeds/296589292.cms"
+country = "IN"
+orientation = "commercieel"
+interval_min = 120
+
+[[sources]]
+name = "abc-au"
+kind = "rss"
+url = "https://www.abc.net.au/news/feed/51120/rss.xml"
+country = "AU"
+orientation = "publiek"
+interval_min = 120
+
+[[sources]]
+name = "nhk-world"
+kind = "rss"
+url = "https://www3.nhk.or.jp/nhkworld/en/news/feeds/"
+country = "JP"
+orientation = "publiek"
+interval_min = 120
+enabled = false   # feed-URL wisselt soms; aanzetten na controle
+
+# ── Wereldwijde event-databases ──────────────────────────────────────────────
+[[sources]]
+name = "gdelt"
+kind = "gdelt"
+url = "https://api.gdeltproject.org/api/v2/doc/doc"
+interval_min = 60
+params = { query = "(sourcelang:english OR sourcelang:dutch) (crisis OR election OR earthquake OR conflict OR economy)", limit = 75 }
+
+[[sources]]
+name = "wikipedia-current-events"
+kind = "wikipedia_events"
+url = "https://en.wikipedia.org/api/rest_v1/page/html"
+interval_min = 360
+
+[[sources]]
+name = "reliefweb"
+kind = "reliefweb"
+url = "https://api.reliefweb.int/v1/reports"
+interval_min = 180
+params = { appname = "vortex-personal", limit = 30 }
+
+[[sources]]
+name = "usgs"
+kind = "usgs"
+url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson"
+country = "US"
+interval_min = 60
+
+[[sources]]
+name = "eonet"
+kind = "eonet"
+url = "https://eonet.gsfc.nasa.gov/api/v3/events"
+interval_min = 180
+
+# ── Statistiek / economie ────────────────────────────────────────────────────
+[[sources]]
+name = "worldbank-gdp-nl"
+kind = "worldbank"
+url = "https://api.worldbank.org/v2"
+interval_min = 10080
+params = { country = "NLD", indicator = "NY.GDP.MKTP.KD.ZG" }
+
+[[sources]]
+name = "eurostat-hicp"
+kind = "eurostat"
+url = "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data"
+interval_min = 1440
+params = { dataset = "prc_hicp_manr", filter = "&geo=NL&coicop=CP00" }
+
+[[sources]]
+name = "cbs-cpi"
+kind = "cbs"
+url = "https://opendata.cbs.nl/ODataApi/odata"
+interval_min = 1440
+params = { table = "83131NED", limit = 3 }
+
+# ── Wetenschap en tech ───────────────────────────────────────────────────────
+[[sources]]
+name = "arxiv-ai"
+kind = "arxiv"
+url = "http://export.arxiv.org/api/query"
+interval_min = 720
+params = { query = "cat:cs.AI OR cat:cs.CL OR cat:cs.LG", limit = 50 }
+
+[[sources]]
+name = "hackernews"
+kind = "hackernews"
+url = "https://hacker-news.firebaseio.com/v0"
+interval_min = 120
+params = { limit = 30 }
+
+# ── Entiteiten ───────────────────────────────────────────────────────────────
+# Geen nieuwsbron: koppelt namen in bevestigde events aan Wikidata (Q-ID) vóór de KG-integratie.
+[[sources]]
+name = "wikidata"
+kind = "wikidata"
+url = "https://www.wikidata.org/w/api.php"
+interval_min = 10080
+params = { lang = "en" }
