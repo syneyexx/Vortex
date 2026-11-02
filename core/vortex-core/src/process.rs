@@ -220,6 +220,91 @@ fn new_process_group(cmd: &mut Command) {
     cmd.creation_flags(CREATE_NEW_PROCESS_GROUP);
 }
 
+/// Langlevend proces (bv. llama-server) onder supervisie. Stoppen met [`ServiceHandle::stop`];
+/// bij drop wordt het proces gedood (kill_on_drop) en de resource vrijgegeven.
+#[derive(Debug)]
+pub struct ServiceHandle {
+    child: Child,
+    pid: u32,
+    name: String,
+    _resource: crate::resources::ResourceGuard,
+    log: EventLog,
+    trace: TraceId,
+}
+
+impl ServiceHandle {
+    pub fn pid(&self) -> u32 {
+        self.pid
+    }
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    /// Draait het proces nog?
+    pub fn is_running(&mut self) -> bool {
+        matches!(self.child.try_wait(), Ok(None))
+    }
+    /// Netjes stoppen (hele boom), na `grace` hard.
+    pub async fn stop(mut self, grace: Duration) -> Result<Option<i32>> {
+        let status =
+            if self.is_running() { terminate_tree(&mut self.child, grace).await? } else { self.child.wait().await? };
+        self.log.append(Event::new(
+            EventKind::ProcessExited,
+            self.trace,
+            serde_json::json!({"pid": self.pid, "service": self.name, "exit_code": status.code()}),
+        ))?;
+        Ok(status.code())
+    }
+}
+
+impl Supervisor {
+    /// Start een langlevend proces. Uitvoer gaat naar `log_file` (append), anders weg.
+    pub fn spawn_service(
+        &self,
+        spec: &ProcessSpec,
+        owner: &str,
+        log_file: Option<&std::path::Path>,
+    ) -> Result<ServiceHandle> {
+        let mut cmd = Command::new(&spec.program);
+        cmd.args(&spec.args).stdin(Stdio::null()).kill_on_drop(true);
+        match log_file {
+            Some(p) => {
+                if let Some(dir) = p.parent() {
+                    std::fs::create_dir_all(dir)?;
+                }
+                let f = std::fs::OpenOptions::new().create(true).append(true).open(p)?;
+                let f2 = f.try_clone()?;
+                cmd.stdout(Stdio::from(f)).stderr(Stdio::from(f2));
+            }
+            None => {
+                cmd.stdout(Stdio::null()).stderr(Stdio::null());
+            }
+        }
+        if let Some(cwd) = &spec.cwd {
+            cmd.current_dir(cwd);
+        }
+        for (k, v) in &spec.env {
+            cmd.env(k, v);
+        }
+        new_process_group(&mut cmd);
+        let child = cmd.spawn().map_err(|e| CoreError::Process(format!("{}: {e}", spec.program)))?;
+        let pid = child.id().unwrap_or(0);
+        let res = self.resources.acquire(
+            ResourceKind::Process,
+            &spec.program,
+            owner,
+            None,
+            serde_json::json!({"pid": pid, "args": spec.args, "service": true}),
+        )?;
+        let trace = TraceId::new();
+        self.log.append(Event::new(
+            EventKind::ProcessSpawned,
+            trace,
+            serde_json::json!({"program": spec.program, "pid": pid, "service": owner}),
+        ))?;
+        Ok(ServiceHandle { child, pid, name: owner.to_string(), _resource: res, log: self.log.clone(), trace })
+    }
+}
+
 /// Stop de hele procesboom: eerst netjes, na `grace` hard.
 async fn terminate_tree(child: &mut Child, grace: Duration) -> Result<std::process::ExitStatus> {
     let pid = child.id();
@@ -318,6 +403,22 @@ mod tests {
         let o = s.run(spec, None, TraceId::new(), CancellationToken::new()).await?;
         assert!(o.timed_out);
         assert!(!o.success());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn service_runs_until_stopped() -> Result<()> {
+        let (s, res, _) = sup()?;
+        let d = tempfile::tempdir()?;
+        let log = d.path().join("svc.log");
+        let mut h =
+            s.spawn_service(&ProcessSpec::new("sh").args(["-c", "echo gestart; sleep 30"]), "svc", Some(&log))?;
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        assert!(h.is_running());
+        assert_eq!(res.held()?.len(), 1);
+        h.stop(Duration::from_millis(200)).await?;
+        assert!(res.held()?.is_empty());
+        assert!(std::fs::read_to_string(&log)?.contains("gestart"));
         Ok(())
     }
 

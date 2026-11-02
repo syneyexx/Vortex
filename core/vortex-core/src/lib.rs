@@ -28,7 +28,7 @@ pub use db::Db;
 pub use error::{CoreError, Result};
 pub use events::{Dispatcher, EventConsumer, EventLog};
 pub use kernel::{Kernel, KernelOptions, RunContext};
-pub use process::{ProcessOutcome, ProcessSpec, Supervisor};
+pub use process::{ProcessOutcome, ProcessSpec, ServiceHandle, Supervisor};
 pub use queue::{BoundedSender, bounded};
 pub use recovery::CrashReport;
 pub use resources::{ResourceGuard, ResourceKind, ResourceRegistry};

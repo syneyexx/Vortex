@@ -1,6 +1,6 @@
 [package]
 name = "vortex-models"
-description = "Model-registry, Backend-trait, lifecycle, templates, toolcall-parsers, wisselen, metingen."
+description = "Model-registry, Backend-trait (OpenAI-compatibel), lifecycle, templates, toolcall-parsers, wisselen, metingen."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,6 +9,21 @@ publish.workspace = true
 [dependencies]
 vortex-types.workspace = true
 vortex-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+tracing.workspace = true
+toml.workspace = true
+futures.workspace = true
+parking_lot.workspace = true
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
+async-trait = "0.1"
+
+[dev-dependencies]
+tempfile.workspace = true
+axum = "0.7"
 
 [lints]
 workspace = true

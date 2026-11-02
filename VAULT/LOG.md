@@ -38,4 +38,10 @@ Nieuwste onderaan. Per sessie 3–5 regels: wat gedaan, wat open, volgende stap.
 - Open (alleen op de PC): hardware-checks, CUDA/llama.cpp, modellen downloaden + metingen, Tauri-build, Windows-paden van W01.14/W01.15, `models-up.ps1` testen.
 - **Volgende stap:** op de PC W00 afmaken (checks + modellen + metingen), dan W02 — in de cloud kan ik verder met de delen van W02 die geen GPU nodig hebben.
 
-**Actieve wave:** W00 (PC-deel) + W01 (Windows-verificatie) · daarna W02
+## 2026-11-02 (W02 code-deel)
+- `vortex-models` gebouwd: registry + validatie, Backend-trait, OpenAI-adapter (chat/stream/embeddings/rerank, json_schema/GBNF, reasoning_effort), capability negotiation, toolcall-parsers (`openai-native/v1`, `hermes-xml/v1`), UTF-8/stop/tool-args-streaming, metingen, lifecycle (7 fasen, draining, wisselen met KV save/restore, idle → thuismodel, voorverwarmen).
+- `vortex-core`: langlevende processen (`spawn_service`/`ServiceHandle`).
+- 32 tests groen (nep-server in axum + Python-test-dubbel van llama-server). Bug gevonden en opgelost: draining hield de lock vast, waardoor nieuwe verzoeken wachtten i.p.v. geweigerd te worden.
+- Open (PC): echte llama-server-protocol per model, wisseltijden, piek-VRAM, MoE-benchmark, quant-shootout, 1060 int8, speculative, specialisten (W02.10–13, W02.16).
+
+**Actieve wave:** W00/W01/W02 PC-verificatie · cloud: verder met W03 (GUI + server)
