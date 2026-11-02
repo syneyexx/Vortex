@@ -77,6 +77,9 @@ pub struct MemoryStore {
     pub(crate) cache_gen: AtomicU64,
     /// Neurale layers (W11): importance, usefulness, entity, decay. Geen = heuristiek.
     pub(crate) scorer: RwLock<vortex_core::Scorer>,
+    /// Tiering SSD/HDD (W12.07); geen = alles warm.
+    pub(crate) tier: RwLock<Option<crate::tiering::TierConfig>>,
+    pub(crate) tier_cache: parking_lot::Mutex<std::collections::VecDeque<String>>,
 }
 
 pub(crate) fn mem_select() -> &'static str {
@@ -177,6 +180,8 @@ impl MemoryStore {
             cfg,
             cache_gen: AtomicU64::new(0),
             scorer: RwLock::new(None),
+            tier: RwLock::new(None),
+            tier_cache: parking_lot::Mutex::new(std::collections::VecDeque::new()),
         };
         me.load_index()?;
         Ok(me)
@@ -199,7 +204,7 @@ impl MemoryStore {
         self.cache_gen.load(Ordering::Relaxed)
     }
 
-    fn bump(&self) {
+    pub(crate) fn bump(&self) {
         self.cache_gen.fetch_add(1, Ordering::Relaxed);
     }
 
@@ -314,7 +319,9 @@ impl MemoryStore {
                 format!("{:016x}", fnv1a64(format!("{}\0{}", m.workspace.as_deref().unwrap_or(""), c.text).as_bytes()));
             // Exact duplicaat?
             let exact: Option<String> = self.db().read(|cn| {
-                Ok(cn.query_row("SELECT id FROM memories WHERE content_hash = ?1", [&hash], |r| r.get(0)).optional()?)
+                Ok(cn
+                    .query_row("SELECT id FROM memories WHERE content_hash = ?1 AND stale = 0", [&hash], |r| r.get(0))
+                    .optional()?)
             })?;
             if let Some(id) = exact {
                 let id: MemoryId = id.parse().map_err(|_| MemError::Invalid("id".into()))?;
@@ -338,7 +345,8 @@ impl MemoryStore {
             // Bijna-duplicaat → samenvoegen.
             let ws = m.workspace.clone();
             let meta = self.meta.read().clone();
-            let near = self.index().search(&vec, 5, &|id| meta.get(id).is_some_and(|x| Self::ws_allowed(x, &ws)));
+            let near =
+                self.index().search(&vec, 5, &|id| meta.get(id).is_some_and(|x| !x.stale && Self::ws_allowed(x, &ws)));
             if let Some((nid, sim)) = near.first().copied()
                 && sim >= self.cfg.dedup_threshold
             {

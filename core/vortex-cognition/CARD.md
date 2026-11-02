@@ -14,6 +14,8 @@
 | `salience::tag` | urgent/nieuw/tegenstrijdig/valentie |
 | `agenda::Agenda` | leeragenda (kennisgaten, betwiste feiten) in SQLite |
 | `usermodel::UserProfile` | profiel uit geheugen + feedback; `prompt_block()` |
+| `selfmodel::SelfModel` | zelfmodel per taaktype (W12.06) → `Signals::self_score` |
+| `router::route_with`, `salience::tag_with` | met neurale layers (W11) |
 | `llm::{CogLlm, GenOpts}` | wat cognitie van een taalmodel vraagt (server koppelt aan backend) |
 
 ## Afhankelijk van

@@ -155,3 +155,48 @@ pub async fn soak(base: &str, minutes: u64, out_dir: &std::path::Path) -> anyhow
     );
     Ok(flat)
 }
+
+/// 🔒 Tiering-benchmark (W12.07). Bij TB-schaal alleen op commando ("GROTE TESTEN NU").
+pub async fn tierbench(n: usize, dir: std::path::PathBuf) -> anyhow::Result<()> {
+    use vortex_memory::{HashEmbedder, HeuristicLlm, MemConfig, MemoryKind, MemoryStore, NewMemory};
+    let db = std::sync::Arc::new(vortex_core::Db::open(dir.join("tier.db"), vortex_core::db::CORE_MIGRATIONS)?);
+    let log = vortex_core::EventLog::new(db);
+    let store = MemoryStore::open(
+        log,
+        std::sync::Arc::new(HashEmbedder::new(512)),
+        std::sync::Arc::new(HeuristicLlm),
+        MemConfig::default(),
+    )?;
+    store.set_tiering(Some(vortex_memory::tiering::TierConfig::new(dir.join("cold"), dir.join("ssd-cache"))));
+    let t = std::time::Instant::now();
+    let mut ids = Vec::new();
+    for i in 0..n {
+        let mut nm = NewMemory::new(
+            MemoryKind::Semantic,
+            format!("Synthetisch archieffeit {i}: meting {} in sector {} op dag {}.", i * 7 % 997, i % 211, i % 365),
+            vortex_types::Provenance::new(vortex_types::SourceKind::Dataset),
+        );
+        nm.force = true;
+        if let Ok(vortex_memory::WriteOutcome::Stored { ids: v, .. }) = store.write(nm).await {
+            ids.extend(v);
+        }
+    }
+    println!("geschreven: {} in {:.1}s", ids.len(), t.elapsed().as_secs_f64());
+    let t = std::time::Instant::now();
+    let moved = store.demote(&ids)?;
+    let st = store.tier_stats()?;
+    println!(
+        "koud: {moved} in {} blokken, {:.1} MB zstd, {:.1}s",
+        st.blocks,
+        st.cold_bytes as f64 / 1e6,
+        t.elapsed().as_secs_f64()
+    );
+    let mut lat = Vec::new();
+    for i in 0..50 {
+        let q: Vec<f32> = (0..512).map(|j| (((i * 31 + j * 17) % 101) as f32 / 101.0) - 0.5).collect();
+        lat.push(store.cold_latency(&q)?.0);
+    }
+    lat.sort();
+    println!("koude zoeklatency p50 {:.1} ms · p95 {:.1} ms", lat[25] as f64 / 1000.0, lat[47] as f64 / 1000.0);
+    Ok(())
+}

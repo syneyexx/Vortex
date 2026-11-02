@@ -34,3 +34,16 @@ Schema `vortex-core/migrations/0003_memory.sql`: memories (+FTS5 met triggers), 
 
 ## Tests
 `cargo test -p vortex-memory` — unit (13) + `tests/memory.rs` (12): W05-gate recall@k, vergeten overal, backup/restore, dedup, conflicten + tegenbewijs, verouderen, werkruimtes, export/import, chunks, decay, wachtrij, toolresultaten.
+
+## W12 (geheugen gevorderd)
+| Item | Doet |
+| --- | --- |
+| `graph::{facts_about, fact_history, reason, default_rules, Rule, FUNCTIONAL}` | temporele kennisgraaf + regels + consistentie |
+| `dream::{dream, DreamOptions, DreamReport, merge_pair, dream_runs}` | consolidatie in idle |
+| `meta::meta_report` | wat bekend / hoe zeker / gaten |
+| `procedural::{sync_procedures, procedures, remember_example, examples_for}` | werkwijzen + few-shot |
+| `tiering::{set_tiering, cold_candidates, demote, cold_search, rehydrate, tier_stats}` | SSD/HDD met zstd-blokken |
+| `belief::{bayes, quantum, experiment}` | kansmodellen-experiment |
+| `features::*` | featurevectoren voor de neurale layers (W11) |
+Tabellen: `edge_support`, `cold_blocks`, `cold_members`, `dream_runs`; kolommen `edges.derived/rule`, `memories.tier` (migratie 0010).
+Tests: `tests/advanced.rs` (graaf, dromen-gate, tiering, meta/procedures/few-shot).

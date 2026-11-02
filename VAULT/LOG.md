@@ -104,4 +104,10 @@ Nieuwste onderaan. Per sessie 3–5 regels: wat gedaan, wat open, volgende stap.
 - Torch niet installeerbaar in de cloud (alleen CUDA-wheels) → numpy-trainer als terugval. Gate getest (Rust + end-to-end via worker).
 - Gevonden: entity matcher binnen een schrijftransactie + event loggen = deadlock → entiteiten vooraf oplossen én registry logt via eigen schrijfthread.
 
-**Actieve wave:** PC-verificatie W00–W11 · cloud: volgende = W12 (geheugen gevorderd)
+## 2026-11-02 (W12 geheugen gevorderd)
+- Temporele kennisgraaf (geldigheid via herinnering) + regelmotor (transitief/symmetrisch/invers/ketens) + consistentie → conflicten.
+- Dromen: samenvoegen, dag/week/maand-samenvattingen, decay, reflectie, redeneren, vertrouwen bijwerken; gate-test (MRR beter). Meta-memory + gaten → leeragenda; procedural memory; few-shot uit 👍.
+- Tiering SSD/HDD met zstd-blokken, SSD-cache, prefetch, terughalen; 🔒 `vortex tierbench`. Zelfmodel uit eval → metacognitie. Media-referenties. Experiment Bayes vs kwantum-achtig (kwantum wint bij gekopieerde bronnen, Bayes bij onafhankelijke).
+- Gevonden: dedup bij schrijven keek ook naar verouderde herinneringen; feedback heette good/bad (niet up/down) in de W11-datasets → beide opgelost.
+
+**Actieve wave:** PC-verificatie W00–W12 · cloud: volgende = W13 (training + vliegwiel)

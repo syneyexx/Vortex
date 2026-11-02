@@ -104,9 +104,18 @@ impl MemLlm for HeuristicLlm {
                 }
             }
             // Claims: "X is (niet) Y" / "X heeft Y" / "X kost 12 euro".
-            for verb in
-                [" is ", " zijn ", " heeft ", " kost ", " weegt ", " woont in ", " werkt bij ", " is not ", " has "]
-            {
+            for verb in [
+                " ligt in ",
+                " woont in ",
+                " werkt bij ",
+                " is ",
+                " zijn ",
+                " heeft ",
+                " kost ",
+                " weegt ",
+                " is not ",
+                " has ",
+            ] {
                 if let Some(i) = s.find(verb) {
                     let subject = s[..i].trim().trim_start_matches(|c: char| !c.is_alphanumeric()).to_string();
                     let mut object = s[i + verb.len()..].trim().trim_end_matches(['.', '!', '?']).to_string();

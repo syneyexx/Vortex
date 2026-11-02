@@ -50,6 +50,9 @@ pub struct Signals {
     pub tools: bool,
     /// Research-pipeline beschikbaar (W10).
     pub research: bool,
+    /// Zelfmodel (W12.06): eval-score voor dit taaktype, als bekend.
+    #[serde(default)]
+    pub self_score: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -100,6 +103,16 @@ pub fn decide(s: &Signals) -> Strategy {
         guidance.push("Je hebt nog geen webtoegang of research-pipeline: baseer je op eigen kennis en geheugen en zeg duidelijk wat je niet kunt controleren.".into());
         why.push("research-pipeline nog niet beschikbaar (W10) → diep nadenken".into());
         path = Path::Deliberate;
+    }
+    // Zelfmodel (W12.06): zwak in dit taaktype → niet op de automatische piloot.
+    if let Some(sc) = s.self_score
+        && sc < crate::selfmodel::WEAK
+    {
+        guidance.push(format!("Volgens de eigen eval-resultaten is dit een zwak taaktype ({:.0}%): werk extra zorgvuldig, controleer tussenstappen en zeg wat onzeker is.", sc * 100.0));
+        why.push(format!("zelfmodel: zwak in {:?} ({:.0}%)", r.task, sc * 100.0));
+        if path == Path::Fast && s.mode != "quick" {
+            path = Path::Deliberate;
+        }
     }
     let plan = match (path, r.task) {
         (Path::Fast, _) => PlanStyle::Direct,
@@ -178,6 +191,7 @@ mod tests {
 
     fn sig(q: &str, mode: &str) -> Signals {
         Signals {
+            self_score: None,
             route: route(q),
             mode: mode.into(),
             best_memory: Some(0.8),

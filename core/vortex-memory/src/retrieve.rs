@@ -157,6 +157,19 @@ impl MemoryStore {
             }
             qvecs.push(v);
         }
+        // 1b. Koude laag (W12.07): treffers terughalen naar warm en meenemen.
+        if self.tier.read().is_some()
+            && let Some(v) = qvecs.first()
+            && let Ok(cold) = self.cold_search(v, 5, 3)
+        {
+            for (rank, (id, s)) in cold.into_iter().filter(|(_, s)| *s >= 0.25).enumerate() {
+                if self.rehydrate(id).unwrap_or(false) && allow(&id) {
+                    let p = parts.entry(id).or_default();
+                    p.vector = Some(p.vector.map_or(s, |x| x.max(s)));
+                    p.rrf += 1.0 / (60.0 + rank as f64);
+                }
+            }
+        }
         // 2. BM25.
         let mut sql = format!("{} JOIN memories_fts f ON f.rowid = m.rowid WHERE memories_fts MATCH ?", mem_select());
         let mut args: Vec<rusqlite::types::Value> = vec![fts_query(&rewrites.join(" ")).into()];
@@ -323,7 +336,7 @@ impl MemoryStore {
         Ok(out)
     }
 
-    fn vectors_of(&self, ids: &[MemoryId]) -> Result<HashMap<MemoryId, Vec<f32>>> {
+    pub(crate) fn vectors_of(&self, ids: &[MemoryId]) -> Result<HashMap<MemoryId, Vec<f32>>> {
         let g = self.generation.load(std::sync::atomic::Ordering::Relaxed);
         Ok(self.log.db().read(|c| {
             let mut st = c.prepare("SELECT scale, data FROM vectors WHERE memory_id = ?1 AND generation = ?2")?;

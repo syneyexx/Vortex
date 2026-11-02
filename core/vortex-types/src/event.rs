@@ -97,6 +97,9 @@ event_kinds! {
     ConflictDetected => "memory.conflict.detected",
     ConflictResolved => "memory.conflict.resolved",
     ConflictRolledBack => "memory.conflict.rolled_back",
+    GraphReasoned => "memory.graph.reasoned",
+    DreamCompleted => "memory.dream.completed",
+    MemoryTiered => "memory.tier.changed",
     IndexGenerationSwitched => "memory.index.switched",
     // debat
     DebateRoundCompleted => "debate.round.completed",

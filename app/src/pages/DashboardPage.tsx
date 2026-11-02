@@ -1,6 +1,7 @@
 // Dashboard: scores over tijd per suite (VX:W06.10), eval-runner (VX:W06.01), retrieval-eval,
 // lekkagecontrole, foutanalyse en tool/geheugen/model-analytics (VX:W06.09).
 import { useCallback, useEffect, useState } from "react";
+import { SelfModelPanel } from "./MemoryAdvanced.tsx";
 import { NeuralPanel } from "./NeuralPanel.tsx";
 import { api } from "../api/client.ts";
 import type { EvalComparison, EvalResult, EvalRun } from "../api/types.ts";
@@ -335,6 +336,7 @@ export function DashboardPage() {
       {sel && <RunDetail key={sel} id={sel} />}
       <Agenda />
       <NeuralPanel />
+      <SelfModelPanel />
     </div>
   );
 }

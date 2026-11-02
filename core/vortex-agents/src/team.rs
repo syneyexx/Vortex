@@ -98,6 +98,7 @@ mod tests {
             conflicts: 0,
             tools: true,
             research: false,
+            self_score: None,
         });
         compose(&r, &s, mode)
     }

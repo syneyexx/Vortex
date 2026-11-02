@@ -88,4 +88,8 @@ Nieuwste onderaan. Formaat: datum · besluit · waarom.
 | 2026-11-02 | Layer-trainer: PyTorch als aanwezig, anders numpy; ONNX-graaf zelf gebouwd | Werkt overal (ook zonder torch); zelfde architectuur en export |
 | 2026-11-02 | Promotie alleen bij ≥ 2 pt winst t.o.v. heuristiek én actieve versie; actieve versie die verliest → automatisch terug | "Elk net wint aantoonbaar van zijn heuristiek"; veilige rollback |
 | 2026-11-02 | `LayerRegistry` schrijft events via een eigen thread (nooit synchroon) | `decide` mag nooit blokkeren op de database (deadlock gevonden binnen een transactie) |
+| 2026-11-02 | Geldigheid van feiten = die van de edge, anders van de herinnering | Conflictbeslissingen en rollbacks werken zonder extra synchronisatie door in de graaf |
+| 2026-11-02 | Afgeleide feiten worden per redeneer-ronde volledig opnieuw berekend | Altijd consistent met de basis; weg = weg |
+| 2026-11-02 | Koude laag: blokken van 64 herinneringen (zstd 9) + centroid; treffers worden warm teruggehaald | Snel op HDD (weinig seeks), klein, SSD-cache voor herhaling |
+| 2026-11-02 | Kwantum-achtig kansmodel blijft een experiment; Bayes blijft standaard | A/B: kwantum alleen beter bij gekopieerde bronnen — mogelijk later als correctie voor afhankelijke bronnen |
 

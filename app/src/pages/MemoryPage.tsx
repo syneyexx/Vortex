@@ -1,6 +1,7 @@
 // Memory-pagina: bekijken, zoeken, filteren, bewerken, vergeten, conflictregister, werkruimtes,
 // "zoek als Vortex" (met scoreherkomst), backup / export / import. VX:W05.13
 import { useCallback, useEffect, useState } from "react";
+import { DreamTab, GraphTab, MetaTab } from "./MemoryAdvanced.tsx";
 import { api } from "../api/client.ts";
 import type { ConflictRow, Memory, Retrieved } from "../api/types.ts";
 import { setError } from "../state/store.ts";
@@ -298,7 +299,9 @@ function Profile() {
 }
 
 export function MemoryPage() {
-  const [tab, setTab] = useState<"list" | "search" | "conflicts" | "profile" | "docs">("list");
+  const [tab, setTab] = useState<
+    "list" | "search" | "conflicts" | "profile" | "docs" | "graph" | "meta" | "dream"
+  >("list");
   const [q, setQ] = useState("");
   const [kind, setKind] = useState("");
   const [ws, setWs] = useState("");
@@ -381,13 +384,16 @@ export function MemoryPage() {
       </div>
       {msg && <p style={{ color: "var(--vx-muted)" }}>{msg}</p>}
       <div className="chat-tabs" style={{ display: "inline-flex", margin: "16px 0" }}>
-        {(["list", "search", "docs", "conflicts", "profile"] as const).map((t) => (
+        {(["list", "search", "docs", "graph", "meta", "dream", "conflicts", "profile"] as const).map((t) => (
           <button key={t} className={tab === t ? "active" : ""} onClick={() => setTab(t)}>
             {
               {
                 list: "Bekijken",
                 search: "Zoek als Vortex",
                 docs: "Documenten",
+                graph: "Graaf",
+                meta: "Wat weet Vortex",
+                dream: "Dromen & opslag",
                 conflicts: "Conflictregister",
                 profile: "Over jou",
               }[t]
@@ -542,6 +548,9 @@ export function MemoryPage() {
       {tab === "conflicts" && <Conflicts />}
       {tab === "profile" && <Profile />}
       {tab === "docs" && <Documents />}
+      {tab === "graph" && <GraphTab />}
+      {tab === "meta" && <MetaTab />}
+      {tab === "dream" && <DreamTab />}
     </div>
   );
 }

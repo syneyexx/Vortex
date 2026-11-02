@@ -17,6 +17,7 @@ tracing.workspace = true
 parking_lot.workspace = true
 rusqlite = { workspace = true, features = ["backup"] }
 chrono.workspace = true
+zstd = "0.13"
 async-trait = "0.1"
 
 [dev-dependencies]

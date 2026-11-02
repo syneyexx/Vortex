@@ -792,3 +792,38 @@ async fn ebook_via_python_worker_is_searchable_with_exact_locator() {
     assert!(std::fs::read_dir(fx._dir.path().join("cold/ingest")).map(|d| d.count()).unwrap_or(0) >= 1);
     let _ = child.kill().await;
 }
+
+#[tokio::test]
+async fn advanced_memory_endpoints() {
+    let fx = setup().await;
+    for t in ["Syneye woont in Utrecht.", "Utrecht ligt in Nederland.", "Nederland ligt in Europa."] {
+        fx.post("/api/memory", json!({"content": t, "kind": "semantic"})).await;
+    }
+    let r = fx.post("/api/memory/reason", json!({})).await;
+    assert!(r["derived"].as_u64().unwrap_or(0) >= 2, "{r}");
+    let g = fx.get("/api/memory/graph?entity=utrecht").await;
+    assert!(g.as_array().is_some_and(|a| a.iter().any(|f| f["derived"] == true)), "{g}");
+    let d = fx.post("/api/memory/dream", json!({})).await;
+    assert!(d["dream"]["ms"].is_number(), "{d}");
+    assert_eq!(fx.get("/api/memory/dreams").await.as_array().map(|a| a.len()), Some(1));
+    let m = fx.get("/api/memory/meta").await;
+    assert!(m["total"].as_i64().unwrap_or(0) >= 3, "{m}");
+    let b = fx.get("/api/memory/belief-experiment?n=100").await;
+    assert_eq!(b["scenarios"].as_array().map(|a| a.len()), Some(3), "{b}");
+    let t = fx.get("/api/memory/tier").await;
+    assert!(t["hot"].as_i64().unwrap_or(0) >= 3);
+    let img = fx._dir.path().join("foto.png");
+    std::fs::write(&img, [0x89u8, b'P', b'N', b'G']).unwrap_or_default();
+    let w = fx
+        .post(
+            "/api/memory/media",
+            json!({"path": img.display().to_string(), "description": "Foto van de nieuwe werkplek met twee monitoren"}),
+        )
+        .await;
+    let id = w["ids"][0].as_str().unwrap_or_default().to_string();
+    let bytes =
+        fx.http.get(format!("{}/api/memory/{id}/media", fx.base)).send().await.unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(bytes.headers().get("content-type").and_then(|v| v.to_str().ok()), Some("image/png"));
+    let sm = fx.get("/api/selfmodel").await;
+    assert!(sm["by_task"].is_object(), "{sm}");
+}

@@ -17,7 +17,7 @@ use crate::api::{ApiError, AppState};
 use crate::chat::Mode;
 
 /// Waves waarvan de functies in deze build aanwezig zijn (voor `requires` in eval-taken).
-pub const FEATURES: &[&str] = &["W01", "W02", "W03", "W04", "W05", "W06", "W07", "W08", "W09", "W10", "W11"];
+pub const FEATURES: &[&str] = &["W01", "W02", "W03", "W04", "W05", "W06", "W07", "W08", "W09", "W10", "W11", "W12"];
 
 #[derive(Debug)]
 pub struct VortexSubject {
@@ -134,7 +134,10 @@ async fn run(State(s): State<AppState>, Json(b): Json<RunBody>) -> Result<Json<V
                 _ => None,
             };
             match runner.run_suite(&suite, label.as_deref()).await {
-                Ok(r) => tracing::info!(suite = %r.suite, score = ?r.score, "eval klaar"),
+                Ok(r) => {
+                    tracing::info!(suite = %r.suite, score = ?r.score, "eval klaar");
+                    st.chat.refresh_self_model();
+                }
                 Err(e) => tracing::error!(error = %e, "eval mislukt"),
             }
         }

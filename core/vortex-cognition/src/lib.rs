@@ -9,6 +9,7 @@ pub mod metacog;
 pub mod planning;
 pub mod router;
 pub mod salience;
+pub mod selfmodel;
 pub mod usermodel;
 pub mod workspace;
 
@@ -17,5 +18,6 @@ pub use cycle::{Cycle, Phase};
 pub use llm::{CogLlm, GenOpts};
 pub use metacog::{Path, PlanStyle, Prediction, Signals, Strategy, decide, switch_on};
 pub use router::{Route, TaskType, route};
+pub use selfmodel::SelfModel;
 pub use usermodel::UserProfile;
 pub use workspace::Workspace;

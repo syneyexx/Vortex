@@ -107,7 +107,7 @@ pub fn set_label(log: &EventLog, layer: &str, reference: &str, label: f32, sourc
         .map_err(|e| e.to_string())
 }
 
-/// Feedback per run (duim omhoog = 1, omlaag = 0).
+/// Feedback per run (good = 1, bad/correction = 0).
 fn feedback(log: &EventLog) -> HashMap<String, f32> {
     log.db()
         .read(|c| {
@@ -116,8 +116,8 @@ fn feedback(log: &EventLog) -> HashMap<String, f32> {
                 .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, Option<String>>(1)?)))?
                 .filter_map(|x| x.ok())
                 .filter_map(|(run, rating)| match rating.as_deref() {
-                    Some("up") => Some((run, 1.0)),
-                    Some("down") => Some((run, 0.0)),
+                    Some("good") => Some((run, 1.0)),
+                    Some("bad" | "correction") => Some((run, 0.0)),
                     _ => None,
                 })
                 .collect::<HashMap<_, _>>();

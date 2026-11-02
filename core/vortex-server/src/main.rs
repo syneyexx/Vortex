@@ -84,6 +84,15 @@ enum Cmd {
         #[arg(long, default_value_t = 1440)]
         minutes: u64,
     },
+    /// 🔒 Tiering-benchmark (TB-simulatie alleen op commando): N synthetische herinneringen naar de
+    /// koude laag (zstd), dan p50/p95 zoeklatency over de koude blokken.
+    Tierbench {
+        #[arg(long, default_value_t = 20_000)]
+        memories: usize,
+        /// Koude schijf (HDD) voor de blokken.
+        #[arg(long)]
+        cold: Option<std::path::PathBuf>,
+    },
     /// Toon runs.
     Runs {
         /// Ook afgeronde runs.
@@ -128,6 +137,9 @@ async fn main() -> anyhow::Result<()> {
             let ok = bench_cli::perf(api, *quick).await?;
             anyhow::ensure!(ok, "prestatiedoel(en) niet gehaald");
             Ok(())
+        }
+        Cmd::Tierbench { memories, cold } => {
+            bench_cli::tierbench(*memories, cold.clone().unwrap_or_else(|| data_dir(&cli).join("tierbench"))).await
         }
         Cmd::Soak { api, minutes } => {
             let ok = bench_cli::soak(api, *minutes, &data_dir(&cli).join("soak")).await?;

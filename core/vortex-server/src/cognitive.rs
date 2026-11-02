@@ -241,6 +241,9 @@ impl ChatEngine {
                 q.run_id = Some(run_id);
                 if route.task == vortex_cognition::TaskType::Personal {
                     q.prefer_kinds = vec![vortex_memory::MemoryKind::User, vortex_memory::MemoryKind::Project];
+                } else if matches!(route.task, vortex_cognition::TaskType::Code | vortex_cognition::TaskType::Planning) {
+                    // Procedural memory (W12.01): werkwijzen voorrang bij "hoe doe ik"-taken.
+                    q.prefer_kinds = vec![vortex_memory::MemoryKind::Procedural];
                 }
                 if let Ok(Ok(items)) = tokio::time::timeout(Duration::from_millis(MEMORY_TIMEOUT_MS), mem.store.retrieve(&q, mem.reranker.as_ref())).await {
                     best = items.iter().filter(|i| !i.counter_evidence).map(|i| i.score.final_score).reduce(f64::max);
@@ -279,6 +282,7 @@ impl ChatEngine {
                 conflicts,
                 tools: crate::eval_api::FEATURES.contains(&"W08"),
                 research: crate::eval_api::FEATURES.contains(&"W10"),
+                self_score: self.self_model.read().score(route.task),
             });
             let _ = log.log_decision(
                 trace,
@@ -304,6 +308,18 @@ impl ChatEngine {
             let profile = self.memory.as_ref().map(|m| UserProfile::build(&m.store, None)).and_then(|p| p.prompt_block());
             let mut sys = ctx.config().file("prompts/system.md").map(|s| s.trim().to_string()).unwrap_or_default();
             let mut guidance = strategy.guidance.clone();
+            // Memory-based few-shot (W12.10): eerder goed beoordeelde antwoorden op vergelijkbare vragen.
+            if crate::eval_api::FEATURES.contains(&"W12")
+                && let Some(mem) = &self.memory
+                && let Ok(Ok(ex)) = tokio::time::timeout(Duration::from_millis(800), mem.store.examples_for(&question, 2, None)).await
+                && !ex.is_empty()
+            {
+                let mut g = String::from("Voorbeelden van eerdere antwoorden die de gebruiker goed vond (stijl en aanpak, niet letterlijk overnemen):\n");
+                for (q, a) in ex {
+                    g.push_str(&format!("— Vraag: {q}\n  Antwoord: {}\n", a.chars().take(600).collect::<String>()));
+                }
+                guidance.push(g);
+            }
             // Tools + skills (W08): kernset met schema; rest via discovery; passende skills laden.
             let hub = self.tools.clone().filter(|_| crate::eval_api::FEATURES.contains(&"W08") && backend.capabilities().tools);
             let mut briefs: Vec<ToolBrief> = Vec::new();

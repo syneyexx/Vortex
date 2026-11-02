@@ -209,6 +209,46 @@ export const api = {
   neuralMode: (layer: string, mode: string) => req<unknown>("POST", `/api/neural/${layer}/mode`, { mode }),
   rerankerDataset: () =>
     req<{ path: string; pairs: number; train: string }>("POST", "/api/neural/reranker/dataset", {}),
+  facts: (entity: string, at?: string) =>
+    req<Fact[]>(
+      "GET",
+      `/api/memory/graph?entity=${encodeURIComponent(entity)}${at ? `&at=${encodeURIComponent(at)}` : ""}`,
+    ),
+  factHistory: (entity: string) =>
+    req<Fact[]>("GET", `/api/memory/graph/history?entity=${encodeURIComponent(entity)}`),
+  reason: () =>
+    req<{ derived: number; conflicts_found: number; by_rule: Record<string, number> }>(
+      "POST",
+      "/api/memory/reason",
+      {},
+    ),
+  dream: () => req<Record<string, unknown>>("POST", "/api/memory/dream", {}),
+  dreams: () => req<Record<string, unknown>[]>("GET", "/api/memory/dreams"),
+  meta: () => req<MetaReport>("GET", "/api/memory/meta"),
+  tier: () =>
+    req<{ hot: number; cold: number; blocks: number; cold_bytes: number; cached_blocks: number }>(
+      "GET",
+      "/api/memory/tier",
+    ),
+  demote: () => req<{ demoted: number }>("POST", "/api/memory/tier/demote", {}),
+  addMedia: (path: string, description: string) =>
+    req<unknown>("POST", "/api/memory/media", { path, description }),
+  selfModel: () => req<{ by_task: Record<string, { score: number; n: number }> }>("GET", "/api/selfmodel"),
+  beliefExperiment: () =>
+    req<{
+      scenarios: {
+        name: string;
+        n: number;
+        bayes_acc: number;
+        quantum_acc: number;
+        bayes_brier: number;
+        quantum_brier: number;
+        order_effect: number;
+      }[];
+      verdict: string;
+      theta: number[];
+      lambda: number;
+    }>("GET", "/api/memory/belief-experiment?n=400"),
 };
 
 export interface ResearchDetail {
@@ -275,4 +315,28 @@ export interface NeuralStatus {
   }[];
   examples: Record<string, number>;
   min_examples: number;
+}
+
+export interface Fact {
+  id: string;
+  src: string;
+  rel: string;
+  dst: string;
+  valid_from: string | null;
+  valid_to: string | null;
+  confidence: number;
+  derived: boolean;
+  rule: string | null;
+}
+
+export interface MetaReport {
+  total: number;
+  by_kind: Record<string, { count: number; avg_confidence: number }>;
+  stale: number;
+  cold: number;
+  open_conflicts: number;
+  disputed: number;
+  derived_facts: number;
+  strongest: { name: string; facts: number; mentions: number; avg_confidence: number }[];
+  gaps: { name: string; facts: number; mentions: number; avg_confidence: number }[];
 }

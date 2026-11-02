@@ -134,6 +134,8 @@ pub struct ChatEngine {
     /// Neurale layers (W11): scorer voor router/salience + registry.
     pub scorer: vortex_core::Scorer,
     pub layers: Option<Arc<vortex_neural::LayerRegistry>>,
+    /// Zelfmodel uit eval (W12.06).
+    pub(crate) self_model: Arc<parking_lot::RwLock<vortex_cognition::SelfModel>>,
 }
 
 /// Maximale tijd voor geheugen-ophalen vóór een antwoord (chat wacht nooit langer).
@@ -159,6 +161,7 @@ impl ChatEngine {
             crawler: Arc::new(Mutex::new(None)),
             scorer: None,
             layers: None,
+            self_model: Arc::new(parking_lot::RwLock::new(vortex_cognition::SelfModel::default())),
         }
     }
 
@@ -269,6 +272,7 @@ impl ChatEngine {
                     conflicts: 0,
                     tools: self.tools.is_some(),
                     research: false,
+                    self_score: None,
                 });
                 if let Some(team) = vortex_agents::compose(&route, &strategy, "deep") {
                     let deps = vortex_agents::DebateDeps {

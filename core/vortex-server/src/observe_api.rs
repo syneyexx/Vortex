@@ -77,6 +77,14 @@ async fn feedback(
         m.force = true;
         let _ = s.memory.store.write_or_defer(m).await;
     }
+    // Goed antwoord → voorbeeld voor vergelijkbare vragen (memory-based few-shot, W12.10).
+    if b.rating == "good"
+        && let Some(run) = msg.run_id
+        && let Some(q) = s.chat.question_of(run)
+    {
+        let task = format!("{:?}", vortex_cognition::route(&q).task).to_lowercase();
+        let _ = s.memory.store.remember_example(&q, &msg.content, &task, None).await;
+    }
     Ok(Json(json!({"ok": true})))
 }
 
