@@ -18,11 +18,14 @@ pub struct Migration {
 }
 
 /// Alle migraties van de kern.
-pub const CORE_MIGRATIONS: &[Migration] = &[Migration {
-    version: 1,
-    name: "kern: event log, runs, checkpoints, effecten, resources, config",
-    sql: include_str!("../migrations/0001_core.sql"),
-}];
+pub const CORE_MIGRATIONS: &[Migration] = &[
+    Migration {
+        version: 1,
+        name: "kern: event log, runs, checkpoints, effecten, resources, config",
+        sql: include_str!("../migrations/0001_core.sql"),
+    },
+    Migration { version: 2, name: "sessies en berichten", sql: include_str!("../migrations/0002_sessions.sql") },
+];
 
 /// Database-handle. Goedkoop te delen via `Arc`.
 #[derive(Debug)]
@@ -134,10 +137,10 @@ mod tests {
         let dir = tempfile::tempdir()?;
         let p = dir.path().join("v.db");
         let db = Db::open(&p, CORE_MIGRATIONS)?;
-        assert_eq!(db.schema_version()?, 1);
+        assert_eq!(db.schema_version()?, 2);
         drop(db);
         let db = Db::open(&p, CORE_MIGRATIONS)?;
-        assert_eq!(db.schema_version()?, 1);
+        assert_eq!(db.schema_version()?, 2);
         Ok(())
     }
 

@@ -33,24 +33,9 @@ struct Status {
 }
 
 fn gpus() -> Result<Vec<Gpu>, String> {
-    let out = std::process::Command::new("nvidia-smi")
-        .args(["--query-gpu=index,name,memory.total,memory.used", "--format=csv,noheader,nounits"])
-        .output()
-        .map_err(|e| format!("nvidia-smi niet beschikbaar: {e}"))?;
-    if !out.status.success() {
-        return Err(String::from_utf8_lossy(&out.stderr).trim().to_string());
-    }
-    Ok(String::from_utf8_lossy(&out.stdout)
-        .lines()
-        .filter_map(|l| {
-            let f: Vec<_> = l.split(',').map(str::trim).collect();
-            Some(Gpu {
-                index: f.first()?.parse().ok()?,
-                name: f.get(1)?.to_string(),
-                vram_total_mib: f.get(2)?.parse().ok()?,
-                vram_used_mib: f.get(3)?.parse().ok()?,
-            })
-        })
+    Ok(vortex_server::live::read_gpus()?
+        .into_iter()
+        .map(|g| Gpu { index: g.index, name: g.name, vram_total_mib: g.vram_total_mib, vram_used_mib: g.vram_used_mib })
         .collect())
 }
 

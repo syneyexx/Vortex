@@ -34,8 +34,15 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Cmd {
-    /// Start de kern.
-    Serve,
+    /// Start de kern + API voor de GUI.
+    Serve {
+        /// Adres van de API (alleen lokaal; telefoon via Tailscale in W15).
+        #[arg(long, env = "VORTEX_LISTEN", default_value = "127.0.0.1:7420")]
+        listen: String,
+        /// Map met de gebouwde GUI (`app/dist`) om via de browser te serveren.
+        #[arg(long, default_value = "../app/dist")]
+        app_dist: PathBuf,
+    },
     /// Toon status van GPU's, modelservers en kern.
     Status {
         /// Uitvoer als JSON.
@@ -79,23 +86,34 @@ async fn main() -> anyhow::Result<()> {
     });
 
     match &cli.cmd {
-        Cmd::Serve => serve(&cli).await,
+        Cmd::Serve { listen, app_dist } => serve(&cli, listen, app_dist).await,
         Cmd::Status { json } => status::run(&cli.config, &data_dir(&cli), *json).await,
         Cmd::Runs { all, limit } => runs(&cli, *all, *limit),
     }
 }
 
-async fn serve(cli: &Cli) -> anyhow::Result<()> {
+async fn serve(cli: &Cli, listen: &str, app_dist: &std::path::Path) -> anyhow::Result<()> {
     let opts = vortex_core::KernelOptions::new(data_dir(cli), &cli.config);
     let (kernel, report) = vortex_core::Kernel::open(opts).await.context("kern openen")?;
     println!("{}", report.summary());
     let stop = kernel.shutdown_token();
     let disp = kernel.dispatcher().spawn(stop.child_token(), Duration::from_secs(1));
-    println!("Vortex-kern draait (config {}). Ctrl+C om te stoppen.", kernel.config().current().version);
+    let state = vortex_server::api::build_state(kernel.clone());
+    let app = vortex_server::api::router(state, Some(app_dist.to_path_buf()));
+    let listener = tokio::net::TcpListener::bind(listen).await.with_context(|| format!("luisteren op {listen}"))?;
+    println!(
+        "Vortex-kern draait (config {}) — API op http://{listen}. Ctrl+C om te stoppen.",
+        kernel.config().current().version
+    );
+    let srv_stop = stop.clone();
+    let server = tokio::spawn(async move {
+        axum::serve(listener, app).with_graceful_shutdown(async move { srv_stop.cancelled().await }).await
+    });
     tokio::signal::ctrl_c().await?;
     println!("Afsluiten…");
     kernel.shutdown(Duration::from_secs(5)).await?;
     let _ = disp.await;
+    let _ = server.await;
     Ok(())
 }
 

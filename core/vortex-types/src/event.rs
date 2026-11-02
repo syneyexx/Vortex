@@ -40,6 +40,12 @@ event_kinds! {
     // gesprek
     MessageReceived => "chat.message.received",
     MessageCompleted => "chat.message.completed",
+    MessageStarted => "chat.message.started",
+    MessageDelta => "chat.message.delta",
+    SessionCreated => "chat.session.created",
+    SessionForked => "chat.session.forked",
+    SessionUpdated => "chat.session.updated",
+    PromptUpdated => "settings.prompt.updated",
     PlanCreated => "cognition.plan.created",
     // tools
     ToolCallStarted => "tool.call.started",
