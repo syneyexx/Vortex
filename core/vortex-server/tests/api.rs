@@ -992,3 +992,169 @@ async fn world_monitor_api_and_hf_import() {
     assert!(cat.as_array().is_some_and(|c| c.iter().any(|x| x["license"] == "cc0")));
     let _ = worker.kill().await;
 }
+
+async fn wait_task(fx: &Fx, id: &str) -> Value {
+    for _ in 0..200 {
+        let t = fx.get(&format!("/api/autonomy/tasks/{id}")).await;
+        if ["done", "failed", "cancelled"].contains(&t["status"].as_str().unwrap_or("")) {
+            return t;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    panic!("taak {id} niet klaar");
+}
+
+/// W15: taakqueue + executor (afhankelijkheden, project), triggers, suggesties → taak, briefing,
+/// backup + restore-test, voortgang, OpenAI-compatibele API (stream en niet-stream).
+#[tokio::test]
+async fn autonomy_tasks_triggers_briefing_backup_openai() {
+    let fx = setup().await;
+    std::fs::write(fx.cfg.join("autonomy.toml"), "enabled = true\n").unwrap_or_else(|e| panic!("{e}"));
+    fx.kernel.config().reload().unwrap_or_else(|e| panic!("{e}"));
+    // Project met twee taken; de tweede wacht op de eerste.
+    let p = fx.post("/api/autonomy/projects", json!({"name": "Onderzoek", "goal": "test"})).await;
+    let pid = p["id"].as_str().unwrap_or_default().to_string();
+    let a = fx.post("/api/autonomy/tasks", json!({"title": "Vraag 1", "kind": "prompt", "params": {"prompt": "Wat is 2+2?"}, "priority": 1, "needs_idle": false, "project_id": pid})).await;
+    let b = fx.post("/api/autonomy/tasks", json!({"title": "Vraag 2", "kind": "prompt", "params": {"prompt": "En 3+3?"}, "priority": 1, "needs_idle": false, "project_id": pid, "depends_on": [a["id"]]})).await;
+    let tb = wait_task(&fx, b["id"].as_str().unwrap_or_default()).await;
+    assert_eq!(tb["status"], "done", "{tb}");
+    let ta = fx.get(&format!("/api/autonomy/tasks/{}", a["id"].as_str().unwrap_or_default())).await;
+    assert!(ta["updated_at"].as_str() <= tb["updated_at"].as_str(), "volgorde via afhankelijkheid");
+    let proj = fx.get(&format!("/api/autonomy/projects/{pid}")).await;
+    assert_eq!(proj["progress"], 1.0, "{proj}");
+    assert!(proj["notes"].as_str().unwrap_or("").contains("Vraag 2 klaar"), "{proj}");
+    // Onbekende soort → mislukt na de pogingen (max 1).
+    let bad = fx
+        .post(
+            "/api/autonomy/tasks",
+            json!({"title": "x", "kind": "bestaat-niet", "priority": 1, "needs_idle": false, "max_attempts": 1}),
+        )
+        .await;
+    assert_eq!(wait_task(&fx, bad["id"].as_str().unwrap_or_default()).await["status"], "failed");
+    // Standaardtriggers aanwezig; event-trigger vuurt bij een briefing.
+    let trg = fx.get("/api/autonomy/triggers").await;
+    assert!(
+        trg.as_array().is_some_and(|t| t.iter().any(|x| x["name"] == "briefing" && x["next"].is_string())),
+        "{trg}"
+    );
+    fx.post("/api/autonomy/triggers", json!({"name": "na briefing", "kind": "event", "spec": "autonomy.briefing.written", "task": {"title": "Monitoring na briefing", "kind": "monitor", "priority": 2, "needs_idle": false}})).await;
+    // Suggesties: nog geen backup → suggestie met actie → accepteren = taak.
+    fx.post("/api/autonomy/suggestions/scan", json!({})).await;
+    let list = fx.get("/api/autonomy/suggestions?status=new").await;
+    let sug = list
+        .as_array()
+        .and_then(|v| v.iter().find(|s| s["kind"] == "backup").cloned())
+        .unwrap_or_else(|| panic!("{list}"));
+    let acc = fx
+        .post(&format!("/api/autonomy/suggestions/{}/accept", sug["id"].as_str().unwrap_or_default()), json!({}))
+        .await;
+    let bt = wait_task(&fx, acc["task"]["id"].as_str().unwrap_or_default()).await;
+    assert_eq!(bt["status"], "done", "{bt}");
+    assert_eq!(bt["result"]["verified"], true, "restore-test: {bt}");
+    let bks = fx.get("/api/autonomy/backups").await;
+    assert_eq!(bks["backups"][0]["verify"]["integrity"], "ok", "{bks}");
+    assert!(std::path::Path::new(bks["backups"][0]["path"].as_str().unwrap_or("")).exists());
+    // Briefing (met model) + event-trigger.
+    let br = fx.post("/api/autonomy/briefings", json!({})).await;
+    assert!(br["markdown"].as_str().unwrap_or("").starts_with("# Briefing"), "{br}");
+    let mut fired = false;
+    for _ in 0..100 {
+        let ts = fx.get("/api/autonomy/tasks").await;
+        if ts.as_array().is_some_and(|v| v.iter().any(|t| t["title"] == "Monitoring na briefing")) {
+            fired = true;
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    assert!(fired, "event-trigger vuurde niet");
+    assert!(fx.get("/api/autonomy/progress").await["eval_by_suite"].is_object());
+    assert!(fx.get("/api/autonomy").await["queued"].is_number());
+
+    // OpenAI-compatibele API.
+    let models = fx.get("/v1/models").await;
+    assert!(models["data"].as_array().is_some_and(|d| d.iter().any(|m| m["id"] == "vortex")));
+    let body = json!({"model": "vortex-quick", "messages": [{"role": "system", "content": "client"}, {"role": "user", "content": "Hallo API"}]});
+    let r = fx.post("/v1/chat/completions", body.clone()).await;
+    assert_eq!(r["object"], "chat.completion", "{r}");
+    assert!(!r["choices"][0]["message"]["content"].as_str().unwrap_or("").is_empty(), "{r}");
+    let mut sb = body.clone();
+    sb["stream"] = json!(true);
+    sb["messages"] = json!([{"role": "user", "content": "Hallo API"}, {"role": "assistant", "content": "…"}, {"role": "user", "content": "nog een"}]);
+    let sse = fx
+        .http
+        .post(format!("{}/v1/chat/completions", fx.base))
+        .json(&sb)
+        .send()
+        .await
+        .unwrap_or_else(|e| panic!("{e}"))
+        .text()
+        .await
+        .unwrap_or_default();
+    assert!(sse.contains("chat.completion.chunk") && sse.trim_end().ends_with("data: [DONE]"), "{sse}");
+    let n: i64 = fx
+        .kernel
+        .events()
+        .db()
+        .read(|c| Ok(c.query_row("SELECT COUNT(*) FROM api_sessions", [], |r| r.get(0))?))
+        .unwrap_or(0);
+    assert_eq!(n, 1, "zelfde gesprek → zelfde Vortex-sessie");
+    // Doorgeven aan een gewoon model.
+    let pt =
+        fx.post("/v1/chat/completions", json!({"model": "m", "messages": [{"role": "user", "content": "hoi"}]})).await;
+    assert!(pt["choices"].is_array(), "{pt}");
+}
+
+/// W15.01: beheerde llama-server (test-dubbel) wordt bij externe GPU-last ontladen en daarna
+/// weer geladen; een chatverzoek laadt meteen.
+#[cfg(unix)]
+#[tokio::test]
+async fn gpu_guard_releases_and_restores() {
+    let fx = setup().await;
+    let script = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../vortex-models/tests/fake_llama_server.py");
+    let model = fx._dir.path().join("lm.gguf");
+    std::fs::write(&model, "model").unwrap_or_else(|e| panic!("{e}"));
+    let port =
+        std::net::TcpListener::bind("127.0.0.1:0").and_then(|l| l.local_addr()).map(|a| a.port()).unwrap_or(18999);
+    let models = std::fs::read_to_string(fx.cfg.join("models.toml")).unwrap_or_default();
+    std::fs::write(
+        fx.cfg.join("models.toml"),
+        format!("{models}[servers.gpu]\nurl = \"http://127.0.0.1:{port}\"\nmodel = \"lm\"\nmanaged = true\nlaunch_args = [\"{}\"]\n[models.lm]\nfile = \"{}\"\nroles = [\"chat\"]\ngpu = \"gpu\"\n", script.display(), model.display()),
+    )
+    .unwrap_or_else(|e| panic!("{e}"));
+    std::fs::write(fx.cfg.join("paths.toml"), "llama_server = \"python3\"\n").unwrap_or_else(|e| panic!("{e}"));
+    std::fs::write(fx.cfg.join("autonomy.toml"), "[gpu]\nrestore_after_secs = 0\n").unwrap_or_else(|e| panic!("{e}"));
+    fx.kernel.config().reload().unwrap_or_else(|e| panic!("{e}"));
+    let g = vortex_server::autonomy::gpu::GpuGuard::new(fx.kernel.events().clone());
+    g.configure(&fx.kernel, fx._dir.path());
+    assert_eq!(g.managed(), vec!["gpu".to_string()]);
+    let r = g.load_all().await;
+    assert_eq!(r[0]["ok"], true, "{r:?}");
+    assert_eq!(g.step(true).await, Some("released"), "game → GPU vrij");
+    assert!(g.is_released());
+    assert!(reqwest::get(format!("http://127.0.0.1:{port}/health")).await.is_err(), "server echt gestopt");
+    assert_eq!(g.step(true).await, None, "al vrij");
+    assert_eq!(g.step(false).await, Some("restored"));
+    assert_eq!(
+        reqwest::get(format!("http://127.0.0.1:{port}/health")).await.map(|r| r.status().as_u16()).unwrap_or(0),
+        200
+    );
+    // Expliciet verzoek tijdens "gamen": ensure laadt meteen.
+    g.step(true).await;
+    let reg = vortex_models::Registry::from_config(&fx.kernel.config().current()).unwrap_or_else(|e| panic!("{e}"));
+    g.ensure(&reg, "lm").await;
+    assert_eq!(
+        reqwest::get(format!("http://127.0.0.1:{port}/health")).await.map(|r| r.status().as_u16()).unwrap_or(0),
+        200
+    );
+    let kinds: Vec<String> = fx
+        .kernel
+        .events()
+        .read_from(0, 10_000)
+        .unwrap_or_default()
+        .into_iter()
+        .map(|e| e.kind.as_str().to_string())
+        .collect();
+    assert!(kinds.iter().any(|k| k == "autonomy.gpu.released") && kinds.iter().any(|k| k == "autonomy.gpu.restored"));
+    let all = g.status().await;
+    assert_eq!(all["servers"][0]["phase"], "Ready", "{all}");
+}

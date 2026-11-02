@@ -2,7 +2,8 @@
 import { IcGear, IcMonitor } from "./Icons.tsx";
 import { VortexMark } from "./VortexShader.tsx";
 
-export type Top = "chat" | "research" | "memory" | "models" | "studio" | "workspace" | "settings" | "runs";
+export type Top =
+  "chat" | "research" | "memory" | "models" | "studio" | "autonomy" | "workspace" | "settings" | "runs";
 export type Sub = "dashboard" | "chat" | "agents";
 
 const TOPS: [Top, string][] = [
@@ -11,6 +12,7 @@ const TOPS: [Top, string][] = [
   ["memory", "Memory"],
   ["models", "Models"],
   ["studio", "Studio"],
+  ["autonomy", "Autonomie"],
 ];
 
 export function TopNav({ top, onTop }: { top: Top; onTop: (t: Top) => void }) {

@@ -265,6 +265,38 @@ export const api = {
   scaleAdapter: (id: string, scale: number) =>
     req<{ status: string }>("POST", `/api/training/adapters/${id}/scale`, { scale }),
   calibrate: () => req<Record<string, unknown>>("POST", "/api/training/calibrate", {}),
+  // Autonomie (W15)
+  autonomy: () => req<AutonomyOverview>("GET", "/api/autonomy"),
+  tasks: (status?: string) => req<VxTask[]>("GET", `/api/autonomy/tasks${status ? `?status=${status}` : ""}`),
+  addTask: (t: NewVxTask) => req<VxTask>("POST", "/api/autonomy/tasks", t),
+  taskAction: (id: string, action: "cancel" | "pause" | "resume") =>
+    req<{ ok: boolean }>("POST", `/api/autonomy/tasks/${id}/${action}`, {}),
+  projects: () => req<VxProject[]>("GET", "/api/autonomy/projects"),
+  addProject: (name: string, goal: string, workspace?: string) =>
+    req<VxProject>("POST", "/api/autonomy/projects", { name, goal, workspace }),
+  updateProject: (id: string, b: { note?: string; status?: string }) =>
+    req<VxProject>("POST", `/api/autonomy/projects/${id}`, b),
+  triggers: () => req<VxTrigger[]>("GET", "/api/autonomy/triggers"),
+  addTrigger: (b: { name: string; kind: string; spec: string; task: NewVxTask }) =>
+    req<{ id: string }>("POST", "/api/autonomy/triggers", b),
+  updateTrigger: (id: string, b: { enabled?: boolean; remove?: boolean }) =>
+    req<{ ok: boolean }>("POST", `/api/autonomy/triggers/${id}`, b),
+  suggestions: (status?: string) =>
+    req<VxSuggestion[]>("GET", `/api/autonomy/suggestions${status ? `?status=${status}` : ""}`),
+  decideSuggestion: (id: string, accept: boolean) =>
+    req<Record<string, unknown>>(
+      "POST",
+      `/api/autonomy/suggestions/${id}/${accept ? "accept" : "dismiss"}`,
+      {},
+    ),
+  scanSuggestions: () => req<{ new: VxSuggestion[] }>("POST", "/api/autonomy/suggestions/scan", {}),
+  briefings: () =>
+    req<{ day: string; markdown: string; created_at: string }[]>("GET", "/api/autonomy/briefings"),
+  briefingNow: () => req<{ day: string; markdown: string }>("POST", "/api/autonomy/briefings", {}),
+  backups: () => req<{ dir: string; backups: VxBackup[] }>("GET", "/api/autonomy/backups"),
+  backupNow: () => req<Record<string, unknown>>("POST", "/api/autonomy/backups", {}),
+  gpu: () => req<VxGpu>("GET", "/api/autonomy/gpu"),
+  progress: () => req<VxProgress>("GET", "/api/autonomy/progress"),
   // Wereldkennis (W14)
   world: () => req<WorldStatus>("GET", "/api/world"),
   worldFetch: (source?: string) => req<Record<string, unknown>>("POST", "/api/world/fetch", { source }),
@@ -546,4 +578,110 @@ export interface HfCatalogRow {
   decontaminated: number;
   version: string;
   created_at: string;
+}
+
+export interface AutonomyOverview {
+  user_idle: boolean;
+  external_gpu_load: boolean;
+  running: VxTask[];
+  queued: number;
+  suggestions: number;
+  last_briefing?: string | null;
+  remote: { tailscale: boolean; ip?: string | null; url?: string | null };
+}
+
+export interface NewVxTask {
+  title: string;
+  kind: string;
+  params?: Record<string, unknown>;
+  priority?: number;
+  depends_on?: string[];
+  project_id?: string;
+  needs_idle?: boolean;
+  not_before?: string;
+}
+
+export interface VxTask {
+  id: string;
+  title: string;
+  kind: string;
+  params: Record<string, unknown>;
+  priority: number;
+  status: "queued" | "running" | "done" | "failed" | "cancelled" | "paused";
+  depends_on: string[];
+  project_id?: string | null;
+  needs_idle: boolean;
+  not_before?: string | null;
+  attempts: number;
+  max_attempts: number;
+  progress: number;
+  result?: Record<string, unknown> | null;
+  error?: string | null;
+  origin: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VxProject {
+  id: string;
+  name: string;
+  goal: string;
+  status: string;
+  workspace?: string | null;
+  notes: string;
+  progress: number;
+  tasks: VxTask[];
+}
+
+export interface VxTrigger {
+  id: string;
+  name: string;
+  kind: "cron" | "interval" | "event";
+  spec: string;
+  task: NewVxTask;
+  enabled: boolean;
+  last_fired?: string | null;
+  fired: number;
+  builtin: boolean;
+  next?: string | null;
+}
+
+export interface VxSuggestion {
+  id: string;
+  kind: string;
+  text: string;
+  action?: NewVxTask | null;
+  status: string;
+  created_at: string;
+}
+
+export interface VxBackup {
+  id: string;
+  path: string;
+  bytes: number;
+  tier: string;
+  verified: boolean;
+  verify: { integrity?: string; error?: string };
+  created_at: string;
+}
+
+export interface VxGpu {
+  enabled: boolean;
+  released: boolean;
+  restore_after_secs: number;
+  servers: { server: string; home: string; phase: string; model?: string | null; inflight: number }[];
+  conditions: { user_idle: boolean; external_gpu_load: boolean; pressure: number };
+}
+
+export interface VxProgress {
+  eval_by_suite: Record<string, Record<string, number>>;
+  eval_overall: { month: string; score: number }[];
+  trend: { suite: string; last: number; previous: number; delta: number }[];
+  memory_by_month: Record<string, Record<string, number>>;
+  layers_promoted: number;
+  adapters_active: number;
+  agenda_done: number;
+  agenda_open: number;
+  tasks_done: number;
+  world_calibration: { n: number; brier: number; ece: number };
 }

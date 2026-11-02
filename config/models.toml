@@ -9,6 +9,8 @@ role = "hoofd-GPU (wisselt)"
 url = "http://127.0.0.1:8080"
 gpu = 0                # RTX 5060 Ti — controleer index met `nvidia-smi`
 model = "gpt-oss-20b"
+# managed = true       # W15.01: Vortex start deze llama-server zelf (paths.llama_server) en ontlaadt
+                       # hem zodra een game de GPU gebruikt; daarna weer geladen. Dan geen models-up nodig.
 
 # 1060-team: llama-server draait één model per proces → drie kleine servers.
 [servers.aux]

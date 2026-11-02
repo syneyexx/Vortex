@@ -1,0 +1,17 @@
+# Autonomie (W15). Zie VAULT/modules/autonomie.md en core/vortex-server/src/autonomy/.
+# Taakqueue + triggers + executor: alle taken lopen als runs via de Dirigent (P1–P3);
+# P3-taken alleen als de gebruiker niet actief is. Standaardtriggers (briefing 07:30, backup
+# 03:15, leeragenda elke 4 u, monitoring elke 30 min, maandelijkse eval) staan in de GUI aan/uit.
+enabled = true
+
+[gpu]
+# Beheerde llama-servers (`managed = true` per server in models.toml) worden ontladen zodra een
+# ander programma (bv. een game) de GPU gebruikt en Vortex niets doet; daarna weer geladen.
+release_on_external_load = true
+restore_after_secs = 60
+
+[remote]
+# Telefoon via Tailscale: extra listener op het tailnet-adres (geen open poorten naar internet).
+# Installeer Tailscale op PC en telefoon, log in op hetzelfde tailnet, zet dit aan en open
+# http://<tailscale-ip>:7420 op de telefoon.
+tailscale = false

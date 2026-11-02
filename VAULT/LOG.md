@@ -121,4 +121,9 @@ Nieuwste onderaan. Per sessie 3–5 regels: wat gedaan, wat open, volgende stap.
 - Worker `hf_datasets.py` (schema, mapping + bevestiging, MinHash, decontaminatie, licentie, 5 bestemmingen) + catalogus. Alle tests groen; Windows-check groen.
 - Cloud-proxy blokkeert nieuwsbronnen en huggingface.co → W14.01/W14.09 live op de PC verifiëren.
 
-**Actieve wave:** PC-verificatie W00–W14 · cloud: volgende = W15 (autonomie)
+## 2026-11-02 (W15 autonomie)
+- `vortex-server::autonomy`: taakqueue (prioriteit, afhankelijkheden, backoff, hervatten na herstart), projecten met notities, triggers (cron met inhalen, interval, event), executor via de Dirigent; leeragenda in idle; monitoring → suggesties → taak.
+- Dagelijkse briefing, backups met restore-test + `vortex restore`, voortgangsdashboard (trend → leeragenda), OpenAI-compatibele API (`/v1`), Tailscale-listener, GPU-bewaker voor beheerde llama-servers (getest met testdubbel). GUI: tab Autonomie + meldingen.
+- Gebruiker: mobiele weergave hoeft niet → geschrapt. Gevonden: interval-trigger vuurde pas na één interval i.p.v. direct → opgelost.
+
+**Actieve wave:** PC-verificatie W00–W15 · cloud: volgende = W16 (multimodaal)

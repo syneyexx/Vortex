@@ -101,3 +101,8 @@ Nieuwste onderaan. Formaat: datum · besluit · waarom.
 | 2026-11-02 | Voorspellingen altijd met toetscriteria + datum; toetsen alleen waar/onwaar als het bewijs het beslist, anders "niet te beslissen" (telt niet mee in de kalibratie) | Eerlijke kalibratie van het wereldmodel |
 | 2026-11-02 | Spelers alleen organisaties en publieke figuren met publieke rol | Geen profilering van privépersonen |
 | 2026-11-02 | HF-import alleen na bevestigde mapping; dedup ook tegen eerdere imports per bestemming | "LM stelt voor, gebruiker bevestigt"; geen dubbele trainingsdata |
+| 2026-11-02 | Geen mobiele weergave; telefoon gebruikt de gewone GUI via Tailscale | Besluit gebruiker |
+| 2026-11-02 | Taakqueue + triggers in SQLite, elke taak een run via de Dirigent; P3 alleen als de gebruiker niet actief is | Hervatbaar na herstart, zichtbaar in Lopend werk, wijkt voor de gebruiker |
+| 2026-11-02 | Cron-triggers halen een gemist moment één keer in (geen inhaalreeks) | PC staat niet altijd aan; geen stapel dubbele briefings |
+| 2026-11-02 | GPU vrijgeven = beheerde llama-server ontladen (opt-in `managed = true`); expliciet chatverzoek laadt meteen | VRAM echt vrij voor games; gebruiker blijft voorgaan |
+| 2026-11-02 | OpenAI-API: `vortex*`-modellen draaien de volledige pijplijn in een eigen sessie per gesprek; andere modellen worden doorgegeven | Cursor krijgt geheugen + cognitie, of rauwe snelheid naar keuze |

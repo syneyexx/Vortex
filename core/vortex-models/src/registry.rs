@@ -29,6 +29,12 @@ pub struct ServerEntry {
     /// Reservering voor bureaublad/drivers (MiB).
     #[serde(default)]
     pub reserve_mib: Option<u64>,
+    /// Vortex start/stopt deze llama-server zelf (W15.01: GPU vrijgeven bij gamen).
+    #[serde(default)]
+    pub managed: bool,
+    /// Extra programma-argumenten vóór de modelargumenten (wrapper of test-dubbel).
+    #[serde(default)]
+    pub launch_args: Vec<String>,
 }
 
 /// Eén LoRA-adapter bij een model.

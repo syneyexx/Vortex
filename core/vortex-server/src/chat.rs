@@ -131,6 +131,8 @@ pub struct ChatEngine {
     pub online: Arc<vortex_agents::connectivity::Connectivity>,
     /// Webcrawler (W10), lui aangemaakt.
     pub(crate) crawler: Arc<Mutex<Option<Arc<vortex_crawler::Crawler>>>>,
+    /// GPU-bewaker (W15.01): beheerde llama-servers; chat laadt hiermee een vrijgegeven model.
+    pub(crate) gpu_guard: Arc<crate::autonomy::gpu::GpuGuard>,
     /// Wereldmonitor (W14), lui aangemaakt.
     pub(crate) world: Arc<Mutex<Option<Arc<vortex_crawler::world::WorldMonitor>>>>,
     /// Neurale layers (W11): scorer voor router/salience + registry.
@@ -149,6 +151,7 @@ impl ChatEngine {
     pub fn new(kernel: Kernel, memory: Option<crate::memory_api::MemoryHandle>) -> Self {
         let sessions = SessionStore::new(kernel.events().clone());
         let agenda = vortex_cognition::Agenda::new(kernel.events().clone());
+        let log = kernel.events().clone();
         Self {
             kernel,
             sessions,
@@ -162,6 +165,7 @@ impl ChatEngine {
             online: Arc::new(vortex_agents::connectivity::Connectivity::new(None)),
             crawler: Arc::new(Mutex::new(None)),
             world: Arc::new(Mutex::new(None)),
+            gpu_guard: Arc::new(crate::autonomy::gpu::GpuGuard::new(log.clone())),
             scorer: None,
             layers: None,
             self_model: Arc::new(parking_lot::RwLock::new(vortex_cognition::SelfModel::default())),
@@ -436,7 +440,12 @@ impl ChatEngine {
         }
         let me = self.clone();
         let mode = req.mode;
+        let model2 = model.clone();
         tokio::spawn(async move {
+            // Door de GPU-bewaker vrijgegeven model? Expliciet verzoek → meteen weer laden (W15.01).
+            if me.gpu_guard.is_released() || !me.gpu_guard.managed().is_empty() {
+                me.gpu_guard.ensure(&reg, &model2).await;
+            }
             me.run(ctx, backend, session, asst_id, mode).await;
         });
         Ok(SendReply { run_id, user_message_id: user_id, assistant_message_id: asst_id, model })

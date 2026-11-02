@@ -21,6 +21,7 @@ console = ["dep:console-subscriber"]
 tracy = ["vortex-core/tracy"]
 
 [dependencies]
+sysinfo = { version = "0.32", default-features = false, features = ["disk"] }
 vortex-types.workspace = true
 vortex-core.workspace = true
 vortex-proto.workspace = true
@@ -41,10 +42,10 @@ serde_json.workspace = true
 toml.workspace = true
 tracing.workspace = true
 mimalloc.workspace = true
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
 axum = { version = "0.7", features = ["ws"] }
 tower-http = { version = "0.6", features = ["fs", "cors"] }
-sysinfo = { version = "0.32", default-features = false, features = ["system"] }
+
 futures.workspace = true
 tonic.workspace = true
 chrono.workspace = true

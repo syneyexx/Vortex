@@ -31,6 +31,8 @@ pub struct AppState {
     pub memory: crate::memory_api::MemoryHandle,
     /// Tools + skills (W08).
     pub tools: Option<Arc<vortex_tools::ToolHub>>,
+    /// Autonomie (W15): taakqueue, triggers, GPU-bewaker.
+    pub autonomy: crate::autonomy::Autonomy,
 }
 
 #[derive(Debug)]
@@ -103,6 +105,7 @@ pub fn router(state: AppState, static_dir: Option<PathBuf>) -> Router {
         .merge(crate::memory_adv::routes())
         .merge(crate::training_api::routes())
         .merge(crate::world_api::routes())
+        .merge(crate::autonomy::api::routes())
         .with_state(state);
     match static_dir {
         Some(d) if d.join("index.html").exists() => api.fallback_service(
@@ -428,9 +431,13 @@ pub fn build_state(kernel: Kernel) -> anyhow::Result<AppState> {
         vortex_core::sampler::SamplerConfig::default(),
         kernel.shutdown_token().child_token(),
     );
-    let state = AppState { kernel: kernel.clone(), chat, live, memory, tools: Some(tools) };
+    let gpu = chat.gpu_guard.clone();
+    crate::autonomy::gpu::spawn(gpu.clone(), kernel.clone(), chat.data_dir(), kernel.shutdown_token().child_token());
+    let autonomy = crate::autonomy::Autonomy::new(kernel.events().clone(), gpu);
+    let state = AppState { kernel: kernel.clone(), chat, live, memory, tools: Some(tools), autonomy };
     crate::training_api::spawn_flywheel(state.clone(), kernel.shutdown_token().child_token());
     crate::world_api::spawn_world(state.clone(), kernel.shutdown_token().child_token());
+    crate::autonomy::spawn(state.clone(), kernel.shutdown_token().child_token());
     Ok(state)
 }
 

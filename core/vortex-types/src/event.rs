@@ -76,6 +76,13 @@ event_kinds! {
     PredictionMade => "world.prediction.made",
     PredictionResolved => "world.prediction.resolved",
     DatasetImported => "world.dataset.imported",
+    TaskUpdated => "autonomy.task.updated",
+    TriggerFired => "autonomy.trigger.fired",
+    SuggestionCreated => "autonomy.suggestion.created",
+    BriefingWritten => "autonomy.briefing.written",
+    GpuReleased => "autonomy.gpu.released",
+    GpuRestored => "autonomy.gpu.restored",
+    BackupCompleted => "autonomy.backup.completed",
     // neurale layers (W11)
     NeuralShadow => "neural.shadow.compared",
     NeuralExample => "neural.example.logged",

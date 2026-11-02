@@ -281,6 +281,26 @@ export function applyEvents(state: State, events: VxEvent[], now = Date.now()): 
           };
         }
         break;
+      // Autonomie (W15): briefing, suggesties, GPU vrijgegeven/terug, backups → melding.
+      case "autonomy.briefing.written":
+        s = { ...s, toasts: [...s.toasts, { id: toastId++, text: `Briefing ${str(p.day)} staat klaar` }] };
+        break;
+      case "autonomy.suggestion.created":
+        s = { ...s, toasts: [...s.toasts, { id: toastId++, text: `Suggestie: ${str(p.text)}` }] };
+        break;
+      case "autonomy.gpu.released":
+        s = {
+          ...s,
+          toasts: [...s.toasts, { id: toastId++, text: "GPU vrijgegeven (ander programma actief)" }],
+        };
+        break;
+      case "autonomy.gpu.restored":
+        s = { ...s, toasts: [...s.toasts, { id: toastId++, text: "Modellen weer geladen" }] };
+        break;
+      case "autonomy.backup.completed":
+        if (p.verified !== true)
+          s = { ...s, toasts: [...s.toasts, { id: toastId++, text: "Backup: restore-test MISLUKT" }] };
+        break;
       case "eval.run.completed": {
         const score = typeof p.score === "number" ? `${Math.round(p.score * 100)}%` : "—";
         s = { ...s, toasts: [...s.toasts, { id: toastId++, text: `Eval ${str(p.suite)} klaar: ${score}` }] };

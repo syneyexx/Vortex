@@ -7,6 +7,7 @@ import { MemoryPage } from "./pages/MemoryPage.tsx";
 import { ResearchPage } from "./pages/ResearchPage.tsx";
 import { TrainingPage } from "./pages/TrainingPage.tsx";
 import { WorldPage } from "./pages/WorldPage.tsx";
+import { AutonomyPage } from "./pages/AutonomyPage.tsx";
 import { StatusBar } from "./components/StatusBar.tsx";
 import { SubNav, TopNav, type Sub, type Top } from "./components/TopNav.tsx";
 import { ModelsPage, Placeholder, RunsPage, SettingsPage } from "./pages/Pages.tsx";
@@ -98,6 +99,7 @@ export function App() {
   else if (top === "studio")
     body = <Placeholder title="Studio" wave="W16" text="Beeld, audio en multimodale uitvoer." />;
   else if (top === "settings") body = <SettingsPage />;
+  else if (top === "autonomy") body = <AutonomyPage />;
   else body = <RunsPage />;
 
   return (

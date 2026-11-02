@@ -37,3 +37,6 @@
 
 ## One-brain-check
 - [x] event log · [ ] workspace (W07) · [ ] geheugen · [ ] metacog (router kiest model: W07/W11) · [ ] GUI Models-pagina (W03)
+
+## W15
+`ServerEntry.{managed, launch_args}` (Vortex beheert de llama-server zelf, GPU-bewaker) en `ModelServer::inflight()`.

@@ -141,4 +141,19 @@ describe("applyEvents", () => {
     expect(Object.keys(s.runs)).toEqual([]);
     expect(s.toasts.at(-1)?.text).toContain("ingest");
   });
+
+  it("meldt autonomie-gebeurtenissen (briefing, suggestie, GPU, mislukte backup)", () => {
+    let s = loaded();
+    s = applyEvents(s, [
+      ev("autonomy.briefing.written", { day: "2026-11-02" }),
+      ev("autonomy.suggestion.created", { text: "Nu een backup maken?" }),
+      ev("autonomy.gpu.released", {}),
+      ev("autonomy.backup.completed", { verified: true }),
+      ev("autonomy.backup.completed", { verified: false }),
+    ]);
+    const texts = s.toasts.map((t) => t.text);
+    expect(texts).toContain("Briefing 2026-11-02 staat klaar");
+    expect(texts).toContain("Suggestie: Nu een backup maken?");
+    expect(texts.filter((t) => t.startsWith("Backup"))).toHaveLength(1);
+  });
 });

@@ -18,7 +18,7 @@ use crate::chat::Mode;
 
 /// Waves waarvan de functies in deze build aanwezig zijn (voor `requires` in eval-taken).
 pub const FEATURES: &[&str] =
-    &["W01", "W02", "W03", "W04", "W05", "W06", "W07", "W08", "W09", "W10", "W11", "W12", "W13", "W14"];
+    &["W01", "W02", "W03", "W04", "W05", "W06", "W07", "W08", "W09", "W10", "W11", "W12", "W13", "W14", "W15"];
 
 #[derive(Debug)]
 pub struct VortexSubject {
@@ -144,6 +144,27 @@ async fn run(State(s): State<AppState>, Json(b): Json<RunBody>) -> Result<Json<V
         }
     });
     Ok(Json(json!({"started": names})))
+}
+
+/// Suites synchroon draaien (taakqueue, W15): resultaat per suite + zelfmodel en voortgang bijwerken.
+pub async fn run_suites(state: &AppState, suite: Option<&str>, mode: Option<String>) -> Result<Value, String> {
+    let all = vortex_eval::load_dir(&evals_dir().join("sets")).map_err(|e| e.to_string())?;
+    let chosen: Vec<_> = all.into_iter().filter(|x| suite.is_none_or(|n| n == "all" || n == x.name)).collect();
+    if chosen.is_empty() {
+        return Err("geen suite gevonden".into());
+    }
+    let subject = VortexSubject { state: state.clone(), mode_override: mode.clone() };
+    let runner = Runner { log: state.kernel.events(), subject: &subject, python: python() };
+    let mut out = Vec::new();
+    for s in chosen {
+        match runner.run_suite(&s, mode.as_deref().map(|m| format!("modus {m}")).as_deref()).await {
+            Ok(r) => out.push(json!({"suite": r.suite, "score": r.score})),
+            Err(e) => out.push(json!({"suite": s.name, "error": e.to_string()})),
+        }
+    }
+    state.chat.refresh_self_model();
+    let steered = crate::autonomy::progress::steer(state.kernel.events(), state.chat.agenda());
+    Ok(json!({"suites": out, "agenda_added": steered, "summary": format!("{} suite(s) gedraaid", out.len())}))
 }
 
 #[derive(Debug, Deserialize, Default)]

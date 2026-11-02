@@ -3,6 +3,7 @@
 //! Zie `CARD.md`.
 
 pub mod api;
+pub mod autonomy;
 pub mod chat;
 pub mod cognitive;
 pub mod eval_api;

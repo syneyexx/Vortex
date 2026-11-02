@@ -167,6 +167,11 @@ impl ModelServer {
         self.st.lock().phase
     }
 
+    /// Lopende verzoeken.
+    pub fn inflight(&self) -> usize {
+        self.inflight.load(Ordering::SeqCst)
+    }
+
     pub async fn current_model(&self) -> Option<String> {
         self.st.lock().model.clone()
     }

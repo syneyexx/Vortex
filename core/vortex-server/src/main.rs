@@ -93,6 +93,15 @@ enum Cmd {
         #[arg(long)]
         cold: Option<std::path::PathBuf>,
     },
+    /// Backup terugzetten (W15.10). De kern moet gestopt zijn; de huidige database wordt eerst
+    /// bewaard als `vortex.db.voor-restore`.
+    Restore {
+        /// Backupbestand (`<koude schijf>/backups/bk_….db`).
+        file: PathBuf,
+        /// Ook de meegebackupte config terugzetten.
+        #[arg(long)]
+        with_config: bool,
+    },
     /// Toon runs.
     Runs {
         /// Ook afgeronde runs.
@@ -131,6 +140,7 @@ async fn main() -> anyhow::Result<()> {
 
     match &cli.cmd {
         Cmd::Serve { listen, app_dist } => serve(&cli, listen, app_dist).await,
+        Cmd::Restore { file, with_config } => restore(&cli, file, *with_config).await,
         Cmd::Status { json } => status::run(&cli.config, &data_dir(&cli), *json).await,
         Cmd::Runs { all, limit } => runs(&cli, *all, *limit),
         Cmd::Perf { api, quick } => {
@@ -165,6 +175,27 @@ async fn serve(cli: &Cli, listen: &str, app_dist: &std::path::Path) -> anyhow::R
         "Vortex-kern draait (config {}) — API op http://{listen}. Ctrl+C om te stoppen.",
         kernel.config().current().version
     );
+    // Telefoon via Tailscale (W15.08): extra listener op het tailnet-adres, geen open poorten.
+    let cfg = kernel.config().current();
+    if cfg.get::<bool>("autonomy.remote.tailscale").ok().flatten().unwrap_or(false) {
+        let port = listen.rsplit(':').next().unwrap_or("7420");
+        match vortex_server::autonomy::tailscale_ip() {
+            Some(ip) => {
+                let addr = format!("{ip}:{port}");
+                match tokio::net::TcpListener::bind(&addr).await {
+                    Ok(l) => {
+                        println!("Telefoon (Tailscale): http://{addr}");
+                        let (app2, st2) = (app.clone(), stop.clone());
+                        tokio::spawn(async move {
+                            axum::serve(l, app2).with_graceful_shutdown(async move { st2.cancelled().await }).await
+                        });
+                    }
+                    Err(e) => eprintln!("Tailscale-listener op {addr} mislukt: {e}"),
+                }
+            }
+            None => eprintln!("Tailscale aan in config, maar `tailscale ip -4` gaf geen adres (draait Tailscale?)"),
+        }
+    }
     let srv_stop = stop.clone();
     let server = tokio::spawn(async move {
         axum::serve(listener, app).with_graceful_shutdown(async move { srv_stop.cancelled().await }).await
@@ -174,6 +205,32 @@ async fn serve(cli: &Cli, listen: &str, app_dist: &std::path::Path) -> anyhow::R
     kernel.shutdown(Duration::from_secs(5)).await?;
     let _ = disp.await;
     let _ = server.await;
+    Ok(())
+}
+
+async fn restore(cli: &Cli, file: &std::path::Path, with_config: bool) -> anyhow::Result<()> {
+    let db = data_dir(cli).join("vortex.db");
+    if std::net::TcpStream::connect("127.0.0.1:7420").is_ok() {
+        anyhow::bail!("de kern lijkt te draaien (poort 7420): eerst stoppen");
+    }
+    if db.exists() {
+        std::fs::copy(&db, db.with_extension("db.voor-restore")).context("huidige database bewaren")?;
+        for ext in ["db-wal", "db-shm"] {
+            let _ = std::fs::remove_file(db.with_extension(ext));
+        }
+    }
+    vortex_memory::MemoryStore::restore(file, &db).context("terugzetten")?;
+    if with_config {
+        let src = file.with_extension("config");
+        anyhow::ensure!(src.is_dir(), "geen config-map naast de backup ({})", src.display());
+        for e in std::fs::read_dir(&src)? {
+            let e = e?;
+            if e.path().is_file() {
+                std::fs::copy(e.path(), cli.config.join(e.file_name()))?;
+            }
+        }
+    }
+    println!("Teruggezet: {} → {} (vorige database: vortex.db.voor-restore)", file.display(), db.display());
     Ok(())
 }
 
