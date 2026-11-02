@@ -12,6 +12,8 @@ $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
 Start-Transcript -Path (Join-Path $Root "install.log") -Append | Out-Null
 $failed = New-Object System.Collections.Generic.List[string]
+# uv-cache (C:) en repo op een andere schijf: hardlinken kan niet → direct kopiëren (geen waarschuwing).
+$env:UV_LINK_MODE = "copy"
 
 function Say($t) { Write-Host ""; Write-Host "==> $t" -ForegroundColor Cyan }
 function Ok($t) { Write-Host "    $t" -ForegroundColor Green }
