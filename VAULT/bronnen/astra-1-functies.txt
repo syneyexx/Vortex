@@ -1,0 +1,424 @@
+VORTEX — FUNCTIONALITEITEN VAN FRONTIER-AI EN GEAVANCEERDE AI-SYSTEMEN
+
+Belangrijk onderscheid:
+- MODEL: wat het model zelf kan verwerken of genereren.
+- SYSTEEM: wat de applicatie, tools, opslag en uitvoering toevoegen.
+- COMBINATIE: modelcapaciteit én ondersteunende software.
+
+Dit is een overzicht over meerdere aanbieders en systemen. Niet ieder model ondersteunt alles. Sommige functies zijn experimenteel of alleen beschikbaar via specifieke producten/API’s.
+
+Een krachtig harnas maakt een kleiner model bruikbaarder, maar maakt zijn onderliggende intelligentie niet automatisch gelijk aan die van een frontier-model.
+
+
+1. TAAL, REDENEREN EN ANALYSE
+
+01. Natuurlijke gesprekken [MODEL]
+    Vragen beantwoorden, uitleggen en voortbouwen op eerdere berichten.
+
+02. Instructies volgen [MODEL]
+    Werken met doelen, voorwaarden, voorbeelden en voorgeschreven formats.
+
+03. Complexe taken ontleden [MODEL]
+    Een groot probleem opsplitsen in kleinere, uitvoerbare onderdelen.
+
+04. Meertrapsredeneren [MODEL]
+    Meerdere tussenstappen gebruiken voor analyse, planning en probleemoplossing.
+
+05. Instelbare redeneerinspanning [COMBINATIE]
+    Meer of minder rekentijd besteden aan een antwoord, waar ondersteund.
+
+06. Wiskunde en logica [MODEL]
+    Berekeningen opzetten, argumenten beoordelen en bewijzen proberen te ontwikkelen.
+    Exacte verificatie vraagt vaak aanvullende rekentools.
+
+07. Scenarioanalyse [MODEL]
+    Alternatieven onderzoeken en gevolgen onder expliciete aannames vergelijken.
+
+08. Tegenargumenten ontwikkelen [MODEL]
+    Zwakke plekken, uitzonderingen en alternatieve verklaringen zoeken.
+
+09. Tegenstrijdigheden herkennen [MODEL]
+    Verschillen tussen uitspraken, documenten en voorwaarden signaleren.
+
+10. Onzekerheid communiceren [MODEL]
+    Aannames en ontbrekende informatie benoemen.
+    Een zelfgegeven zekerheidsscore is geen betrouwbare kansberekening.
+
+11. Meertalig werken [MODEL]
+    Vertalen, herschrijven en tussen talen schakelen.
+
+12. Stijl en doelgroep aanpassen [MODEL]
+    Dezelfde inhoud technisch, zakelijk, eenvoudig of creatief formuleren.
+
+
+2. MULTIMODALE CAPACITEITEN
+
+13. Afbeeldingen begrijpen [MODEL]
+    Objecten, scènes, screenshots en visuele relaties interpreteren.
+
+14. Tekst uit afbeeldingen lezen [COMBINATIE]
+    Gefotografeerde documenten en screenshots verwerken.
+    Kleine of onduidelijke tekst kan fouten geven.
+
+15. Grafieken en diagrammen interpreteren [MODEL]
+    Trends, structuren en verbanden uit visuele informatie afleiden.
+
+16. Visuele documenten begrijpen [COMBINATIE]
+    Tekst, tabellen, afbeeldingen en paginalay-out gezamenlijk verwerken.
+
+17. Audio transcriberen [MODEL / APART MODEL]
+    Spraak omzetten naar tekst.
+
+18. Gesproken antwoorden produceren [MODEL / APART MODEL]
+    Tekst of modeloutput omzetten in spraak.
+
+19. Realtime spraakgesprekken [COMBINATIE]
+    Luisteren en antwoorden met lage vertraging.
+
+20. Onderbreekbare spraakinteractie [COMBINATIE]
+    De gebruiker kan een gesproken antwoord onderbreken en bijsturen.
+
+21. Video begrijpen [COMBINATIE]
+    Beeldinformatie over tijd analyseren, afhankelijk van model en invoerroute.
+
+22. Live camera- of schermcontext [COMBINATIE]
+    Binnenkomende beelden gebruiken om over de actuele situatie te helpen.
+
+23. Afbeeldingen genereren en bewerken [MODEL / APART MODEL]
+    Nieuwe beelden maken of bestaande beelden gericht aanpassen.
+
+24. Meerdere modaliteiten combineren [COMBINATIE]
+    Bijvoorbeeld een screenshot, gesproken vraag en document samen beoordelen.
+
+Let op:
+Een tekstmodel krijgt geen visie-, audio- of beeldgeneratievermogen
+door alleen een andere systeemprompt te gebruiken.
+
+
+3. RESEARCH EN KENNISWERK
+
+25. Webzoeken [SYSTEEM]
+    Actuele informatie ophalen via zoektools.
+
+26. Webpagina’s en documenten lezen [COMBINATIE]
+    Gevonden materiaal openen, verwerken en vergelijken.
+
+27. Deep research [COMBINATIE]
+    Een onderzoeksvraag uitwerken via meerdere zoek- en analyserondes.
+
+28. Onderzoek adaptief bijsturen [COMBINATIE]
+    Nieuwe zoekvragen formuleren op basis van tussentijdse bevindingen.
+
+29. Bronnen vergelijken [COMBINATIE]
+    Verschillen in actualiteit, onderbouwing en conclusies onderzoeken.
+
+30. Bronverwijzingen toevoegen [SYSTEEM]
+    Uitspraken verbinden aan opgehaalde documenten of passages.
+
+31. Claimcontrole [COMBINATIE]
+    Per belangrijke bewering zoeken naar ondersteunend of tegensprekend bewijs.
+
+32. Lokale kennis doorzoeken [SYSTEEM]
+    Bestanden op de eigen computer vindbaar maken voor het model.
+
+33. Retrieval-Augmented Generation, RAG [SYSTEEM]
+    Relevante informatie ophalen voordat het model antwoordt.
+
+34. Iteratieve retrieval [COMBINATIE]
+    Opnieuw zoeken wanneer de eerste resultaten onvoldoende blijken.
+
+35. Gestructureerde gegevensextractie [COMBINATIE]
+    Namen, datums, bedragen, kenmerken en relaties uit documenten verzamelen.
+
+36. Onderzoeksartefacten opleveren [COMBINATIE]
+    Bevindingen omzetten in rapporten, tabellen, datasets en presentaties.
+
+
+4. TOOLS EN HANDELINGEN
+
+37. Function calling [COMBINATIE]
+    Het model vraagt een functie aan met gestructureerde argumenten.
+    De applicatie voert die functie uit.
+
+38. Meerstaps toolgebruik [COMBINATIE]
+    Zoeken, lezen, rekenen en schrijven combineren binnen één opdracht.
+
+39. Parallelle toolaanroepen [SYSTEEM]
+    Onafhankelijke acties gelijktijdig uitvoeren.
+
+40. Code uitvoeren [SYSTEEM]
+    Berekeningen en analyses werkelijk uitvoeren in een runtime.
+
+41. Bestanden lezen en wijzigen [SYSTEEM]
+    Werken met documenten, code, configuraties en datasets.
+
+42. Terminalgebruik [SYSTEEM]
+    Shellcommando’s uitvoeren binnen ingestelde toegangsgrenzen.
+
+43. Browserbediening [COMBINATIE]
+    Websites navigeren, formulieren invullen en resultaten controleren.
+
+44. Computerbediening [COMBINATIE]
+    Screenshots interpreteren en muis- en toetsenbordacties uitvoeren.
+
+45. MCP-integraties [SYSTEEM]
+    Externe tools en gegevensbronnen via een gemeenschappelijke interface aansluiten.
+
+46. Herstel bij toolfouten [COMBINATIE]
+    Foutmeldingen verwerken, invoer aanpassen en een andere route proberen.
+
+47. Gecontroleerde uitvoering [SYSTEEM]
+    Rechten, sandboxing en bevestigingen toepassen op daadwerkelijke handelingen.
+
+
+5. PROGRAMMEREN EN CREATIE
+
+48. Code genereren [MODEL]
+    Functies, componenten, scripts en grotere wijzigingen schrijven.
+
+49. Een codebase onderzoeken [COMBINATIE]
+    Bestanden doorzoeken en afhankelijkheden in kaart brengen.
+
+50. Bugs analyseren en repareren [COMBINATIE]
+    Code, foutmeldingen en uitvoer combineren om problemen aan te pakken.
+
+51. Refactoring over meerdere bestanden [COMBINATIE]
+    Samenhangende wijzigingen in een project uitvoeren.
+
+52. Testen uitvoeren en resultaten verwerken [SYSTEEM]
+    Werkelijke controles gebruiken om wijzigingen te beoordelen.
+
+53. Visuele interfacecontrole [COMBINATIE]
+    Een screenshot van de gebouwde interface vergelijken met het gewenste ontwerp.
+
+54. Documenten en spreadsheets maken [SYSTEEM]
+    Modellen combineren met bibliotheken die echte bestanden produceren.
+
+55. Interactieve artefacten [SYSTEEM]
+    Voorbeelden, grafieken, apps en prototypes direct weergeven.
+
+56. Iteratief verbeteren [COMBINATIE]
+    Een resultaat maken, inspecteren en gericht aanpassen.
+
+
+6. GEHEUGEN EN CONTEXT
+
+57. Lang contextvenster [MODEL]
+    Veel invoer binnen één verzoek verwerken.
+    Dit is geen onbeperkt of permanent geheugen.
+
+58. Gesprekshistorie [SYSTEEM]
+    Eerdere berichten bewaren en opnieuw beschikbaar maken.
+
+59. Persistent geheugen [SYSTEEM]
+    Informatie over sessies heen opslaan en terughalen.
+
+60. Gebruikers- en projectvoorkeuren [SYSTEEM]
+    Relevante afspraken en voorkeuren bewaren voor later werk.
+
+61. Zoekbaar geheugen [SYSTEEM]
+    Alleen passende herinneringen ophalen voor de huidige vraag.
+
+62. Geheugen met herkomst [SYSTEEM]
+    Vastleggen waar een herinnering vandaan komt en wanneer die is opgeslagen.
+
+63. Bewerkbaar en verwijderbaar geheugen [SYSTEEM]
+    De gebruiker laat bepalen wat het systeem bewaart.
+
+64. Contextcompactie [SYSTEEM]
+    Lange geschiedenis vervangen door een compactere voortgangssamenvatting.
+    Hierbij kan detail verloren gaan.
+
+65. Selectieve contextbewerking [SYSTEEM]
+    Verouderde toolresultaten verwijderen terwijl nuttige context behouden blijft.
+
+66. Projectinstructies en herbruikbare skills [SYSTEEM]
+    Taakspecifieke werkwijzen laden wanneer ze relevant zijn.
+
+
+7. AGENTS EN LANGLOPEND WERK
+
+67. Agentlus [COMBINATIE]
+    Een actie kiezen, uitvoeren, de uitkomst beoordelen en doorgaan.
+
+68. Taakplanning [COMBINATIE]
+    Voortgang, afhankelijkheden en resterend werk bijhouden.
+
+69. Delegatie naar subagents [SYSTEEM]
+    Afgebakende onderdelen aan afzonderlijke agentcontexten toewijzen.
+
+70. Parallel onderzoek [SYSTEEM]
+    Verschillende onderzoekslijnen tegelijk laten uitvoeren.
+
+71. Gespecialiseerde rollen [SYSTEEM]
+    Bijvoorbeeld Planner, Solver, Critic en Judge.
+    Deze namen zijn ontwerpkeuzes, geen universele frontier-standaard.
+
+72. Review door een tweede agent [COMBINATIE]
+    Resultaten apart laten controleren.
+    Overeenstemming tussen agents bewijst niet dat iets klopt.
+
+73. Achtergrondtaken [SYSTEEM]
+    Langdurige opdrachten buiten de actieve chat laten draaien.
+
+74. Checkpoints en hervatten [SYSTEEM]
+    Voortgang duurzaam opslaan en na een onderbreking verdergaan.
+
+75. Gebruiker kan bijsturen [SYSTEEM]
+    Lopend werk onderbreken, corrigeren of nieuwe voorwaarden meegeven.
+
+76. Planning en triggers [SYSTEEM]
+    Werk uitvoeren op een tijdstip of bij een gebeurtenis.
+
+77. Uitvoeringslog [SYSTEEM]
+    Zichtbaar maken welke tools, bestanden en acties werkelijk gebruikt zijn.
+
+78. Budgetten en stopvoorwaarden [SYSTEEM]
+    Grenzen stellen aan tijd, tokens, kosten en herhalingen.
+
+
+8. MINDER BEKENDE, MAAR WAARDEVOLLE FUNCTIES
+
+79. Tool discovery / tool search [SYSTEEM]
+    Tools pas opzoeken en laden wanneer ze nodig zijn.
+    Voorkomt dat honderden toolbeschrijvingen altijd context innemen.
+
+80. Programmatic tool calling [COMBINATIE]
+    Het model schrijft een script dat meerdere tools aanroept.
+    Niet elk tussenresultaat hoeft terug door het model.
+
+81. Resultaten filteren vóór modelinvoer [SYSTEEM]
+    Grote tooluitvoer eerst met code selecteren of samenvatten.
+    Het model ontvangt alleen relevante gegevens.
+
+82. Prompt caching [RUNTIME / API]
+    Herhaalde invoer efficiënter verwerken.
+    Dit is geen langetermijngeheugen en vergroot het contextvenster niet.
+
+83. Gestructureerde output volgens schema [COMBINATIE]
+    Uitvoer produceren die aansluit op bijvoorbeeld een JSON-schema.
+    Een geldig formaat garandeert geen inhoudelijk correct antwoord.
+
+84. Afwisselend redeneren en tools gebruiken [COMBINATIE]
+    Na een toolresultaat de aanpak aanpassen voordat de volgende actie volgt.
+
+85. Voortzetten met bewaarde redeneerstatus [MODEL / API]
+    Sommige API’s ondersteunen specifieke mechanismen om interne
+    redeneercontext tussen stappen te behouden.
+    Dit is aanbiederafhankelijk en geen leesbaar permanent geheugen.
+
+86. Dynamische redeneerbudgetten [COMBINATIE]
+    Alleen bij complexere taken extra redeneerinspanning inzetten.
+
+87. Geïsoleerde agentcontexten [SYSTEEM]
+    Een specialist alleen de informatie geven die voor zijn taak nodig is.
+
+88. Overdracht via bestanden [SYSTEEM]
+    Agents leveren een bestand of gestructureerd resultaat op en delen een verwijzing.
+    Voorkomt dat grote resultaten telkens worden overgeschreven in gesprekken.
+
+89. Geheugenconsolidatie / “dreaming” [SYSTEEM; SOMS EXPERIMENTEEL]
+    Achteraf herinneringen samenvoegen, verouderde informatie vervangen
+    en patronen uit eerdere sessies verzamelen.
+    Dit betekent geen bewustzijn of automatische training van modelgewichten.
+
+90. Brongebonden antwoordopbouw [SYSTEEM]
+    Niet alleen een bronnenlijst tonen, maar passages aan concrete claims koppelen.
+
+91. Onderzoek naar ontbrekend bewijs [COMBINATIE]
+    Expliciet bepalen wat nog onbekend is en daar nieuwe zoekacties op richten.
+
+92. Onderscheid tussen voortgang en antwoord [SYSTEEM]
+    Toolactiviteiten en korte agentstatussen apart tonen van het gebruikersantwoord.
+    Een statuspaneel is geen gegarandeerd volledige weergave van intern denken.
+
+
+9. EXTRA ONTWERPIDEËN VOOR VORTEX
+
+Dit zijn aanbevelingen voor jouw framework.
+Niet allemaal standaardfuncties van frontier-producten.
+
+93. Drie expliciete geheugentypen
+    Episodisch: gebeurtenissen en eerdere sessies.
+    Semantisch: feiten en begrippen.
+    Procedureel: werkwijzen en stappenplannen.
+
+94. Tijdgebonden geheugen
+    Onthouden sinds wanneer een feit geldt en wanneer het vervangen is.
+
+95. Conflictregister
+    Botsende herinneringen zichtbaar bewaren totdat ze zijn opgelost.
+
+96. Bewijsoverzicht
+    Per belangrijke conclusie tonen:
+    bron, datum, ondersteunend bewijs en openstaande onzekerheid.
+
+97. Herkomst van relevantiescores
+    Uitleggen of een score afkomstig is van zoekafstand, een reranker
+    of een andere methode. Geen schijnprecisie tonen.
+
+98. Automatische modelroutering
+    Per taak kiezen welk beschikbaar model passend is.
+    Bijvoorbeeld tekst, visie, embeddings of code.
+
+99. Hardwarebewuste taakplanning
+    Modelgrootte, context, VRAM en gelijktijdige taken meewegen.
+
+100. Agents achtereenvolgens uitvoeren
+     Meerdere rollen laten werken met één geladen model wanneer
+     gelijktijdige uitvoering te veel geheugen of rekentijd vraagt.
+
+101. Controleerbare modelescalatie
+     Een moeilijke taak naar een sterker model doorzetten wanneer beschikbaar.
+     Cloudgebruik alleen volgens de ingestelde gebruikersvoorkeur.
+
+102. Veilige wijzigingsvoorbeelden
+     Eerst een diff, concept of preview tonen bij belangrijke wijzigingen.
+
+103. Herstelbare acties
+     Versies en checkpoints opslaan zodat wijzigingen teruggedraaid kunnen worden.
+
+104. Persoonlijke evaluatieset
+     Vaste eigen taken gebruiken om model-, prompt- en agentwijzigingen te vergelijken.
+
+105. Procesverbetering op basis van resultaten
+     Registreren welke aanpak werkte en die als voorstel voor een skill bewaren.
+     Dit apart houden van training of aanpassing van modelgewichten.
+
+106. Eén overzicht van lopend werk
+     Agents, downloads, indexering, research en generaties samen kunnen volgen,
+     pauzeren en stoppen.
+
+
+10. MIJN PRIORITEIT VOOR VORTEX
+
+EERST — BETROUWBARE BASIS
+- Goede chat en streaming.
+- Model- en strategiekeuze.
+- Toolgebruik met echte statusinformatie.
+- Lokale bestandszoekfunctie.
+- Bronverwijzingen.
+- Bewerkbaar geheugen.
+- Contextbeheer.
+- Hervatbare achtergrondtaken.
+
+DAARNA — STERKERE UITVOERING
+- Deep research.
+- Code-uitvoering.
+- Browser- en computerbediening.
+- Gerichte inzet van subagents.
+- Controle van resultaten met bronnen en tests.
+- Multimodale invoer.
+
+VERVOLGENS — ONDERSCHEIDEND
+- Geheugenconsolidatie.
+- Tijdgebonden kennis en conflictdetectie.
+- Dynamische tool discovery.
+- Hardwarebewuste modelroutering.
+- Bewijsoverzicht.
+- Eigen evaluaties en meetbare procesverbetering.
+
+Mijn oordeel:
+De grootste winst komt uit goede context, goede tools, verifieerbare resultaten
+en betrouwbare uitvoering. Meer agents en langere denkprocessen zijn alleen
+waardevol wanneer ze aantoonbaar betere resultaten opleveren.

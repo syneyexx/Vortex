@@ -1,0 +1,448 @@
+VORTEX — VERDIEPENDE TECHNISCHE CAPACITEITEN
+
+LEGENDA
+[RUNTIME]   Vereist ondersteuning in de inference-engine.
+[HARNESS]   Te bouwen in de software rondom het model.
+[TRAINING]  Vereist training of aanpassing van modelgewichten.
+[MODEL]     Onderdeel van de modelarchitectuur.
+
+De technieken hieronder bestaan of zijn concrete ontwerpopties.
+Niet iedere techniek is geschikt voor iedere backend, GPU of model.
+
+
+A. INFERENCE: HOE HET MODEL DAADWERKELIJK DRAAIT
+
+1. SPECULATIVE DECODING [RUNTIME]
+Een klein draftmodel voorspelt meerdere volgende tokens.
+Het hoofdmodel controleert die voorstellen in een gebundelde stap.
+
+Doel:
+Minder opeenvolgende dure stappen van het hoofdmodel.
+
+Nuance:
+Bij een correct exact algoritme blijft de beoogde
+uitvoerverdeling behouden. Snelheidswinst is niet gegarandeerd:
+die hangt af van acceptatiegraad, hardware en extra overhead.
+
+Voor Vortex:
+Meet geaccepteerde drafttokens, totale latency en VRAM-verbruik.
+Schakel het alleen in wanneer de eigen benchmarks winst tonen.
+
+
+2. CONTINUOUS BATCHING [RUNTIME]
+Nieuwe aanvragen kunnen instromen terwijl bestaande aanvragen
+nog tokens genereren.
+
+Doel:
+De GPU efficiënter benutten bij meerdere gelijktijdige taken.
+
+Nuance:
+Meer totale throughput betekent niet automatisch een snellere
+individuele chat.
+
+Voor Vortex:
+Geef de actieve chat voorrang boven achtergrondagents.
+
+
+3. CHUNKED PREFILL [RUNTIME]
+De verwerking van een lange invoer wordt in stukken ingepland.
+
+Doel:
+Voorkomen dat één enorm document andere actieve gesprekken
+lang blokkeert.
+
+Voor Vortex:
+Documentinvoer en lopende chatgeneratie gecontroleerd afwisselen.
+
+
+4. PAGED KV-CACHE [RUNTIME]
+De attention-cache wordt beheerd in geheugenblokken,
+in plaats van grote aaneengesloten reserveringen.
+
+Doel:
+Minder geheugenverspilling en flexibeler cachebeheer.
+
+Nuance:
+Het model wordt hierdoor niet slimmer; het draait efficiënter.
+
+
+5. KV-CACHE QUANTIZATION [RUNTIME]
+De opgeslagen keys en values gebruiken een lagere precisie.
+
+Doel:
+Minder geheugen per contexttoken.
+
+Nuance:
+Dit staat los van quantisatie van de modelgewichten.
+Kwaliteitsverlies en snelheid hangen af van implementatie,
+precisie, model en contextlengte.
+
+
+6. FLASHATTENTION [RUNTIME]
+Attention wordt zo berekend dat minder gegevens tussen
+verschillende GPU-geheugenniveaus hoeven te bewegen.
+
+Doel:
+Efficiëntere attention met minder tussentijdse geheugenopslag.
+
+Nuance:
+De gewone exacte variant maakt attention niet inhoudelijk
+simpeler. Hij organiseert de berekening efficiënter.
+Het contextvenster wordt niet ineens onbeperkt.
+
+
+7. PREFILL- EN DECODEPROFILING [HARNESS + RUNTIME]
+Meet de verwerking van invoer apart van de uitvoergeneratie.
+
+Belangrijke metingen:
+- Wachttijd vóór uitvoering.
+- Time to first token.
+- Prefill tokens per seconde.
+- Decode tokens per seconde.
+- Tijd tussen opeenvolgende outputtokens.
+- Piekgebruik van VRAM.
+
+Voor Vortex:
+Zo zie je of een probleem in documentinvoer, generatie,
+wachtrijen of geheugendruk zit.
+
+
+8. ADMISSION CONTROL [HARNESS]
+Vooraf bepalen of een nieuwe taak binnen het beschikbare
+geheugen- en uitvoeringsbudget past.
+
+Voor Vortex:
+Reserveer ruimte voor gewichten, KV-cache en runtimebuffers.
+Laat achtergrondwerk wachten voordat een out-of-memory-fout
+de actieve sessie onderbreekt.
+
+Dit is een concreet systeemontwerp, geen speciale modelintelligentie.
+
+
+B. MODELARCHITECTUUR: WAT JE NIET MET EEN PROMPT TOEVOEGT
+
+9. MIXTURE OF EXPERTS — MoE [MODEL]
+Een router activeert slechts een selectie van expert-netwerken
+voor ieder token.
+
+Doel:
+Veel totale modelcapaciteit met minder actieve berekening
+dan wanneer alle parameters per token gebruikt worden.
+
+Belangrijk:
+Experts zijn neurale onderdelen, geen Planner/Solver-agents.
+Weinig actieve parameters betekent niet dat alle overige
+gewichten geen opslag of geheugen nodig hebben.
+
+
+10. MULTI-HEAD LATENT ATTENTION — MLA [MODEL]
+Attention-informatie wordt in een compactere latente
+representatie opgeslagen.
+
+Doel:
+De KV-cache kleiner maken.
+
+Voor Vortex:
+Een geschikt model en een passende backend kiezen.
+Dit is geen instelling die een willekeurig bestaand model
+zonder aanpassingen dezelfde architectuur geeft.
+
+
+11. MULTI-TOKEN PREDICTION — MTP [MODEL + TRAINING]
+Het model wordt getraind met voorspellingen voor meerdere
+toekomstige tokens.
+
+Doel:
+Een rijker trainingssignaal; passende extra voorspellers
+kunnen ook voor speculatieve generatie worden gebruikt.
+
+Nuance:
+Een willekeurig model meerdere woorden laten uitschrijven
+is niet hetzelfde als architecturale MTP.
+
+
+12. EXPERT LOAD BALANCING [MODEL + TRAINING]
+Voorkomen dat vrijwel alle tokens naar dezelfde experts gaan.
+
+Doel:
+Beschikbare expertcapaciteit en hardware beter benutten.
+
+Nuance:
+Dit speelt binnen MoE-training en -uitvoering, niet binnen
+een gewoon agentdashboard.
+
+
+C. KENNISOPHALING: PRECIES WAT HET MODEL TE ZIEN KRIJGT
+
+13. HYBRID RETRIEVAL [HARNESS]
+Combineer lexicale zoekresultaten, bijvoorbeeld BM25,
+met vectorzoekresultaten.
+
+Waarom:
+Exacte foutcodes en functienamen vragen vaak om letterlijke
+matches; conceptuele vragen profiteren van semantische matches.
+
+Voor Vortex:
+Beide zoekroutes gebruiken en de resultaten samenvoegen.
+
+
+14. CONTEXTUAL CHUNK INDEXING [HARNESS]
+Voeg vóór indexering een korte beschrijving toe die uitlegt
+waar een tekstfragment binnen het document over gaat.
+
+Waarom:
+Een losse alinea kan zonder hoofdstuk- of documentcontext
+verkeerd worden geïnterpreteerd.
+
+Nuance:
+Bewaar de originele tekst apart van de gegenereerde toelichting.
+
+
+15. SECOND-STAGE RERANKING [HARNESS + EXTRA MODEL]
+Een eerste zoekstap haalt kandidaten op.
+Een tweede model beoordeelt welke passages het best bij
+de concrete vraag passen.
+
+Doel:
+Betere selectie voordat passages contextruimte innemen.
+
+Voor Vortex:
+Reranking alleen toepassen waar extra kwaliteit de rekentijd waard is.
+
+
+16. GRAPH-ASSISTED LOCAL RETRIEVAL [HARNESS]
+Zoek niet alleen documenten, maar ook betrokken entiteiten,
+hun relaties en aangrenzende informatie.
+
+Voorbeeld:
+Een vraag over een functie haalt ook de module,
+afhankelijkheden en bijbehorende ontwerpbeslissing op.
+
+Nuance:
+Een verkeerd geëxtraheerde relatie blijft fout.
+Een kennisgraph is geen automatische waarheidsmachine.
+
+
+17. GLOBAL CORPUS SYNTHESIS [HARNESS]
+Gebruik samenvattingen van groepen gerelateerde informatie
+voor vragen over een volledige verzameling documenten.
+
+Voorbeeld:
+“Welke terugkerende problemen zitten in al mijn projectnotities?”
+
+Dit vraagt een andere zoekstrategie dan:
+“Waar staat deze ene configuratiewaarde?”
+
+
+18. CONTENT-ADDRESSED INDEXING [HARNESS; ONTWERPOPTIE]
+Geef documentversies en fragmenten identifiers op basis
+van hun inhoud.
+
+Doel:
+Ongewijzigde inhoud herkennen, dubbele verwerking beperken
+en resultaten koppelen aan de juiste bronversie.
+
+Voor Vortex:
+Alleen gewijzigde fragmenten opnieuw embedden.
+
+
+19. RETRIEVAL EVALUATION [HARNESS; ONTWERPOPTIE]
+Test de zoeklaag los van het antwoordmodel.
+
+Meet bijvoorbeeld:
+- Recall@k: zit de benodigde passage tussen de resultaten?
+- Rangpositie van het juiste resultaat.
+- Aandeel irrelevante passages.
+- Gedrag bij vragen zonder antwoord in de bronnen.
+
+Waarom:
+Een goed taalmodel kan een slecht opgehaald documentpakket
+niet betrouwbaar repareren.
+
+
+D. VERIFICATIE: MEER DAN EEN AGENT DIE “APPROVED” ZEGT
+
+20. PROCESS REWARD MODELS — PRM [TRAINING + HARNESS]
+Een getrainde beoordelaar scoort tussenstappen van een oplossing,
+in plaats van alleen het eindantwoord.
+
+Doel:
+Fouten eerder herkennen tijdens het zoeken naar oplossingen.
+
+Nuance:
+Een apart getraind PRM is iets anders dan hetzelfde chatmodel
+de rol “Critic” geven. De betrouwbaarheid is domeinafhankelijk.
+
+
+21. VERIFIER-GUIDED CANDIDATE SELECTION [HARNESS]
+Genereer meerdere kandidaten en selecteer met een controle
+die aansluit op de taak.
+
+Voorbeelden:
+- Code: compilatie en relevante tests.
+- Wiskunde: symbolische controles.
+- Configuratie: schema én domeinregels.
+
+Nuance:
+Een kandidaat kan tests doorstaan en toch onvolledig zijn.
+De kwaliteit van de controle bepaalt de waarde van de selectie.
+
+
+22. TYPED INTERMEDIATE REPRESENTATION [HARNESS; ONTWERPOPTIE]
+Laat het model eerst een getypeerde taakrepresentatie maken,
+die software valideert voordat uitvoering begint.
+
+Bijvoorbeeld:
+actie, doelbestand, invoertype, verwachte uitvoer,
+afhankelijkheden en toegestane bijwerkingen.
+
+Waarom:
+Vrije tekst is een zwakke interface voor betrouwbare uitvoering.
+
+
+23. PRECONDITIONS EN POSTCONDITIONS [HARNESS; ONTWERPOPTIE]
+Controleer expliciet wat vóór en na een actie waar moet zijn.
+
+Voorbeeld:
+Voor: het bestand heeft de verwachte versie.
+Na: het bestand bevat de gevraagde wijziging en is nog geldig.
+
+Waarom:
+Een succesvolle toolaanroep betekent niet automatisch
+dat het gewenste resultaat bereikt is.
+
+
+24. IDEMPOTENTE TOOLACTIES [HARNESS; ONTWERPOPTIE]
+Ontwerp acties zodat een herhaalde aanvraag niet onbedoeld
+dezelfde externe wijziging opnieuw uitvoert.
+
+Voorbeeld:
+Eenzelfde taak-ID mag niet twee keer dezelfde bestelling
+of hetzelfde bericht veroorzaken.
+
+Waarom:
+Retries na time-outs zijn anders gevaarlijk dubbelzinnig.
+
+
+25. TRANSACTIONELE UITVOERING [HARNESS; ONTWERPOPTIE]
+Scheid voorbereiding, validatie en definitief toepassen.
+
+Voorbeeld:
+Wijzigingen eerst in een tijdelijke werkruimte maken,
+controleren en daarna gecontroleerd overnemen.
+
+Nuance:
+Niet alle externe acties zijn terug te draaien.
+Voor zulke acties heb je aanvullende uitvoeringsregels nodig.
+
+
+26. EVENT SOURCING EN REPLAY [HARNESS; ONTWERPOPTIE]
+Bewaar uitvoeringsgebeurtenissen als een geordend log.
+
+Registreer:
+- Taak- en tool-ID.
+- Invoer en uitvoer.
+- Model- en promptversie.
+- Statusovergangen.
+- Bronversies.
+- Fouten en retries.
+
+Doel:
+Achteraf reconstrueren waarom iets gebeurde.
+
+Nuance:
+Een reconstructie met opgeslagen resultaten kan exact zijn;
+het model opnieuw laten genereren hoeft dat niet te zijn.
+
+
+27. PROMPT-INJECTION TRUST BOUNDARIES [HARNESS; ONTWERPOPTIE]
+Houd opgehaalde inhoud gescheiden van uitvoeringsbevoegdheden.
+
+Voorbeeld:
+Een webpagina mag informatie aanleveren, maar zichzelf
+geen toestemming geven om lokale bestanden te verwijderen.
+
+Technische aanpak:
+Herkomstlabels, beperkte toolrechten en beleidscontroles
+buiten de tekstgeneratie plaatsen.
+
+Nuance:
+Alleen “negeer kwaadaardige instructies” in de prompt
+is geen volledige beveiligingsgrens.
+
+
+E. TRAINING EN AANPASSING
+
+28. LOW-RANK ADAPTATION — LoRA [TRAINING]
+Train compacte aanvullende matrices terwijl de oorspronkelijke
+modelgewichten grotendeels bevroren blijven.
+
+Doel:
+Gedrag aanpassen met minder trainbare parameters.
+
+Voor Vortex:
+Eventueel gespecialiseerde adapters voor afgebakende taken.
+
+Nuance:
+Adapters voegen niet automatisch betrouwbare actuele feiten
+of brede frontier-intelligentie toe.
+
+
+29. QLoRA [TRAINING]
+Combineer een bevroren, laagprecisie basismodel met trainbare
+LoRA-adapters.
+
+Doel:
+De geheugenbehoefte van finetuning beperken.
+
+Nuance:
+Een quantized GGUF kunnen draaien betekent niet dat dezelfde
+runtime dat bestand ook direct efficiënt kan finetunen.
+De trainingsroute en modelondersteuning moeten apart kloppen.
+
+
+30. DIRECT PREFERENCE OPTIMIZATION — DPO [TRAINING]
+Train met paren van gewenste en minder gewenste antwoorden.
+
+Doel:
+Het modelgedrag richting geselecteerde voorkeuren sturen.
+
+Nuance:
+“Gebruiker vond dit prettiger” is niet hetzelfde als
+“dit is feitelijk correct”. Trainingsdata moeten dat onderscheid maken.
+
+
+31. ADAPTER- EN DATASETVERSIEBEHEER [HARNESS; ONTWERPOPTIE]
+Koppel iedere adapter aan:
+- Het exacte basismodel.
+- De trainingsdatasetversie.
+- Trainingsinstellingen.
+- Evaluatieresultaten.
+- Bekende regressies.
+
+Doel:
+Kunnen teruggaan wanneer een aanpassing op de ene taak
+winst geeft maar andere taken verslechtert.
+
+
+MIJN TECHNISCHE KEUZE VOOR VORTEX
+
+Ik zou eerst investeren in:
+1. Goede inference-metingen en geheugenreservering.
+2. Hybrid retrieval met gerichte reranking.
+3. Getypeerde toolinvoer en controle van echte resultaten.
+4. Idempotente acties en een volledig uitvoeringslog.
+5. Evaluaties die retrieval, model en uitvoering apart beoordelen.
+
+Daarna:
+6. Speculative decoding, als metingen winst aantonen.
+7. Graph retrieval voor vragen die relaties nodig hebben.
+8. Taakspecifieke adapters bij aantoonbaar terugkerende tekortkomingen.
+
+MoE, MLA en MTP zou ik behandelen als selectiecriteria voor
+modellen en backends, niet als functies die je via een prompt toevoegt.
+
+Het onderscheid is essentieel:
+Een model kan overtuigend praten over een architectuur.
+Een goed framework moet die architectuur werkelijk uitvoeren,
+meten en controleren.

@@ -1,0 +1,494 @@
+VORTEX — VERDIEPING: COMPILATIE, DATAVERWERKING EN KWALITEIT
+
+
+A. VAN OPDRACHT NAAR EFFICIËNTE UITVOERING
+
+1. EFFECTANALYSE VAN TAAKPLANNEN [ONTWERP]
+
+Bepaal vóór uitvoering welke stappen:
+- Alleen gegevens lezen.
+- Lokale gegevens veranderen.
+- Externe gevolgen hebben.
+
+Gebruik dit om automatisch te bepalen welke stappen
+veilig gelijktijdig kunnen lopen.
+
+Voorbeeld:
+Twee documenten lezen kan parallel.
+Een bestand herschrijven terwijl een andere stap datzelfde
+bestand analyseert, vraagt expliciete ordening.
+
+Dit gaat verder dan rollen aan agents toewijzen:
+het analyseert de gevolgen van hun werk.
+
+
+2. COMMON SUBEXPRESSION ELIMINATION [ONTWERP]
+
+Herken identieke, zuivere deelbewerkingen in een taakplan
+en voer ze slechts één keer uit.
+
+Voorbeeld:
+Drie agents hebben dezelfde documentconversie nodig.
+De conversie gebeurt één keer; alle drie gebruiken het resultaat.
+
+Alleen toepassen als invoerversies en instellingen gelijk zijn
+en de bewerking geen relevante bijwerkingen heeft.
+
+
+3. DEAD-TASK ELIMINATION [ONTWERP]
+
+Verwijder geplande stappen waarvan het resultaat
+niet meer nodig is voor het actuele doel.
+
+Voorbeeld:
+De gebruiker kiest één ontwerpvariant.
+Renderopdrachten voor de verworpen varianten vervallen.
+
+Een doelwijziging moet dus ook het resterende uitvoeringsplan wijzigen.
+
+
+4. INCREMENTAL RECOMPUTATION [ONTWERP]
+
+Bereken na een wijziging uitsluitend de getroffen
+onderdelen van een resultaat opnieuw.
+
+Voorbeeld:
+Eén aanname verandert in een analyse.
+Alleen afhankelijke berekeningen en conclusies worden vernieuwd.
+
+Verschil met gewone hervatting:
+Hervatten gaat verder na onderbreking.
+Incrementele herberekening verwerkt gewijzigde invoer.
+
+
+5. VALUE-OF-INFORMATION PLANNING [ONTWERP]
+
+Kies een volgende onderzoekshandeling op basis van
+de verwachte bijdrage aan een beslissing.
+
+Voorbeeld:
+Een extra bron zoeken heeft weinig waarde als tien bronnen
+hetzelfde bevestigen, maar veel waarde als één cruciale
+aanname nog ongetoetst is.
+
+Gebruik meetbare taakcriteria.
+Laat een zelfverzonnen modelscore niet als objectieve
+informatiewaarde doorgaan.
+
+
+6. COST-BASED PLAN SELECTION [ONTWERP]
+
+Vergelijk uitvoeringsroutes op geschatte:
+- Latency.
+- Geheugenbelasting.
+- Toolkosten.
+- Kans op bruikbaar resultaat.
+
+Voorbeeld:
+Een exact bedrag uit een tabel halen met een parser
+kan beter zijn dan twintig pagina’s aan een visionmodel geven.
+
+Leer kosten uit echte metingen van de eigen installatie.
+
+
+B. CONTEXT ALS BEPERKT REKENMIDDEL
+
+7. DIVERSITEITSBEWUSTE CONTEXTSELECTIE [ONTWERP]
+
+Selecteer passages op relevantie én aanvullende informatiewaarde.
+
+Waarom:
+Tien bijna identieke fragmenten kunnen alle context innemen,
+terwijl één belangrijk tegenargument ontbreekt.
+
+Doel:
+De vraag zo volledig mogelijk afdekken binnen hetzelfde tokenbudget.
+
+
+8. POSITIONELE CONTEXTTESTS [TECHNIEK]
+
+Test of het model dezelfde informatie nog gebruikt wanneer
+die vooraan, middenin of achteraan de context staat.
+
+Waarom:
+Onderzoek heeft bij onderzochte modellen gevoeligheid
+voor de positie van relevante informatie laten zien.
+
+Voor Vortex:
+Meet dit per model en taak.
+Neem niet aan dat elk huidig model hetzelfde patroon vertoont.
+
+
+9. VERLIESBEWUSTE CONTEXTVERKORTING [ONTWERP]
+
+Maak vóór verkorting onderscheid tussen:
+- Exact te bewaren gegevens.
+- Samenvatbare uitleg.
+- Weglaatbare herhaling.
+
+Exact bewaren:
+Bestandspaden, identificatoren, voorwaarden, bedragen,
+eenheden en letterlijke gebruikerscorrecties.
+
+Waarom:
+Een vloeiende samenvatting kan juist de kritieke details verliezen.
+
+
+10. TEGENVOORBEELDEN RESERVEREN [ONTWERP]
+
+Reserveer context voor bewijs dat een voorlopige conclusie
+kan tegenspreken.
+
+Waarom:
+Een zoeklaag die alleen bevestigende passages selecteert,
+kan een onjuist antwoord steeds overtuigender maken.
+
+Dit is geen verplicht kunstmatig “beide kanten”-verhaal:
+tegenbewijs moet relevant en onderbouwd zijn.
+
+
+11. ANTWOORDBUDGET VOORAF RESERVEREN [ONTWERP]
+
+Bepaal hoeveel ruimte nodig is voor:
+- Het gebruikersantwoord.
+- Eventuele toolaanvragen.
+- Protocol- en afsluitinformatie.
+
+Selecteer pas daarna hoeveel bronmateriaal past.
+
+Waarom:
+Een context die volledig met invoer gevuld is,
+laat te weinig ruimte voor bruikbare uitvoer.
+
+
+C. CACHECORRECTHEID
+
+12. SEMANTISCHE ANTWOORDCACHE [ONTWERP]
+
+Hergebruik een eerder antwoord bij inhoudelijk vergelijkbare vragen.
+
+Maar controleer eerst:
+- Dezelfde relevante context.
+- Dezelfde bronversies.
+- Dezelfde gebruikersvoorwaarden.
+- Voldoende actualiteit.
+
+Verschil met prefix caching:
+Hier hergebruik je een antwoord, niet alleen berekeningen.
+
+Niet gebruiken voor uitvoeringsacties of vragen waarbij
+kleine verschillen de uitkomst wezenlijk veranderen.
+
+
+13. SINGLE-FLIGHT REQUEST COALESCING [ONTWERP]
+
+Als meerdere taken tegelijkertijd hetzelfde resultaat aanvragen,
+laat één berekening lopen en deel de uitkomst.
+
+Voorbeeld:
+Vijf agents vragen gelijktijdig dezelfde embedding aan.
+Er wordt slechts één embedding berekend.
+
+Verschil met een cache:
+Het voorkomt dubbel werk terwijl het eerste resultaat
+nog niet beschikbaar is.
+
+
+14. NEGATIVE CACHING [ONTWERP]
+
+Bewaar tijdelijk dat iets ontbreekt of niet beschikbaar is.
+
+Voorbeeld:
+Een niet-bestaand bestand hoeft niet bij iedere agentstap
+opnieuw gezocht te worden.
+
+Gebruik korte geldigheid of wijzigingssignalen.
+“Anders niet gevonden” mag niet permanent “bestaat niet” betekenen.
+
+
+15. CACHE-ISOLATIE PER WERKRUIMTE [TECHNIEK / ONTWERP]
+
+Bepaal welke werkruimtes cachegegevens mogen delen.
+
+Voor prefix caches kan een backend bijvoorbeeld
+een aparte salt of namespace gebruiken.
+
+Waarom:
+Een gedeelde runtime hoeft niet automatisch gedeelde
+cachetoegang tussen alle projecten te betekenen.
+
+
+16. CACHE-STAMPEDE PREVENTIE [ONTWERP]
+
+Voorkom dat veel taken tegelijk hetzelfde verlopen
+cacheresultaat opnieuw gaan berekenen.
+
+Gebruik bijvoorbeeld:
+Eén vernieuwer, gespreide vervaltijden en begrensde wachtrijen.
+
+Een verouderd resultaat tonen mag alleen als het soort
+informatie en de taak dat toestaan.
+
+
+D. DOCUMENTEN EN MULTIMODALE INVOER
+
+17. VISUELE DOCUMENTRETRIEVAL [TECHNIEK]
+
+Indexeer documentpagina’s als visuele representaties,
+zodat ook lay-out, tabellen en figuren bijdragen aan zoeken.
+
+Voorbeeld:
+Een relevante grafiek terugvinden terwijl de informatie
+niet goed als platte tekst is geëxtraheerd.
+
+Technieken zoals ColPali gebruiken hiervoor meerdere
+vectorrepresentaties per pagina.
+
+
+18. COÖRDINAATGEBONDEN BRONVERWIJZINGEN [ONTWERP]
+
+Koppel gevonden bewijs aan een specifieke regio:
+pagina, bounding box, tabelcel of afbeeldingsuitsnede.
+
+Waarom:
+De gebruiker kan direct zien welk stukje van een document
+een antwoord ondersteunt.
+
+Een verwijzing naar alleen een bestandsnaam is daarvoor te grof.
+
+
+19. STRUCTUURBEHOUD BIJ TABELIMPORT [ONTWERP]
+
+Bewaar:
+- Samengevoegde cellen.
+- Meerdere kopregels.
+- Eenheden.
+- Voetnoten.
+- Rij- en kolomrelaties.
+
+Waarom:
+Een numeriek juiste cel kan verkeerd geïnterpreteerd worden
+als de bijbehorende kop of eenheid verloren gaat.
+
+
+20. MULTIMODALE TIJDSUITLIJNING [ONTWERP]
+
+Koppel audiosegmenten, transcriptie en videoframes
+aan dezelfde tijdlijn.
+
+Voorbeeld:
+“Dat werkt niet” moet gekoppeld worden aan wat op dat
+moment zichtbaar was, niet aan een screenshot van later.
+
+Bewaar tijdstempels door de hele verwerking.
+
+
+21. ADAPTIEVE FRAMESELECTIE [ONTWERP]
+
+Selecteer videoframes op relevante veranderingen,
+in plaats van altijd met dezelfde frequentie.
+
+Voorbeeld:
+Meer frames rond een handeling, minder tijdens een stilstaand beeld.
+
+Nuance:
+Agressieve selectie kan korte belangrijke gebeurtenissen missen.
+Test daarom de gemiste gebeurtenissen, niet alleen de besparing.
+
+
+22. REGION-OF-INTEREST VERWERKING [ONTWERP]
+
+Gebruik eerst een overzichtsbeeld en inspecteer daarna
+alleen relevante uitsneden op hogere resolutie.
+
+Voorbeeld:
+Een volledige screenshot begrijpen en vervolgens
+één kleine foutmelding nauwkeurig lezen.
+
+Houd de relatie tussen uitsnede en oorspronkelijke afbeelding vast.
+
+
+23. ONZEKERHEID UIT PARSERS DOORGEVEN [ONTWERP]
+
+Bewaar wanneer tekst, cijfers of tabellen onzeker zijn uitgelezen.
+
+Voorbeeld:
+Een slecht leesbare “8” mag niet zonder markering
+als exact cijfer in een berekening belanden.
+
+Gebruik onzekerheid om herlezing of aanvullende controle
+te starten; presenteer ongekalibreerde OCR-scores niet als waarheid.
+
+
+E. DECODE- EN UITVOERDETAILS
+
+24. INCREMENTELE UTF-8-DECODERING [ONTWERP]
+
+Een streambuffer bewaart onvolledige bytefragmenten totdat
+een volledig teken beschikbaar is.
+
+Waarom:
+Netwerk- of tokenfragmenten vallen niet noodzakelijk
+samen met leesbare tekengrenzen.
+
+Voorkomt beschadigde Unicode in de interface.
+
+
+25. STOPSEQUENTIES OVER FRAGMENTGRENZEN [ONTWERP]
+
+Herken een afsluitmarkering ook wanneer die verdeeld is
+over meerdere binnenkomende fragmenten.
+
+Waarom:
+Anders kunnen interne scheidingstekens zichtbaar worden
+of kan generatie te laat stoppen.
+
+
+26. INCREMENTEEL PARSEN VAN TOOLARGUMENTEN [ONTWERP]
+
+Toon voortgang terwijl argumenten binnenstromen,
+maar voer pas uit wanneer het volledige bericht geldig is.
+
+Voorbeeld:
+Een halve JSON-string mag nooit als definitief bestandspad
+worden gebruikt.
+
+Maak “argumenten ontvangen” en “tool uitvoeren”
+twee verschillende fasen.
+
+
+27. NUMERIEKE FOUTDETECTIE IN INFERENCE [ONTWERP]
+
+Detecteer niet-eindige waarden, ongeldige kansverdelingen
+en andere numerieke problemen in de runtime.
+
+Waarom:
+Sommige problemen horen als runtimefout zichtbaar te worden,
+niet als willekeurige of lege modeluitvoer.
+
+Ondersteuning vereist toegang tot de juiste backendlaag.
+
+
+28. LOGPROB-ANALYSE MET JUISTE INTERPRETATIE [TECHNIEK / ONTWERP]
+
+Waar beschikbaar:
+Gebruik tokenkansen voor diagnostiek en vergelijking
+van expliciete antwoordopties.
+
+Belangrijk:
+Een waarschijnlijk token is geen waarschijnlijk waar feit.
+Vlot gegenereerde onzin kan een hoge modelwaarschijnlijkheid hebben.
+
+
+F. KWALITEIT DIE JE KUNT AANTONEN
+
+29. SELECTIVE PREDICTION [ONTWERP]
+
+Laat een taakgerichte beslislaag kiezen tussen:
+- Antwoord geven.
+- Aanvullend bewijs ophalen.
+- Om ontbrekende invoer vragen.
+- Geen betrouwbare conclusie trekken.
+
+Stel drempels af op gelabelde voorbeelden.
+
+Doel:
+Meetbaar minder onbetrouwbare antwoorden,
+niet alleen voorzichtiger geformuleerde antwoorden.
+
+
+30. KALIBRATIEMETING [TECHNIEK / ONTWERP]
+
+Onderzoek bij duidelijk afgebakende taken of voorspelde
+zekerheid overeenkomt met waargenomen correctheid.
+
+Gebruik gescheiden ontwikkel- en testgegevens.
+
+Nuance:
+Een gekalibreerde classificatiescore is nog geen
+universele betrouwbaarheidsscore voor vrije chat.
+
+
+31. METAMORFISCHE TESTS [ONTWERP]
+
+Controleer hoe een antwoord verandert bij een bewerking
+die de kernuitkomst niet zou mogen wijzigen.
+
+Voorbeelden:
+- De volgorde van onafhankelijke bronnen veranderen.
+- De vraag equivalent herformuleren.
+- Irrelevante tekst toevoegen.
+
+Voorwaarde:
+Leg vooraf vast welke uitkomst werkelijk invariant hoort te zijn.
+
+
+32. COUNTERFACTUAL SENSITIVITY TESTS [ONTWERP]
+
+Verander juist één gegeven dat de uitkomst wél moet veranderen.
+
+Voorbeeld:
+Een deadline verschuift van vrijdag naar maandag.
+Het plan moet de consequenties daarvan verwerken.
+
+Waarom:
+Zo test je of het systeem informatie gebruikt
+of vooral een vertrouwd antwoordpatroon herhaalt.
+
+
+33. ABLATION TESTING [TECHNIEK / ONTWERP]
+
+Schakel één onderdeel uit en vergelijk de resultaten.
+
+Voorbeelden:
+- Zonder reranker.
+- Zonder agentreview.
+- Zonder een bepaald geheugentype.
+
+Waarom:
+Je ontdekt welke component werkelijk kwaliteit toevoegt
+en welke alleen kosten en vertraging veroorzaakt.
+
+
+34. DATALEKKAGECONTROLE IN EVALUATIES [ONTWERP]
+
+Voorkom dat testantwoorden via geheugen, caches,
+trainingsvoorbeelden of bijna-identieke documenten beschikbaar zijn.
+
+Scheid testdata op inhoud en herkomst,
+niet alleen op bestandsnaam.
+
+Waarom:
+Een systeem dat de test herkent kan beter lijken
+zonder beter te generaliseren.
+
+
+35. SHADOW EXECUTION [ONTWERP]
+
+Laat een nieuwe configuratie dezelfde taak verwerken
+naast de huidige configuratie, zonder externe acties toe te staan.
+
+Vergelijk achteraf:
+- Resultaatkwaliteit.
+- Toolkeuzes.
+- Latency.
+- Resourcegebruik.
+
+Gebruik opgeslagen of read-only tooluitkomsten.
+Een schaduwrun mag niet dubbel berichten versturen,
+bestanden wijzigen of andere effecten veroorzaken.
+
+
+WAAR IK VOOR VORTEX DE MEESTE EXTRA WAARDE ZIE
+
+- Effectanalyse om veilig parallel te werken.
+- Incrementele herberekening bij gebruikerswijzigingen.
+- Diversiteitsbewuste contextselectie.
+- Visuele documentretrieval met exacte bronregio’s.
+- Single-flight om dubbel werk tussen agents te voorkomen.
+- Ablation tests om overbodige complexiteit weg te halen.
+- Shadow execution om wijzigingen gecontroleerd te vergelijken.
+
+De volgende kwaliteitsstap is niet steeds meer onderdelen toevoegen.
+Het is kunnen aantonen welk onderdeel een taak sneller,
+nauwkeuriger of betrouwbaarder maakt.

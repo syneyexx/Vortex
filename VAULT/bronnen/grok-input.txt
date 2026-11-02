@@ -1,0 +1,130 @@
+Core Model & Inference
+•  Multi-model support (meerdere LLMs tegelijk)
+•  Model routing (juiste model voor de juiste taak)
+•  Streaming responses
+•  Structured output / JSON mode / constrained generation
+•  Function calling / tool use (native + fallback)
+•  Multimodale input (tekst, afbeelding, document, audio)
+•  Multimodale output (tekst, afbeelding, audio, code, bestanden)
+•  Local + remote model ondersteuning
+•  Prompt caching
+•  Speculatieve decoding / snellere inference technieken
+2. Agent Loop & Reasoning
+•  ReAct / Plan-and-Execute / Reflexion loops
+•  Multi-step planning met expliciete plan-state
+•  Hierarchical planning (high-level → low-level)
+•  Self-critique / reflection stappen
+•  Tree-of-Thoughts / Graph-of-Thoughts
+•  Parallel tool execution
+•  Multi-agent orchestration (planner, worker, critic, researcher, etc.)
+•  Long-horizon task management
+•  Interruptible & resumable taken
+•  Dynamic strategy switching tijdens uitvoering
+•  Goal decomposition
+3. Tooling & Action System
+•  Generiek tool framework (registratie, schema’s, validatie)
+•  Code interpreter / sandbox (Python, bash, etc.)
+•  Web search + full page browsing
+•  Browser automation (klikken, invullen, scrapen)
+•  File system tools (lezen, schrijven, bewerken, zoeken)
+•  Git / repository tools
+•  Database tools
+•  API calling framework (generiek + specifieke connectors)
+•  Computer use / desktop control
+•  Document processing tools (PDF, DOCX, spreadsheets, etc.)
+•  Image generation / editing tools
+•  Audio tools
+•  Custom tool creation door de agent zelf
+•  Tool result caching
+•  Parallel en sequentiële tool execution
+•  Tool chaining / composition
+4. Memory System
+•  Working memory
+•  Short-term memory
+•  Long-term memory
+•  Episodic memory
+•  Semantic memory
+•  Procedural memory
+•  User / autobiographical memory
+•  Project / task memory
+•  World / domain memory
+•  Vector + Graph + Key-Value hybrid opslag
+•  Intelligent retrieval (semantic + keyword + temporal + graph)
+•  Memory writing policies + importance scoring
+•  Consolidation & hierarchical summarization
+•  Forgetting / decay / pruning
+•  Memory merging & conflict resolution
+•  Multi-modal geheugen
+•  Gebruiker kan geheugen bekijken en bewerken
+5. Context & Conversation Management
+•  Intelligent context window management
+•  Hierarchical summarization van lange gesprekken
+•  Conversation branching / forking
+•  Session persistence & restore
+•  Multi-turn state tracking
+•  Dynamic system prompt management
+•  Context injection strategieën
+•  Artifact management (code, bestanden, tabellen, etc.)
+6. Knowledge & Retrieval
+•  RAG pipeline (hybrid search)
+•  Document ingestion & chunking
+•  Knowledge graph integratie
+•  Real-time knowledge injection via tools
+•  Citation & source tracking
+•  Claim extraction & linking
+•  Cross-document reasoning
+•  Domain-specific knowledge bases
+7. Personalization & User Modeling
+•  Persistent user profile
+•  Preference learning over tijd
+•  Style & tone adaptation
+•  Long-term goal tracking van de gebruiker
+•  Project-specifieke voorkeuren
+•  Multi-user isolatie
+•  Personalized memory retrieval
+8. Planning & Orchestration
+•  Task queue & prioritization
+•  Background task execution
+•  Long-running project management
+•  Dependency tracking tussen subtaken
+•  Progress tracking & status reporting
+•  Proactief gedrag (agent neemt zelf initiatief)
+•  Multi-session continuity
+9. Observability & Evaluation
+•  Full tracing van reasoning + tool calls + memory access
+•  Performance metrics (latency, tokens, success rate, cost)
+•  Replay van sessies
+•  Automated evaluation pipelines
+•  Error analysis
+•  A/B testing van prompts, models en strategieën
+•  Memory quality metrics
+•  Tool usage analytics
+10. Interface & Experience
+•  Streaming UI met zichtbare tool calls en reasoning
+•  Artifact rendering (code, tabellen, plots, bestanden, afbeeldingen)
+•  Voice interface (input + output)
+•  Mobile + desktop clients
+•  Conversation sharing & collaboration
+•  Notification systeem voor background taken
+•  Rich media support
+11. Infrastructure & Runtime
+•  Async task queue
+•  Horizontal scaling
+•  Cost tracking per user / taak / model
+•  Caching lagen (prompt, tool, memory, embeddings)
+•  Failover & high availability
+•  Local-first / hybrid / cloud deployment modes
+•  Isolatie van uitvoering (containers / VMs / WASM)
+•  Rate limiting & resource management
+•  Versioning van agent configuraties
+•  Hot-reload van tools en prompts
+12. Advanced / Frontier Capabilities
+•  Self-improving tools en prompts
+•  Agent die nieuwe tools kan schrijven en registreren
+•  World model / simulatie capabilities
+•  High-fidelity code understanding op repository-niveau
+•  Cross-session project memory
+•  Multi-agent collaboratie met shared + private memory
+•  Continual learning van ervaringen
+•  Causal reasoning over gebeurtenissen
+•  Proactieve monitoring en suggesties

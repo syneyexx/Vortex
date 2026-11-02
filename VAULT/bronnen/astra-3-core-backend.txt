@@ -1,0 +1,580 @@
+VORTEX — AANVULLENDE CORE- EN BACKENDARCHITECTUUR
+
+Dit zijn technische bouwstenen en ontwerpvoorstellen.
+Niet alles hoeft vanaf versie 1 aanwezig te zijn.
+
+A. CORE: EIGENAARSCHAP EN UITVOERING
+
+1. SCHEIDING TUSSEN CONTROL PLANE EN DATA PLANE
+Control plane:
+Bepaalt wat mag draaien, met welk model en welke middelen.
+
+Data plane:
+Voert inference, bestandsoverdracht en toolwerk daadwerkelijk uit.
+
+Waarom:
+Een vastlopende modelworker mag de bediening, taakstatus
+en stopknop niet meenemen.
+
+
+2. ÉÉN GEZAGHEBBENDE RUN STATE MACHINE
+Een run heeft expliciete toestanden:
+queued, starting, running, waiting, cancelling,
+completed, failed, cancelled.
+
+Iedere overgang heeft voorwaarden.
+“Completed” mag bijvoorbeeld pas na opslag van de definitieve uitvoer.
+
+Waarom:
+Voorkomt dat frontend, scheduler en worker verschillende
+waarheden over dezelfde taak hanteren.
+
+
+3. STRUCTURED CONCURRENCY
+Subtaken behoren tot een duidelijke bovenliggende scope.
+
+Wanneer een taak eindigt:
+- Worden afhankelijke subtaken afgehandeld.
+- Worden tijdelijke resources vrijgegeven.
+- Blijven geen onbedoelde achtergrondprocessen achter.
+
+Bewust losgekoppelde achtergrondtaken krijgen een eigen eigenaar.
+
+
+4. CANCELLATION PROPAGATION
+Een stopverzoek reist door de hele keten:
+UI → core → agent → tool → subprocess → inferenceworker.
+
+Maak onderscheid tussen:
+- Stop aangevraagd.
+- Uitvoering daadwerkelijk gestopt.
+- Opruimen voltooid.
+
+Een knop die alleen tekststreaming stopt, stopt niet noodzakelijk
+het achterliggende werk.
+
+
+5. DEADLINE PROPAGATION
+Een taak krijgt één eindtijd.
+Subtaken ontvangen het resterende tijdsbudget.
+
+Waarom:
+Vijf opeenvolgende tools met ieder een nieuwe timeout
+mogen niet ongemerkt het totale budget vervijfvoudigen.
+
+
+6. BOUNDED MAILBOXES EN BACKPRESSURE
+Iedere werkqueue heeft een maximum.
+
+Als een consument achterloopt:
+De producent vertraagt, bundelt informatie of weigert nieuw werk.
+
+Waarom:
+Onbegrensde queues veranderen tijdelijke drukte
+in oplopend RAM-verbruik en minutenlange vertraging.
+
+
+7. RESOURCE OWNERSHIP
+Iedere resource heeft een expliciete eigenaar:
+GPU-reservering, proces, bestandshandle, stream en lock.
+
+Bij einde of crash van de eigenaar:
+Worden resources gecontroleerd vrijgegeven.
+
+Waarom:
+Een mislukte taak mag geen permanent bezette modelslot achterlaten.
+
+
+8. WORKER LEASES MET FENCING TOKENS
+Een worker krijgt tijdelijk het recht een taak uit te voeren.
+Een nieuwe eigenaar krijgt een hoger versienummer.
+
+Opslag weigert schrijfacties van oude eigenaren.
+
+Waarom:
+Een vastgelopen worker die later terugkomt mag geen
+nieuwere resultaten overschrijven.
+
+Dit is vooral nuttig zodra meerdere workers mogelijk zijn.
+
+
+9. PRIORITY INHERITANCE
+Een achtergrondtaak kan tijdelijk hogere prioriteit krijgen
+wanneer de actieve chat op die taak wacht.
+
+Waarom:
+Anders kan een laaggeprioriteerde afhankelijkheid
+een hooggeprioriteerde gebruikersactie blokkeren.
+
+
+B. MODELWORKERS EN RUNTIMEBEHEER
+
+10. BACKEND CAPABILITY NEGOTIATION
+Iedere backend meldt wat hij werkelijk ondersteunt:
+tool calling, vision, embeddings, cancellation,
+logprobs, adapters en uitvoerformaten.
+
+Waarom:
+Een uniforme API mag ontbrekende mogelijkheden
+niet stilzwijgend als aanwezig presenteren.
+
+
+11. CHAT-TEMPLATE- EN TOKENIZERCONTRACT
+Koppel ieder model aan de juiste tokenizer,
+berichttemplate en speciale tokens.
+
+Valideer rollen, toolberichten en afsluitmarkeringen.
+
+Waarom:
+Een verkeerde template kan een goed model ernstig
+slechter laten functioneren zonder duidelijke foutmelding.
+
+
+12. VERSIEBEHEER VAN TOOLCALL-PARSERS
+Sommige lokale modellen produceren tools in modelspecifieke vormen.
+
+Koppel parser, template en modelversie aan elkaar.
+Bewaar ongeldige uitvoer als fout, niet als verzonnen toolaanroep.
+
+Waarom:
+Parserfouten mogen niet veranderen in echte systeemacties.
+
+
+13. MODEL LIFECYCLE MANAGER
+Beheer expliciete fasen:
+gevonden → gevalideerd → laden → opwarmen → gereed
+→ uitfaseren → ontladen.
+
+Waarom:
+“Bestand aanwezig” is iets anders dan
+“model klaar om een aanvraag te ontvangen”.
+
+
+14. WARMUP EN READINESS GATES
+Een geladen worker voert eerst een kleine controle uit.
+
+Controleer bijvoorbeeld:
+- Tokenisatie.
+- Eerste generatie.
+- Benodigde kernelinitialisatie.
+- Verwacht uitvoerprotocol.
+
+Publiceer hem pas daarna als gereed.
+
+
+15. DRAINING BIJ MODELWISSELS
+Een worker accepteert geen nieuw werk meer,
+maar mag bestaand werk gecontroleerd afronden.
+
+Daarna volgt ontladen of vervangen.
+
+Op beperkte VRAM:
+Kan een wissel alsnog wachttijd vereisen.
+Twee modellen tegelijk laden is geen vanzelfsprekendheid.
+
+
+16. SESSIEGEBONDEN RUNTIMEVERSIES
+Een lopende run houdt dezelfde model-, template-,
+adapter- en configuratieversie.
+
+Waarom:
+Een wijziging in Settings mag niet halverwege
+de betekenis van een bestaande run veranderen.
+
+
+17. CIRCUIT BREAKERS
+Na herhaalde fouten wordt een backend tijdelijk
+niet meer gebruikt.
+
+Na een wachttijd volgt een beperkte herstelproef.
+
+Waarom:
+Voorkomt dat tientallen agents tegelijk blijven
+aanvragen sturen naar een defecte runtime.
+
+
+18. BULKHEAD ISOLATION
+Gebruik aparte capaciteitslimieten voor bijvoorbeeld:
+chat, documentparsing, embeddings en externe tools.
+
+Waarom:
+Een vastlopende PDF-parser mag niet alle
+uitvoeringsslots van het systeem bezetten.
+
+
+19. GPU-TOPOLOGIEBEWUSTE PLAATSING
+Bekijk niet alleen vrije VRAM, maar ook:
+verbindingsbandbreedte, GPU-snelheid, peer-to-peer-mogelijkheden
+en overdrachtskosten.
+
+Waarom:
+Twee GPU’s vormen niet automatisch één snelle geheugenpool.
+Een verdeling die meer past, kan toch langzamer zijn.
+
+
+20. PREFILL/DECODE DISAGGREGATION
+Promptverwerking en tokengeneratie kunnen op
+afzonderlijke workers plaatsvinden.
+
+Daarvoor moet attention-state worden overgedragen.
+
+Dit is vooral een schaaltechniek.
+Voor een persoonlijke pc kan de overdrachts- en
+beheerlast groter zijn dan de winst.
+
+
+C. COMMUNICATIE TUSSEN BACKEND EN GUI
+
+21. RESUMEBARE EVENTSTREAMS
+Ieder UI-event krijgt een oplopend volgnummer.
+
+Na verbindingsverlies vraagt de frontend:
+“Stuur alles vanaf event 1842 opnieuw.”
+
+Waarom:
+Een herladen GUI hoeft een lopende taak niet kwijt te raken.
+
+
+22. SNAPSHOT PLUS EVENTDELTA’S
+Bij openen ontvangt de GUI eerst de actuele toestand,
+daarna alleen wijzigingen.
+
+Waarom:
+Je hoeft niet de volledige uitvoeringsgeschiedenis
+opnieuw af te spelen om één dashboard te tonen.
+
+
+23. TRANSPORT VERSUS UITVOERING SCHEIDEN
+Een verbroken websocket betekent:
+“De client is weg.”
+
+Niet automatisch:
+“De taak is gestopt.”
+
+De runpolicy bepaalt of werk doorgaat, pauzeert of stopt.
+
+
+24. STREAMING MET UITVOERFRAMES
+Maak onderscheid tussen:
+tekstfragment, toolstart, toolresultaat, artefact,
+waarschuwing en definitieve afsluiting.
+
+Waarom:
+De GUI hoeft geen systeemstatus uit gewone antwoordtekst te raden.
+
+
+25. UI-EVENT COALESCING
+Bundel snelle updates tot een beheersbare verversingssnelheid.
+
+Bijvoorbeeld:
+Niet ieder token en iedere GPU-meting afzonderlijk
+een volledige interface-update laten veroorzaken.
+
+Waarom:
+De GUI moet soepel blijven tijdens snelle generatie.
+
+
+26. ARTEFACTREFERENTIES IN PLAATS VAN GROTE PAYLOADS
+Stuur een verwijzing met metadata naar de GUI,
+niet steeds het hele bestand via de chatstream.
+
+Ondersteun gedeeltelijk laden van grote bestanden.
+
+Waarom:
+Voorkomt onnodige kopieën, geheugenpieken en blokkades.
+
+
+D. OPSLAG EN DATACONSISTENTIE
+
+27. TRANSACTIONAL OUTBOX
+Sla een statuswijziging en het bijbehorende te versturen
+event op binnen dezelfde databasetransactie.
+
+Een aparte dispatcher levert het event af.
+
+Waarom:
+Voorkomt “opgeslagen maar niet gemeld”.
+Ontvangers moeten dubbele aflevering nog steeds kunnen verwerken.
+
+
+28. OPTIMISTIC CONCURRENCY CONTROL
+Een wijziging vermeldt welke versie zij verwacht te wijzigen.
+
+Als de huidige versie anders is:
+Ontstaat een expliciet conflict.
+
+Waarom:
+Twee agents mogen niet ongemerkt elkaars wijzigingen wissen.
+
+
+29. SNAPSHOTCONSISTENTE LEESACTIES
+Een analyse gebruikt een samenhangende gegevensversie.
+
+Waarom:
+De helft van een berekening mag niet gebaseerd zijn
+op gegevens van vóór een update en de andere helft erna.
+
+
+30. INDEX-GENERATIES
+Bouw een nieuwe zoekindex naast de bestaande index.
+Schakel pas over wanneer de nieuwe generatie compleet is.
+
+Waarom:
+Een halve herindexering mag de actieve zoekfunctie
+niet onvoorspelbaar maken.
+
+
+31. DOCUMENT- EN EMBEDDINGCOMPATIBILITEIT
+Bewaar bij iedere vector:
+embeddingmodel, modelversie, dimensie,
+normalisatiemethode en indexgeneratie.
+
+Waarom:
+Vectoren uit verschillende embeddingruimtes
+zijn niet zomaar onderling vergelijkbaar.
+
+
+32. HERKOMSTAFHANKELIJKHEDEN
+Leg vast welke afgeleide gegevens van welke bron afhangen.
+
+Als een bron verandert:
+Markeer betrokken samenvattingen en zoekgegevens als verouderd.
+
+Waarom:
+Een aangepast document mag geen blijvend
+actieve oude conclusie achterlaten.
+
+
+33. DELETION PROPAGATION
+Verwijdering moet ook doorwerken naar:
+zoekindexen, embeddings, afgeleide samenvattingen
+en relevante caches.
+
+Back-ups en auditgegevens hebben een expliciet bewaarbeleid.
+
+Waarom:
+Alleen het oorspronkelijke bestand verwijderen is onvoldoende.
+
+
+34. CRASHCONSISTENTE ARTEFACTOPSLAG
+Schrijf uitvoer eerst naar een tijdelijk bestand.
+Controleer de uitvoer en publiceer die vervolgens gecontroleerd.
+
+Regel ook de afstemming met databasemetadata.
+
+Waarom:
+Een crash mag geen half bestand als gereed presenteren.
+
+
+35. DATABASE- EN SCHEMAMIGRATIES
+Iedere opslagversie krijgt gecontroleerde migraties.
+
+Controleer vooraf compatibiliteit en herstelmogelijkheden.
+Houd rekening met oude actieve workers.
+
+Waarom:
+Een app-update mag niet stilzwijgend bestaande
+sessies en herinneringen onleesbaar maken.
+
+
+36. WAL- EN CHECKPOINTBEHEER
+Bij SQLite met WAL:
+Beheer checkpoints, lange leestransacties
+en groei van het WAL-bestand.
+
+Waarom:
+Lokale opslag vereist ook onderhoud.
+
+WAL laat lezers en een schrijver beter samenwerken,
+maar maakt SQLite geen database met onbeperkt
+gelijktijdige schrijvers.
+
+
+E. TOOL- EN PLUGINBACKEND
+
+37. EXPLICIETE TOOLCONTRACTEN
+Een tool declareert naast invoer en uitvoer ook:
+bijwerkingen, timeoutgedrag, annuleerbaarheid,
+herhaalbaarheid en resourcebehoefte.
+
+Waarom:
+De scheduler heeft meer nodig dan een naam en beschrijving.
+
+
+38. PER-RUN CAPABILITY HANDLES
+Geef tools toegang tot specifiek toegekende resources.
+
+Voorbeeld:
+Een handle voor één projectmap in plaats van
+onbeperkte toegang tot het bestandssysteem.
+
+Waarom:
+Toegang kan nauwkeurig worden verleend en ingetrokken.
+
+
+39. SECRETS BROKER
+Bewaar sleutels buiten prompts, geheugen en modelcontext.
+Een connector krijgt alleen het benodigde credential.
+
+Waarom:
+Het model hoeft een API-sleutel niet te lezen
+om een toegestane API-actie te laten uitvoeren.
+
+
+40. SUBPROCESS-SUPERVISIE
+Start tools in beheerde procesgroepen of OS-equivalenten.
+
+Beperk uitvoerbuffers en bewaak childprocessen.
+
+Waarom:
+Een gestopt script mag geen ongecontroleerde
+achtergrondprocessen achterlaten.
+
+
+41. PLUGINPROTOCOL-VERSIES
+Plugins melden hun protocolversie en mogelijkheden.
+Incompatibele combinaties krijgen een duidelijke fout.
+
+Waarom:
+Een pluginupdate mag de core niet onzichtbaar breken.
+
+
+42. NETWERKBELEID PER CONNECTOR
+Definieer welke connector welke bestemmingen nodig heeft.
+
+Controleer ook omleidingen en lokale netwerkadressen
+bij tools die willekeurige URL’s kunnen openen.
+
+Waarom:
+Een URL-leestool is anders onbedoeld ook een route
+naar interne diensten.
+
+
+F. DIAGNOSE EN OPERATIONELE KWALITEIT
+
+43. DISTRIBUTED TRACING BINNEN ÉÉN PC
+Gebruik trace- en span-ID’s over:
+GUI, scheduler, agents, retrieval, tools en inference.
+
+Waarom:
+Ook lokale software heeft procesgrenzen.
+Je wilt kunnen zien waar één opdracht vertraagt.
+
+
+44. QUEUEING TIME APART METEN
+Meet wachttijd los van daadwerkelijke uitvoering.
+
+Waarom:
+Een model kan snel genereren terwijl de gebruiker
+lang wacht op een beschikbare worker.
+
+
+45. CONTEXT ASSEMBLY INSPECTOR
+Toon welke informatie werkelijk aan het model is aangeboden:
+instructies, herinneringen, bronnen en toolresultaten.
+
+Vermeld ook wat wegens ruimtegebrek is weggelaten.
+
+Waarom:
+Dit maakt slechte antwoorden veel beter te diagnosticeren
+dan alleen een “thinking”-animatie.
+
+
+46. RETRY AMPLIFICATION DETECTION
+Detecteer wanneer meerdere lagen tegelijk retries uitvoeren.
+
+Voorbeeld:
+De agent probeert opnieuw, de toolwrapper ook,
+en de HTTP-client eveneens.
+
+Waarom:
+Een klein probleem kan anders tientallen aanvragen veroorzaken.
+
+
+47. STALL- EN LIVELOCKDETECTIE
+Detecteer niet alleen crashes, maar ook werk zonder voortgang.
+
+Voorbeelden:
+- Steeds dezelfde tool herhalen.
+- Dezelfde fout blijven herstellen.
+- Plannen herschrijven zonder uitvoering.
+- Geen nieuwe bron of resultaat toevoegen.
+
+Gebruik concrete signalen, geen willekeurig gevoelscijfer.
+
+
+48. RECORD/REPLAY VOOR TOOLTESTS
+Neem tooluitkomsten op en speel ze in tests opnieuw af.
+
+Waarom:
+Een agentwijziging kan met dezelfde omstandigheden
+worden beoordeeld zonder opnieuw externe acties uit te voeren.
+
+Maak onderscheid tussen een simulatie en live uitvoering.
+
+
+49. FAULT INJECTION
+Test bewust:
+workercrash, volle schijf, verbindingsverlies,
+trage tool, beschadigde uitvoer en tekort aan geheugen.
+
+Waarom:
+Betrouwbaarheid blijkt uit gecontroleerd herstel,
+niet alleen uit succesvolle demonstraties.
+
+
+50. GEZONDHEID PER SUBSYSTEEM
+Rapporteer afzonderlijk:
+core bereikbaar, database schrijfbaar,
+model gereed, index actueel en connector beschikbaar.
+
+Waarom:
+Eén groene “System online”-stip kan cruciale problemen verbergen.
+
+
+MIJN ARCHITECTUURKEUZE VOOR EEN PERSOONLIJKE VORTEX
+
+Ik zou beginnen met een modulaire core,
+met aparte processen voor inference en risicovolle tools.
+
+De core bezit:
+- Runstatus.
+- Scheduling.
+- Cancellation.
+- Resourceverdeling.
+- Configuratieversies.
+
+De opslaglaag bezit:
+- Sessies en metadata.
+- Taken en afleverstatus.
+- Bron- en indexversies.
+- Artefactverwijzingen.
+
+Workers bezitten:
+- Tijdelijke uitvoering.
+- Geladen modellen.
+- Toolprocessen.
+- Voortgangsrapportage.
+
+De GUI toont die toestand en stuurt opdrachten.
+Zij is niet de eigenaar van langlopende taken.
+
+Ik zou niet direct tientallen microservices bouwen.
+Voor een persoonlijke pc leveren procesisolatie,
+duidelijke contracten en consistente opslag meestal
+meer op dan een ingewikkeld gedistribueerd platform.
+
+DE BELANGRIJKSTE TECHNISCHE EIS
+
+Als je Vortex afsluit, een model crasht of een tool hangt,
+moet het systeem precies kunnen aangeven:
+
+- Wat definitief voltooid is.
+- Wat nog draait.
+- Wat werkelijk gestopt is.
+- Welke externe actie mogelijk al is uitgevoerd.
+- Wat veilig hervat kan worden.
+- Waar menselijk ingrijpen nodig is.
+
+Dat is het verschil tussen een indrukwekkende AI-demo
+en een backend waarop je serieus kunt vertrouwen.

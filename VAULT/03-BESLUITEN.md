@@ -1,0 +1,46 @@
+---
+type: besluitenlog
+updated: 2026-11-02
+---
+# Besluitenlog
+Nieuwste onderaan. Formaat: datum · besluit · waarom.
+
+| Datum | Besluit | Waarom |
+| --- | --- | --- |
+| 2026-10-31 | Naam: **Vortex** | Info in → verwerken → eruit; alleen persoonlijk gebruik |
+| 2026-10-31 | Talen: **Rust** core, **Python** ML/data, **TypeScript** frontend (Tauri) | Snel + zuinig + veilig parallel; ML-ecosysteem zit in Python |
+| 2026-10-31 | Modellen via abstractielaag; start met llama.cpp `llama-server` (OpenAI-compatibel), later eigen bindings | Direct bouwen aan het slimme deel; later KV-cache/logits/LoRA-hotswap |
+| 2026-10-31 | Opslag: **SQLite** (bron van waarheid, FTS5, graph-edges) + **LanceDB** (vectoren) + **moka** cache, achter `MemoryStore`-trait | Embedded, betrouwbaar, verwisselbaar; geen netwerkhops |
+| 2026-10-31 | Eén ID per herinnering; alle indexen afgeleid | Verwijderen/samenvoegen werkt overal door |
+| 2026-10-31 | SSD = warm (code, actieve modellen, DB's, index); HDD = koud (ruwe data, volledige teksten, archief, backups) | 250 GB SSD; index op SSD, inhoud op HDD → terabytes zonder trage zoekacties |
+| 2026-10-31 | Geheugen schaalt naar 3–4 TB via tiering | Gebruikerswens |
+| 2026-10-31 | Reasoning via debatteam (Planner, Solvers, Fact-checker, Critic, Specialist, Judge, Synthesizer), dynamisch | Betere antwoorden; diversiteit en objectieve checks |
+| 2026-10-31 | Antwoord pas tonen nadat Judge vertrouwt | Gebruikerskeuze |
+| 2026-10-31 | Offline-first, automatische webcheck bij verbinding | Gebruikerskeuze |
+| 2026-10-31 | Conflict-team lost botsingen direct op en corrigeert geheugen | Gebruikerswens |
+| 2026-10-31 | Framework = "50% van het brein": eigen neurale layers + LoRA-vliegwiel | Niet gelimiteerd aan modelgewichten |
+| 2026-10-31 | Vanaf dag 1 alle traces + feedback loggen | Trainingsdata is achteraf niet terug te halen |
+| 2026-10-31 | System prompt + rol-prompts bewerkbaar in Instellingen, live vanaf volgend bericht; lopende run houdt versie tenzij "nu toepassen"; versiegeschiedenis | Gebruikerswens + consistentie |
+| 2026-10-31 | GUI 1-op-1 volgens `design/reference-chat.png`; cijfers daarin zijn mockdata; vortex als geanimeerde WebGL-shader | Gebruikerswens |
+| 2026-10-31 | Eén taak tegelijk; modellen wisselen per taak | Gebruikerswens + 16 GB VRAM |
+| 2026-10-31 | Externe projecten (OpenBB, Fincept, Godel, Nautilus, Backtrader) alleen inspiratie; eigen connectors op endpoints | Geen afhankelijkheid van andermans roadmap |
+| 2026-10-31 | Skills: importeren/omzetten van Claude Skills + Cursor rules, zelf gebruiken en schrijven | Gebruikerswens |
+| 2026-10-31 | Wereldmonitor (nieuws/events, geen visuals) zodat Vortex de wereld leert begrijpen | Gebruikerswens |
+| 2026-10-31 | Grote spelers per sector onderzoeken en ervan leren (publieke professionele bronnen) | Gebruikerswens |
+| 2026-10-31 | Trading geparkeerd tot "TRADING NU MAKEN" | Pas als de rest optimaal werkt |
+| 2026-10-31 | Ethics & security layer helemaal aan het eind, bij "WE GAAN DE ETHICS EN SECURITY LAYER MAKEN" | In één keer goed aanpakken |
+| 2026-10-31 | Werkregels 1–6 vastgelegd | Zie [[01-REGELS]] |
+| 2026-10-31 | Bouwplan in waves; VAULT als tweede brein | Gebruikerswens |
+| 2026-11-01 | Geen eigen programmeertaal; Rust blijft. Snelheid uit GPU-kant: eigen kernels (Triton/CUDA) alleen bij gemeten hotspot (W16) | Rust zit al op native-plafond; bottleneck is GPU/bandbreedte |
+| 2026-11-01 | CUDA-toolchain moet sm_61 (1060) én sm_120 (5060 Ti) dekken; CUDA 13 valt af voor 1060 | Pascal-ondersteuning gestopt in CUDA 13 |
+| 2026-11-01 | Model-efficiëntie: MoE + expert-cache, NVFP4 testen, KV-quant, quant-shootout op eigen eval, 1060 int8 | Decode is bandbreedte-gebonden; zie 05-MODELLEN |
+| 2026-11-01 | Geen echte quantum entanglement in Vortex (klassieke hardware kan dat fysiek niet); wel quantum-inspired technieken + quantum-tool als W17-experimenten | Onderzoek: geen aangetoonde QML-winst op klassieke data; tensor-netwerken en simulatie wel bruikbaar |
+| 2026-11-01 | Een experimenteel neven-idee is afgesplitst als volledig apart project (eigen map, eigen prompt); valt buiten Vortex | Strikte scheiding op verzoek gebruiker |
+| 2026-11-01 | Tensor-netwerk-compressie nooit op het redeneermodel; alleen testen op eigen neurale layers/hulpmodellen | Redeneren lijdt het hardst onder lossy compressie; redeneren is kern van Vortex |
+| 2026-10-31 | Centrale Dirigent wijst alle taken toe (P0–P3, admission, preemption, model-affiniteit, pipelining); CCD0 interactief / CCD1 achtergrond; RAM-budget per modus; nul-lekbeleid met soak-tests en performance-gates | Maximale snelheid en stabiliteit op 5950X + 5060 Ti + 1060 + 32 GB |
+| 2026-10-31 | Eigen research-team naast chat-pipeline (Lead, Scouts, Readers, Extractor, Bronbeoordelaar, Analysts, Fact-checker, Skepticus, Judge, Writer, Archivist); vondsten direct omgezet naar getypeerde data | Research optimaal + meteen bruikbare data |
+| 2026-10-31 | Eigen webcrawler-team (Scout, Crawler, Reader, Ranker, Curator) voor research en opzoeken | Dieper en gerichter dan alleen zoekresultaten; W09 basis, W13 headless + recrawl |
+| 2026-11-02 | Project staat in GitHub-repo `syneyexx/Vortex`; repo-root = `vortex/` uit [[10-ARCHITECTUUR]], VAULT in de repo | Eén bron, versiebeheer, werken vanaf PC én web |
+| 2026-11-02 | Elk wave-item heeft een vast ID (`W04.07`); [[TODO]] wordt gegenereerd uit de waves door `tools/vault/vault.py` | Eén bron van waarheid, geen dubbele lijsten die uit elkaar lopen |
+| 2026-11-02 | Navigatie voor 500K–1M regels: `CARD.md` per crate, code-tags `VX:<ID>`, [[20-CODEMAP]], regels N1–N9 in [[12-NAVIGATIE]] | Claude hoeft nooit het hele project te lezen |
+| 2026-11-02 | Dubbel item "Research-pagina in GUI" uit W09 verwijderd; wave-verwijzingen in module-frontmatter genormaliseerd naar `W0n` | Opruimen |

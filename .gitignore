@@ -1,0 +1,23 @@
+# Rust
+target/
+# Python
+__pycache__/
+.venv/
+*.pyc
+# Node / Tauri
+node_modules/
+dist/
+app/src-tauri/target/
+# Modellen en data horen niet in git (staan op SSD/HDD)
+*.gguf
+*.safetensors
+*.onnx
+*.lance/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+# Obsidian werkruimte-state
+VAULT/.obsidian/workspace*.json
+# OS
+.DS_Store
+Thumbs.db
