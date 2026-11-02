@@ -18,6 +18,7 @@ pub mod memory_adv;
 pub mod memory_api;
 pub mod neural_api;
 pub mod observe_api;
+pub mod paths_api;
 pub mod quality_api;
 pub mod research_api;
 pub mod selfimprove;

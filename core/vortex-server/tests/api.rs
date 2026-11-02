@@ -1689,3 +1689,33 @@ async fn frontier_causal_assoc() {
     let p = fx.post("/api/experiments/prompt_opt", json!({"suites": ["redeneren"], "k": 1})).await;
     assert_eq!(wait_exp(&fx, p["id"].as_str().unwrap_or_default()).await["status"], "failed");
 }
+
+/// Mappen: ontbrekende map = geen crash (terugval) en aanpasbaar via de API/GUI.
+#[tokio::test]
+async fn paths_settings_missing_dirs_fall_back() {
+    let fx = setup().await;
+    let r = fx
+        .http
+        .put(format!("{}/api/settings/paths", fx.base))
+        .json(&json!({"values": {"cold_dir": "Q:/bestaat-niet"}, "create": false}))
+        .send()
+        .await
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(r.status(), 200);
+    let p = fx.get("/api/settings/paths").await;
+    let cold =
+        p["items"].as_array().and_then(|a| a.iter().find(|i| i["key"] == "cold_dir").cloned()).unwrap_or_default();
+    assert_eq!(cold["value"], "Q:/bestaat-niet");
+    assert_eq!(cold["exists"], false);
+    assert!(p["effective"]["cold_dir"].as_str().unwrap_or("").ends_with("cold"), "{p}");
+    // Backup werkt gewoon (terugval op <data>/cold).
+    assert!(fx.post("/api/autonomy/backups", json!({})).await["verified"] == true);
+    let dir = fx._dir.path().join("koud");
+    fx.http
+        .put(format!("{}/api/settings/paths", fx.base))
+        .json(&json!({"values": {"cold_dir": dir.display().to_string()}, "create": true}))
+        .send()
+        .await
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert!(dir.is_dir(), "aangemaakt");
+}

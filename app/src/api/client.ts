@@ -298,6 +298,13 @@ export const api = {
   scaleAdapter: (id: string, scale: number) =>
     req<{ status: string }>("POST", `/api/training/adapters/${id}/scale`, { scale }),
   calibrate: () => req<Record<string, unknown>>("POST", "/api/training/calibrate", {}),
+  // Mappen (config/paths.toml)
+  paths: () => req<PathsSettings>("GET", "/api/settings/paths"),
+  savePaths: (values: Record<string, string>, create: boolean) =>
+    req<{ version: string; created: string[]; paths: PathsSettings }>("PUT", "/api/settings/paths", {
+      values,
+      create,
+    }),
   // Experimenten (W17)
   experiments: () => req<Experiment[]>("GET", "/api/experiments"),
   experiment: (kind: string, body: Record<string, unknown>) =>
@@ -741,4 +748,16 @@ export interface Experiment {
   result: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface PathsSettings {
+  items: {
+    key: string;
+    value: string;
+    kind: "dir" | "file" | "addr";
+    help: string;
+    restart: boolean;
+    exists: boolean | null;
+  }[];
+  effective: { data_dir: string; cold_dir: string };
 }

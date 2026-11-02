@@ -1,3 +1,4 @@
+import { PathsSettings } from "./PathsSettings.tsx";
 // Pagina's buiten de chat. Functies die later komen tonen een lege staat — nooit nep-data.
 import { useEffect, useState } from "react";
 import { ToolsSettings } from "./ToolsSettings.tsx";
@@ -259,7 +260,8 @@ export function SettingsPage() {
 
   return (
     <div className="page">
-      <h1>System prompt & rollen</h1>
+      <h1>Instellingen</h1>
+      <PathsSettings />
       <div className="row" style={{ alignItems: "flex-start", gap: 20 }}>
         <div className="panel card" style={{ flex: 1 }}>
           <div className="row">

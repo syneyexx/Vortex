@@ -143,40 +143,22 @@ Step "GUI bouwen (app\dist)" {
 Step "Mappen en modellen controleren" {
   New-Item -ItemType Directory -Force -Path (Join-Path $Root "data\logs") | Out-Null
   $paths = Get-Content (Join-Path $Root "config\paths.toml") -Raw
-  $pathsFile = Join-Path $Root "config\paths.toml"
-  $defaults = @{ "models_dir" = (Join-Path $Root "models"); "cold_dir" = (Join-Path $Root "data\cold") }
-  foreach ($key in "models_dir", "cold_dir") {
-    $paths = Get-Content $pathsFile -Raw
+  # Ontbrekende mappen/schijven zijn geen fout: Vortex valt terug (data, data\cold) en je past
+  # ze later aan in de GUI (Instellingen → Mappen).
+  $paths = Get-Content (Join-Path $Root "config\paths.toml") -Raw
+  foreach ($key in "models_dir", "cold_dir", "hf_home") {
     if ($paths -match "(?m)^$key\s*=\s*`"([^`"]+)`"") {
       $p = $Matches[1]
       $drive = Split-Path -Qualifier $p -ErrorAction SilentlyContinue
-      if ($drive -and -not (Test-Path "$drive\")) {
-        Warn "${key} = ${p}: schijf $drive bestaat niet."
-        $new = Read-Host "    Andere map voor $key? [Enter = $($defaults[$key])]"
-        if (-not $new) { $new = $defaults[$key] }
-        $new = $new -replace '\\', '/'
-        $old = $p.TrimEnd('/')
-        # Ook afgeleide paden (hf_home, base_model, …) meeverhuizen.
-        foreach ($f in "paths.toml", "training.toml", "media.toml") {
-          $fp = Join-Path $Root "config\$f"
-          if (Test-Path $fp) {
-            $t = Get-Content $fp -Raw
-            $t2 = $t.Replace("`"$old", "`"$new").Replace("= `"$old`"", "= `"$new`"")
-            if ($t2 -ne $t) { [IO.File]::WriteAllText($fp, $t2, (New-Object Text.UTF8Encoding $false)) }
-          }
-        }
-        $p = $new
-        Ok "config aangepast: ${key} = $p"
-      }
-      New-Item -ItemType Directory -Force -Path $p | Out-Null
-      Ok "${key}: $p"
+      if ($drive -and -not (Test-Path "$drive\")) { Warn "${key} = ${p}: schijf $drive bestaat niet — geen probleem, pas het later aan in Instellingen → Mappen" }
+      else { try { New-Item -ItemType Directory -Force -Path $p | Out-Null; Ok "${key}: $p" } catch { Warn "${key}: $p kon niet aangemaakt worden — later aanpassen in Instellingen → Mappen" } }
     }
   }
   $models = Get-Content (Join-Path $Root "config\models.toml") -Raw
   $missing = @()
   foreach ($m in [regex]::Matches($models, '(?m)^file\s*=\s*"([^"]+)"')) { if (-not (Test-Path $m.Groups[1].Value)) { $missing += $m.Groups[1].Value } }
   if ($missing.Count -gt 0) {
-    Warn "Deze modelbestanden ontbreken nog (download de GGUF's, bv. van Hugging Face, of pas config\models.toml aan):"
+    Warn "Deze modelbestanden ontbreken nog (geen fout; download de GGUF's, bv. van Hugging Face, of pas config\models.toml aan):"
     $missing | ForEach-Object { Warn "  $_" }
   } else { Ok "alle modelbestanden gevonden" }
 }

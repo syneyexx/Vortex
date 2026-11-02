@@ -149,7 +149,14 @@ fn data_dir(cli: &Cli) -> PathBuf {
         && let Ok(t) = text.parse::<toml::Table>()
         && let Some(d) = t.get("data_dir").and_then(|v| v.as_str())
     {
-        return PathBuf::from(d);
+        // Ontbrekende schijf/map is geen reden om te crashen: terugvallen op ./data (aanpasbaar in
+        // de GUI onder Instellingen → Mappen).
+        let p = PathBuf::from(d);
+        let usable = p.is_dir() || p.parent().is_none_or(|q| q.as_os_str().is_empty() || q.is_dir());
+        if usable {
+            return p;
+        }
+        eprintln!("Let op: data_dir {d} is niet bruikbaar (schijf/map ontbreekt) — ./data wordt gebruikt.");
     }
     PathBuf::from("data")
 }
