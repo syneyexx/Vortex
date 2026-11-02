@@ -82,6 +82,17 @@ pub struct SkillStats {
     pub status: String,
 }
 
+/// Featurevector voor de skill selector (W11).
+pub fn skill_vector(keyword_frac: f64, semantic: f64, trigger: bool, glob: bool, success_rate: f64) -> Vec<f32> {
+    vec![
+        keyword_frac as f32,
+        semantic as f32,
+        if trigger { 1.0 } else { 0.0 },
+        if glob { 1.0 } else { 0.0 },
+        success_rate as f32,
+    ]
+}
+
 /// Selectieresultaat.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Selected {
@@ -96,6 +107,8 @@ pub struct SkillStore {
     skills: RwLock<BTreeMap<String, Skill>>,
     log: Option<EventLog>,
     watcher: Mutex<Option<notify::RecommendedWatcher>>,
+    /// Skill selector (W11); geen = heuristiek.
+    scorer: RwLock<vortex_core::Scorer>,
 }
 
 const STOP: &[&str] = &[
@@ -114,11 +127,20 @@ fn words(s: &str) -> Vec<String> {
 
 impl SkillStore {
     pub fn new(dir: impl Into<PathBuf>, log: Option<EventLog>) -> Arc<Self> {
-        let s =
-            Arc::new(Self { dir: dir.into(), skills: RwLock::new(BTreeMap::new()), log, watcher: Mutex::new(None) });
+        let s = Arc::new(Self {
+            dir: dir.into(),
+            skills: RwLock::new(BTreeMap::new()),
+            log,
+            watcher: Mutex::new(None),
+            scorer: RwLock::new(None),
+        });
         let _ = std::fs::create_dir_all(&s.dir);
         s.reload();
         s
+    }
+
+    pub fn set_scorer(&self, s: vortex_core::Scorer) {
+        *self.scorer.write() = s;
     }
 
     pub fn dir(&self) -> &Path {
@@ -235,6 +257,20 @@ impl SkillStore {
             let trig = s.triggers.iter().any(|t| query.to_lowercase().contains(&t.to_lowercase()));
             let sem = semantic.get(&s.name).copied().unwrap_or(0.0);
             let score = (0.5 * kw.min(1.0) + 0.5 * sem + if trig { 0.4 } else { 0.0 }).min(1.0);
+            // Skill selector (W11): net of heuristiek.
+            let rate = self
+                .stats(&s.name)
+                .map_or(0.5, |st| (1 + st.successes) as f64 / (2 + st.successes + st.failures) as f64);
+            let x = skill_vector(kw.min(1.0), sem, trig, false, rate);
+            let score = vortex_core::neural::decide(
+                &self.scorer.read().clone(),
+                "skill",
+                &x,
+                vec![score as f32],
+                &format!("{query}|{}", s.name),
+            )
+            .first()
+            .map_or(score, |v| f64::from(*v));
             if score >= 0.3 {
                 let mut why = Vec::new();
                 if hits > 0 {

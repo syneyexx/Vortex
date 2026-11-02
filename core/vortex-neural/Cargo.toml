@@ -1,6 +1,6 @@
 [package]
 name = "vortex-neural"
-description = "Eigen neurale layers via ONNX (ort), feature logging, hot-swap."
+description = "Eigen neurale layers via ONNX (pure-Rust runtime voor kleine netten), feature logging, hot-swap."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,6 +9,19 @@ publish.workspace = true
 [dependencies]
 vortex-types.workspace = true
 vortex-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+parking_lot.workspace = true
+tracing.workspace = true
+rusqlite.workspace = true
+prost.workspace = true
+
+[build-dependencies]
+prost-build = "0.13"
+protox.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [lints]
 workspace = true

@@ -184,6 +184,53 @@ pub async fn refine_with_lm(llm: &dyn crate::llm::CogLlm, text: &str, r: Route) 
     Route { task, difficulty: d, confidence: 0.75, ..r }
 }
 
+/// Featurevector voor het router-net (W11; volgorde = `vortex-neural::spec` "router").
+pub fn vector(f: &RouteFeatures) -> Vec<f32> {
+    let b = |x: bool| if x { 1.0 } else { 0.0 };
+    vec![
+        (f.chars as f32 / 1000.0).min(5.0),
+        (f.words as f32 / 100.0).min(5.0),
+        f.questions as f32,
+        b(f.has_code),
+        b(f.has_numbers),
+        f.math_ops as f32,
+        f.analysis_words as f32,
+        f.research_words as f32,
+        f.planning_words as f32,
+        b(f.personal),
+        b(f.time_sensitive),
+        b(f.small_talk),
+    ]
+}
+
+pub const TASKS: [TaskType; 8] = [
+    TaskType::Chat,
+    TaskType::Code,
+    TaskType::Math,
+    TaskType::Analysis,
+    TaskType::Research,
+    TaskType::Planning,
+    TaskType::Personal,
+    TaskType::Factual,
+];
+
+/// Route met router-net (W11): heuristiek als basis; actief net bepaalt het taaktype.
+pub fn route_with(text: &str, scorer: &vortex_core::Scorer, reference: &str) -> Route {
+    let r = route(text);
+    let h: Vec<f32> = TASKS
+        .iter()
+        .map(|t| if *t == r.task { r.confidence as f32 } else { (1.0 - r.confidence as f32) / 7.0 })
+        .collect();
+    let out = vortex_core::neural::decide(scorer, "router", &vector(&r.features), h.clone(), reference);
+    if out == h {
+        return r;
+    }
+    let i = vortex_core::neural::argmax(&out);
+    let task = TASKS[i];
+    let d = (r.difficulty - base_difficulty(r.task) + base_difficulty(task)).clamp(0.0, 1.0);
+    Route { task, difficulty: d, confidence: f64::from(out[i]), ..r }
+}
+
 /// Heuristische route.
 pub fn route(text: &str) -> Route {
     let f = features(text);

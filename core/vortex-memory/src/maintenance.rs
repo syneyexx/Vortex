@@ -44,7 +44,18 @@ impl MemoryStore {
                 continue;
             }
             let eff = effective_importance(m.importance, age_h / 24.0, m.access_count, self.config().halflife_days);
-            if eff >= promote_at || m.access_count > 0 {
+            // Decay-predictor (W11): wordt dit nog gebruikt? (net of heuristiek)
+            let keep_h = eff >= promote_at || m.access_count > 0;
+            let keep = vortex_core::neural::decide(
+                &self.scorer(),
+                "decay",
+                &crate::features::decay_vector(&m, now),
+                vec![if keep_h { 1.0 } else { 0.0 }],
+                &m.id.to_string(),
+            )
+            .first()
+            .is_some_and(|v| *v >= 0.5);
+            if keep {
                 self.log.db().write(|tx| {
                     tx.execute("UPDATE memories SET kind = 'long_term' WHERE id = ?1", [m.id.to_string()])?;
                     Ok(())

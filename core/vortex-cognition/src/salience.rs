@@ -38,6 +38,40 @@ pub fn tag(text: &str, best_memory: Option<f64>, conflicts: usize) -> Salience {
     }
 }
 
+/// Featurevector voor het salience-net (W11).
+pub fn vector(s: &Salience, words: usize) -> Vec<f32> {
+    vec![
+        s.important as f32,
+        if s.urgent { 1.0 } else { 0.0 },
+        s.novelty as f32,
+        if s.contradictory { 1.0 } else { 0.0 },
+        s.valence as f32,
+        (words as f32 / 100.0).min(5.0),
+    ]
+}
+
+/// Salience met net (W11): het net schat "belangrijk voor de gebruiker" (0..1).
+pub fn tag_with(
+    text: &str,
+    best_memory: Option<f64>,
+    conflicts: usize,
+    scorer: &vortex_core::Scorer,
+    reference: &str,
+) -> Salience {
+    let mut s = tag(text, best_memory, conflicts);
+    let out = vortex_core::neural::decide(
+        scorer,
+        "salience",
+        &vector(&s, text.split_whitespace().count()),
+        vec![s.important as f32],
+        reference,
+    );
+    if let Some(v) = out.first() {
+        s.important = f64::from(*v).clamp(0.0, 1.0);
+    }
+    s
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

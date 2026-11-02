@@ -99,6 +99,7 @@ pub fn router(state: AppState, static_dir: Option<PathBuf>) -> Router {
         .merge(crate::tools_api::routes())
         .merge(crate::team_api::routes())
         .merge(crate::research_api::routes())
+        .merge(crate::neural_api::routes())
         .with_state(state);
     match static_dir {
         Some(d) if d.join("index.html").exists() => api.fallback_service(
@@ -406,7 +407,9 @@ pub fn build_state(kernel: Kernel) -> anyhow::Result<AppState> {
     if let Err(e) = vortex_agents::roles::ensure_defaults(kernel.config().dir()) {
         tracing::warn!(error = %e, "standaardrollen schrijven");
     }
+    crate::neural_api::attach(&mut chat);
     crate::team_api::spawn_conflict_worker(chat.clone(), kernel.shutdown_token().child_token());
+    crate::neural_api::spawn_idle_training(chat.clone(), kernel.shutdown_token().child_token());
     if let Ok(n) = chat.sessions().repair_streaming(kernel.runs())
         && n > 0
     {

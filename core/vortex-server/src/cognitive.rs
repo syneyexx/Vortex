@@ -11,8 +11,7 @@ use futures::StreamExt;
 use tokio_util::sync::CancellationToken;
 use vortex_cognition::planning::{critique, execute_plan, make_plan};
 use vortex_cognition::{
-    CogLlm, Cycle, GenOpts, Path, Phase, PlanStyle, Prediction, Signals, UserProfile, Workspace, decide, route,
-    salience,
+    CogLlm, Cycle, GenOpts, Path, Phase, PlanStyle, Prediction, Signals, UserProfile, Workspace, decide, salience,
 };
 use vortex_context::{AssemblyInput, Budget, MemItem, ToolBrief, Turn, assemble};
 use vortex_core::{CoreError, RunContext};
@@ -217,7 +216,7 @@ impl ChatEngine {
             ctx.start()?;
             // 1. Waarnemen
             cyc.enter(Phase::Perceive);
-            let mut route = route(&question);
+            let mut route = vortex_cognition::router::route_with(&question, &self.scorer, &run_id.to_string());
             // Twijfel → klein routermodel labelt (max 1,5 s; anders blijft de heuristiek staan).
             if route.confidence < vortex_cognition::router::LM_LABEL_BELOW {
                 let reg = vortex_models::Registry::from_config(ctx.config()).ok();
@@ -267,7 +266,7 @@ impl ChatEngine {
             cyc.finish(serde_json::json!({"memories": mems.len(), "best": best, "conflicts": conflicts}));
 
             cyc.enter(Phase::Attend);
-            let sal = salience::tag(&question, best, conflicts);
+            let sal = salience::tag_with(&question, best, conflicts, &self.scorer, &run_id.to_string());
             let _ = log.append(Event::new(EventKind::SalienceTagged, trace, serde_json::to_value(&sal).unwrap_or_default()).for_run(run_id));
             cyc.finish(serde_json::json!({"urgent": sal.urgent, "novelty": sal.novelty}));
 

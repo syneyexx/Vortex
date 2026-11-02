@@ -97,4 +97,11 @@ Nieuwste onderaan. Per sessie 3–5 regels: wat gedaan, wat open, volgende stap.
 - Research-team (`vortex-agents::research`): 11 rollen, 8 stappen, 3 modi, records met schema's → Archivist, triangulatie, rapport met [n] + getallentabel, corpus-synthese. Chat: pad Research. GUI: Research-pagina + Documenten-tab; export CSV/JSONL/Parquet.
 - Gevonden: records uit één URL maakten elkaar "verouderd" (geen vaste bron-hash) → opgelost; `uv run` liet een wees-worker achter in tests → venv-binary direct. Gate 1 (EPUB via worker, locator) groen.
 
-**Actieve wave:** PC-verificatie W00–W10 · cloud: volgende = W11 (neurale layers)
+## 2026-11-02 (W11 neurale layers)
+- `vortex-neural`: eigen ONNX-runtime (MLP-operatoren) + `LayerRegistry` (versies, schaduw, promotie/rollback, hot-swap) achter de `LayerScorer`-haak in vortex-core.
+- 7 layers aangesloten (router, importance, usefulness, entity, salience, skill, decay) met vaste featurevectoren; feature logging per beslissing; datasets met decontaminatie; LM-bootstrap-labels.
+- Worker: `train_layer.py` (PyTorch of numpy → ONNX) + gRPC Train. Server: trainen → eval → auto-promotie/rollback, idle-training, reranker-dataset + script; dashboard-paneel.
+- Torch niet installeerbaar in de cloud (alleen CUDA-wheels) → numpy-trainer als terugval. Gate getest (Rust + end-to-end via worker).
+- Gevonden: entity matcher binnen een schrijftransactie + event loggen = deadlock → entiteiten vooraf oplossen én registry logt via eigen schrijfthread.
+
+**Actieve wave:** PC-verificatie W00–W11 · cloud: volgende = W12 (geheugen gevorderd)

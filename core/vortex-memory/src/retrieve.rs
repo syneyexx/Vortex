@@ -241,6 +241,7 @@ impl MemoryStore {
             }
         }
         // 5. Eindscore.
+        let scorer = self.scorer();
         let max_rrf = cands.iter().map(|(_, p)| p.rrf).fold(0.0, f64::max).max(1e-9);
         for (m, p) in cands.iter_mut() {
             let rel = match p.rerank {
@@ -251,6 +252,18 @@ impl MemoryStore {
             p.importance = m.importance;
             p.final_score =
                 q.w_relevance * rel + q.w_recency * p.recency + q.w_importance * p.importance * m.confidence.max(0.1);
+            // Usefulness-predictor (W11): kans dat deze herinnering helpt (actief net) of de heuristiek.
+            let reference = format!("{}:{}", q.run_id.map(|r| r.to_string()).unwrap_or_default(), m.id);
+            let out = vortex_core::neural::decide(
+                &scorer,
+                "usefulness",
+                &crate::features::usefulness_vector(p),
+                vec![p.final_score as f32],
+                &reference,
+            );
+            if let Some(v) = out.first() {
+                p.final_score = f64::from(*v);
+            }
         }
         cands.sort_by(|a, b| b.1.final_score.total_cmp(&a.1.final_score));
         // 6. MMR (diversiteit) op vectoren.

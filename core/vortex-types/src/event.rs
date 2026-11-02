@@ -71,6 +71,13 @@ event_kinds! {
     ResearchRecord => "research.record.extracted",
     ResearchReport => "research.report.written",
     CrawlPageFetched => "crawl.page.fetched",
+    // neurale layers (W11)
+    NeuralShadow => "neural.shadow.compared",
+    NeuralExample => "neural.example.logged",
+    NeuralTrained => "neural.layer.trained",
+    NeuralPromoted => "neural.layer.promoted",
+    NeuralRolledBack => "neural.layer.rolled_back",
+    NeuralDataset => "neural.dataset.exported",
     // debatteam (W09)
     TeamComposed => "agent.team.composed",
     AgentRoleStarted => "agent.role.started",

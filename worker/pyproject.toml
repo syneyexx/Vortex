@@ -11,7 +11,9 @@ dependencies = [
 [project.optional-dependencies]
 # Zwaar: alleen installeren waar nodig (W10 ingest, W13 training).
 ingest = ["pymupdf>=1.24", "ebooklib>=0.18", "trafilatura>=1.12", "pyarrow>=17"]
-train = ["torch", "transformers", "peft", "datasets", "huggingface_hub", "onnx"]
+# Neurale layers (W11): numpy-trainer + ONNX-export (licht). PyTorch wordt gebruikt als het er is.
+layers = ["numpy>=1.26", "onnx>=1.16"]
+train = ["torch", "transformers", "peft", "datasets", "huggingface_hub", "onnx", "numpy"]
 
 [project.scripts]
 vortex-worker = "vortex_worker.server:main"

@@ -131,6 +131,9 @@ pub struct ChatEngine {
     pub online: Arc<vortex_agents::connectivity::Connectivity>,
     /// Webcrawler (W10), lui aangemaakt.
     pub(crate) crawler: Arc<Mutex<Option<Arc<vortex_crawler::Crawler>>>>,
+    /// Neurale layers (W11): scorer voor router/salience + registry.
+    pub scorer: vortex_core::Scorer,
+    pub layers: Option<Arc<vortex_neural::LayerRegistry>>,
 }
 
 /// Maximale tijd voor geheugen-ophalen vóór een antwoord (chat wacht nooit langer).
@@ -154,6 +157,8 @@ impl ChatEngine {
             skill_vecs: Arc::new(Mutex::new(HashMap::new())),
             online: Arc::new(vortex_agents::connectivity::Connectivity::new(None)),
             crawler: Arc::new(Mutex::new(None)),
+            scorer: None,
+            layers: None,
         }
     }
 

@@ -6,6 +6,7 @@
 pub mod chunk;
 pub mod embed;
 pub mod error;
+pub mod features;
 pub mod llm;
 pub mod maintenance;
 pub mod policy;

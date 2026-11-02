@@ -102,7 +102,38 @@ class WorkerService(worker_pb2_grpc.WorkerServiceServicer):
                 self.cancels.forget(trace.trace_id)
 
     def Train(self, request, context):
-        context.abort(grpc.StatusCode.UNIMPLEMENTED, "Train volgt in W13")
+        """W11: `layer:<naam>` (MLP → ONNX). LoRA/DPO volgen in W13."""
+        if not request.job_kind.startswith("layer:"):
+            context.abort(grpc.StatusCode.UNIMPLEMENTED, f"{request.job_kind} volgt in W13")
+        import tomllib
+
+        from vortex_worker.train_layer import train
+
+        cfg = tomllib.loads(request.config_toml or "")
+        trace = request.trace
+        yield worker_pb2.TrainUpdate(
+            progress=common_pb2.Progress(trace=trace, fraction=0.05, stage="trainen", message=request.job_kind)
+        )
+        try:
+            m = train(
+                cfg["train"],
+                cfg["out"],
+                int(cfg.get("classes", 1)),
+                int(cfg.get("hidden", 16)),
+                request.job_kind.split(":", 1)[1],
+                cfg.get("test"),
+                prefer_torch=not cfg.get("numpy", False),
+            )
+        except Exception as e:
+            yield worker_pb2.TrainUpdate(error=str(e))
+            yield worker_pb2.TrainUpdate(done=True)
+            return
+        metrics = {k: float(v) for k, v in m.items() if isinstance(v, (int, float))}
+        yield worker_pb2.TrainUpdate(
+            artifact=common_pb2.ArtifactRef(artifact_id=m["trainer"], path=m["onnx"], media_type="application/onnx"),
+            metrics=metrics,
+        )
+        yield worker_pb2.TrainUpdate(done=True, metrics=metrics)
 
 
 def build_server(address: str, max_workers: int = 4, out_dir: Path | None = None) -> tuple[grpc.Server, int]:

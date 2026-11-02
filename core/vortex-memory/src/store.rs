@@ -75,6 +75,8 @@ pub struct MemoryStore {
     pub(crate) cfg: MemConfig,
     /// Verhoogd bij elke wijziging: caches (bv. retrieval-resultaten) worden ongeldig.
     pub(crate) cache_gen: AtomicU64,
+    /// Neurale layers (W11): importance, usefulness, entity, decay. Geen = heuristiek.
+    pub(crate) scorer: RwLock<vortex_core::Scorer>,
 }
 
 pub(crate) fn mem_select() -> &'static str {
@@ -174,6 +176,7 @@ impl MemoryStore {
             generation: AtomicI64::new(generation),
             cfg,
             cache_gen: AtomicU64::new(0),
+            scorer: RwLock::new(None),
         };
         me.load_index()?;
         Ok(me)
@@ -260,6 +263,16 @@ impl MemoryStore {
     pub async fn write(&self, m: NewMemory) -> Result<WriteOutcome> {
         let trace = TraceId::new();
         let (imp, feats) = policy::importance(&m.content, m.kind);
+        // Importance scorer (W11): net of heuristiek (zelfde schaal 0..1).
+        let imp = vortex_core::neural::decide(
+            &self.scorer(),
+            "importance",
+            &crate::features::importance_vector(&feats, m.kind),
+            vec![imp as f32],
+            "",
+        )
+        .first()
+        .map_or(imp, |v| f64::from(*v).clamp(0.0, 1.0));
         let importance = m.importance.unwrap_or(imp);
         let store = m.force || importance >= self.cfg.min_importance;
         // Beslissing loggen (trainingsdata voor de importance scorer, W11).
@@ -355,6 +368,7 @@ impl MemoryStore {
                 (None, false) => Some(c.locator.clone()),
                 (None, true) => None,
             };
+            let resolved = self.resolve_entities(&extraction);
             let n_conf = self.log.transact(|tx, out| {
                 let t = now();
                 tx.execute(
@@ -390,7 +404,7 @@ impl MemoryStore {
                     "INSERT INTO vectors(memory_id, generation, scale, data) VALUES (?1, ?2, ?3, ?4)",
                     params![id.to_string(), g, scale as f64, q.iter().map(|b| *b as u8).collect::<Vec<u8>>()],
                 )?;
-                Self::store_graph(tx, id, &extraction).map_err(|e| vortex_core::CoreError::Config(e.to_string()))?;
+                Self::store_graph(tx, id, &extraction, &resolved).map_err(|e| vortex_core::CoreError::Config(e.to_string()))?;
                 for d in &m.derived_from {
                     tx.execute("INSERT OR IGNORE INTO derivations(derived_id, from_id) VALUES (?1, ?2)", params![id.to_string(), d.to_string()])?;
                 }
@@ -430,12 +444,67 @@ impl MemoryStore {
         Ok(WriteOutcome::Stored { ids, conflicts })
     }
 
-    fn store_graph(tx: &Transaction<'_>, id: MemoryId, x: &Extraction) -> Result<()> {
+    /// Entity matcher (W11): nieuwe namen koppelen aan bijna-gelijke bestaande entiteiten
+    /// (heuristiek of net). Buiten de schrijftransactie: de beslissing logt zelf een event.
+    fn resolve_entities(&self, x: &Extraction) -> HashMap<String, String> {
+        let scorer = self.scorer();
+        let mut out = HashMap::new();
+        let names: Vec<String> = x
+            .entities
+            .iter()
+            .map(|e| e.name.clone())
+            .chain(x.claims.iter().flat_map(|c| [c.subject.clone(), c.object.clone()]))
+            .collect();
+        for name in names {
+            let norm = norm_entity(&name);
+            if norm.chars().count() < 3 || out.contains_key(&norm) {
+                continue;
+            }
+            let first: String = norm.chars().take(1).collect();
+            let rows: Vec<(String, String)> = self
+                .db()
+                .read(|c| {
+                    if c.query_row("SELECT 1 FROM entities WHERE norm = ?1", [&norm], |_| Ok(())).optional()?.is_some()
+                    {
+                        return Ok(vec![]);
+                    }
+                    let mut st = c.prepare("SELECT id, norm FROM entities WHERE substr(norm, 1, 1) = ?1 LIMIT 300")?;
+                    let v = st
+                        .query_map([&first], |r| Ok((r.get(0)?, r.get(1)?)))?
+                        .collect::<rusqlite::Result<Vec<_>>>()?;
+                    Ok(v)
+                })
+                .unwrap_or_default();
+            for (cid, cn) in rows {
+                let fx = crate::features::entity_vector(&norm, &cn);
+                let h = crate::features::entity_heuristic(&fx, norm.chars().count().min(cn.chars().count()));
+                if vortex_core::neural::decide(&scorer, "entity", &fx, vec![h], &format!("{norm}|{cn}"))
+                    .first()
+                    .is_some_and(|v| *v >= 0.5)
+                {
+                    out.insert(norm.clone(), cid);
+                    break;
+                }
+            }
+        }
+        out
+    }
+
+    fn store_graph(
+        tx: &Transaction<'_>,
+        id: MemoryId,
+        x: &Extraction,
+        resolved: &HashMap<String, String>,
+    ) -> Result<()> {
         let mut ents: Vec<String> = Vec::new();
         let upsert = |name: &str, ty: &str| -> Result<String> {
             let norm = norm_entity(name);
-            let eid: Option<String> =
+            let mut eid: Option<String> =
                 tx.query_row("SELECT id FROM entities WHERE norm = ?1", [&norm], |r| r.get(0)).optional()?;
+            // Entity matcher (W11): vooraf (buiten de transactie) bepaald.
+            if eid.is_none() {
+                eid = resolved.get(&norm).cloned();
+            }
             let eid = match eid {
                 Some(e) => e,
                 None => {
@@ -600,6 +669,15 @@ impl MemoryStore {
         Ok(self.db().read(|c| {
             Ok(c.query_row("SELECT content_hash FROM sources WHERE uri = ?1", [uri], |r| r.get(0)).optional()?)
         })?)
+    }
+
+    /// Neurale layers koppelen (W11). Zonder: heuristiek.
+    pub fn set_scorer(&self, s: vortex_core::Scorer) {
+        *self.scorer.write() = s;
+    }
+
+    pub(crate) fn scorer(&self) -> vortex_core::Scorer {
+        self.scorer.read().clone()
     }
 
     /// Het taalmodel achter het geheugen (samenvatten, extractie).
@@ -768,6 +846,7 @@ impl MemoryStore {
         let g = self.generation.load(Ordering::Relaxed);
         let hash =
             format!("{:016x}", fnv1a64(format!("{}\0{}", old.workspace.as_deref().unwrap_or(""), content).as_bytes()));
+        let resolved = self.resolve_entities(&x);
         self.log.transact(|tx, out| {
             tx.execute(
                 "INSERT INTO memory_versions(memory_id, version, content, reason, changed_at) VALUES (?1, ?2, ?3, ?4, ?5)",
@@ -784,7 +863,7 @@ impl MemoryStore {
                 "INSERT OR REPLACE INTO vectors(memory_id, generation, scale, data) VALUES (?1, ?2, ?3, ?4)",
                 params![id.to_string(), g, scale as f64, q.iter().map(|b| *b as u8).collect::<Vec<u8>>()],
             )?;
-            Self::store_graph(tx, id, &x).map_err(|e| vortex_core::CoreError::Config(e.to_string()))?;
+            Self::store_graph(tx, id, &x, &resolved).map_err(|e| vortex_core::CoreError::Config(e.to_string()))?;
             out.emit(tx, Event::new(EventKind::MemoryUpdated, TraceId::new(), serde_json::json!({"memory_id": id, "version": old.version + 1, "reason": reason})))?;
             Ok(())
         })?;

@@ -203,6 +203,12 @@ export const api = {
       "GET",
       "/api/ingest/documents",
     ),
+  neural: () => req<NeuralStatus>("GET", "/api/neural"),
+  neuralAction: (layer: string, action: "train" | "bootstrap" | "promote" | "rollback") =>
+    req<Record<string, unknown>>("POST", `/api/neural/${layer}/${action}`, {}),
+  neuralMode: (layer: string, mode: string) => req<unknown>("POST", `/api/neural/${layer}/mode`, { mode }),
+  rerankerDataset: () =>
+    req<{ path: string; pairs: number; train: string }>("POST", "/api/neural/reranker/dataset", {}),
 };
 
 export interface ResearchDetail {
@@ -237,4 +243,36 @@ export interface ResearchDetail {
     status: string;
     subquestion: number | null;
   }[];
+}
+
+export interface NeuralStatus {
+  specs: { name: string; description: string; used_in: string; features: string[] }[];
+  layers: {
+    layer: string;
+    manifest: {
+      mode: "off" | "shadow" | "active";
+      active: string | null;
+      shadow: string | null;
+      previous: string[];
+      versions: {
+        version: string;
+        created_at: string;
+        dataset: string;
+        eval: { n: number; net: number; heuristic: number } | null;
+      }[];
+    };
+    shadow_n: number;
+    shadow_agree: number;
+    decisions: number;
+  }[];
+  runs: {
+    layer: string;
+    version: string | null;
+    net: number | null;
+    heuristic: number | null;
+    decision: string | null;
+    created_at: string;
+  }[];
+  examples: Record<string, number>;
+  min_examples: number;
 }

@@ -3202,6 +3202,15 @@ dependencies = [
 name = "vortex-neural"
 version = "0.1.0"
 dependencies = [
+ "parking_lot",
+ "prost",
+ "prost-build",
+ "protox",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tracing",
  "vortex-core",
  "vortex-types",
 ]
@@ -3223,6 +3232,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "axum",
+ "chrono",
  "clap",
  "console-subscriber",
  "futures",

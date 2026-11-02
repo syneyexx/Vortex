@@ -26,7 +26,7 @@ def test_unimplemented_is_explicit():
         with grpc.insecure_channel(f"127.0.0.1:{port}") as ch:
             stub = worker_pb2_grpc.WorkerServiceStub(ch)
             try:
-                next(iter(stub.Train(worker_pb2.TrainRequest(job_kind="lora"), timeout=5)))
+                next(iter(stub.Train(worker_pb2.TrainRequest(job_kind="lora-volgt-w13"), timeout=5)))
             except grpc.RpcError as e:
                 assert e.code() == grpc.StatusCode.UNIMPLEMENTED
             else:

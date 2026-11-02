@@ -47,6 +47,7 @@ tower-http = { version = "0.6", features = ["fs", "cors"] }
 sysinfo = { version = "0.32", default-features = false, features = ["system"] }
 futures.workspace = true
 tonic.workspace = true
+chrono.workspace = true
 async-trait = "0.1"
 parking_lot.workspace = true
 thiserror.workspace = true

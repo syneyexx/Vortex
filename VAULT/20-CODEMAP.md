@@ -20,7 +20,7 @@ updated: 2026-11-02
 | `vortex-context` | context assembly, budgetten, compactie, inspector | [[modules/context]] | W07 | **ja** (adapters + assembler) |
 | `vortex-tools` | toolregistry, contracten, sandbox, MCP-client, skills | [[modules/tools-skills]] | W08 | **ja** (W08) |
 | `vortex-agents` | debatteam, research-team, conflict-team, rollen | [[modules/redeneren-debat]], [[modules/research-team]] | W09, W10 | **ja** (W09) |
-| `vortex-neural` | ONNX via `ort`, feature logging, hot-swap van layers | [[modules/neurale-layers]] | W11 | skelet |
+| `vortex-neural` | ONNX via `ort`, feature logging, hot-swap van layers | [[modules/neurale-layers]] | W11 | **ja** (W11) |
 | `vortex-crawler` | Scout/Crawler (reqwest), frontier, per-domein tempo | [[modules/research-kennis]] | W10, W14 | **ja** (W10) |
 
 ## Overige mappen

@@ -83,4 +83,9 @@ Nieuwste onderaan. Formaat: datum · besluit · waarom.
 | 2026-11-02 | Research-records krijgen een vaste bron-hash (hash van de paginatekst) | Anders zette elk nieuw record uit dezelfde bron de vorige op verouderd |
 | 2026-11-02 | Parquet-export via Python + pyarrow (sandbox), CSV/JSONL in Rust | Geen zware Parquet-crate in de kern |
 | 2026-11-02 | Research-modus: Research-knop/deep → deep; korte eenvoudige vraag → quick; anders standaard | "Metacognitie kiest; Research-knop overrulet" |
+| 2026-11-02 | Eigen pure-Rust ONNX-runtime voor de MLP-layers i.p.v. `ort` | Geen native onnxruntime-DLL/CUDA-koppeling nodig; MLP's draaien in µs op de CPU; grotere modellen blijven op llama.cpp |
+| 2026-11-02 | Haak `LayerScorer` in vortex-core; featurevectoren in de consumerende crate | Elke crate kan een layer gebruiken zonder van vortex-neural af te hangen (lagenregel) |
+| 2026-11-02 | Layer-trainer: PyTorch als aanwezig, anders numpy; ONNX-graaf zelf gebouwd | Werkt overal (ook zonder torch); zelfde architectuur en export |
+| 2026-11-02 | Promotie alleen bij ≥ 2 pt winst t.o.v. heuristiek én actieve versie; actieve versie die verliest → automatisch terug | "Elk net wint aantoonbaar van zijn heuristiek"; veilige rollback |
+| 2026-11-02 | `LayerRegistry` schrijft events via een eigen thread (nooit synchroon) | `decide` mag nooit blokkeren op de database (deadlock gevonden binnen een transactie) |
 

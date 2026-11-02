@@ -632,6 +632,91 @@ async fn ingest_markdown_with_locators_incremental_and_research_api() {
     assert!(csv.starts_with("id,kind,text,status"));
 }
 
+/// Start de echte Python-worker (venv-binary) op een vrije poort en zet `paths.worker_address`.
+async fn start_worker(fx: &Fx) -> Option<tokio::process::Child> {
+    let worker = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../worker");
+    let bin = if cfg!(windows) {
+        worker.join(".venv/Scripts/vortex-worker.exe")
+    } else {
+        worker.join(".venv/bin/vortex-worker")
+    };
+    if !bin.exists() {
+        return None;
+    }
+    let port = std::net::TcpListener::bind("127.0.0.1:0").ok()?.local_addr().ok()?.port();
+    std::fs::write(
+        fx.cfg.join("paths.toml"),
+        format!(
+            "worker_address = \"127.0.0.1:{port}\"\ncold_dir = \"{}\"\n",
+            fx._dir.path().join("cold").display().to_string().replace('\\', "/")
+        ),
+    )
+    .ok()?;
+    fx.kernel.config().reload().ok()?;
+    let child = tokio::process::Command::new(bin)
+        .args([
+            "--address",
+            &format!("127.0.0.1:{port}"),
+            "--out-dir",
+            &fx._dir.path().join("cold/ingest").display().to_string(),
+        ])
+        .current_dir(&worker)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .kill_on_drop(true)
+        .spawn()
+        .ok()?;
+    for _ in 0..100 {
+        if tokio::net::TcpStream::connect(("127.0.0.1", port)).await.is_ok() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    Some(child)
+}
+
+/// Gate W11 end-to-end: voorbeelden + labels → training via de worker → eval → automatische
+/// promotie (net wint van heuristiek) → rollback via de API.
+#[tokio::test]
+async fn neural_layer_trains_promotes_and_rolls_back() {
+    let fx = setup().await;
+    let Some(mut worker) = start_worker(&fx).await else { return };
+    // 160 salience-voorbeelden: waarheid x0 + x2 > 1; heuristiek kijkt alleen naar x0.
+    let mut s: u64 = 42;
+    for i in 0..160 {
+        let mut x = Vec::new();
+        for _ in 0..6 {
+            s = s.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            x.push(((s >> 33) as f64) / (1u64 << 31) as f64);
+        }
+        let r = format!("run-{i}");
+        let e = vortex_types::Event::new(
+            vortex_types::EventKind::NeuralExample,
+            vortex_types::TraceId::new(),
+            json!({"layer": "salience", "x": x, "h": [if x[0] > 0.5 { 0.9 } else { 0.1 }], "ref": r}),
+        );
+        fx.kernel.events().append(e).unwrap_or_default();
+        fx.post(
+            "/api/neural/salience/label",
+            json!({"reference": r, "label": if x[0] + x[2] > 1.0 { 1.0 } else { 0.0 }}),
+        )
+        .await;
+    }
+    let st = fx.get("/api/neural").await;
+    assert_eq!(st["examples"]["salience"], 160, "{st}");
+    let r = fx.post("/api/neural/salience/train", json!({})).await;
+    assert!(r["decision"].as_str().unwrap_or("").contains("gepromoveerd"), "{r}");
+    assert!(r["eval"]["net"].as_f64().unwrap_or(0.0) > r["eval"]["heuristic"].as_f64().unwrap_or(1.0), "{r}");
+    let st = fx.get("/api/neural").await;
+    let sal =
+        st["layers"].as_array().and_then(|a| a.iter().find(|l| l["layer"] == "salience")).cloned().unwrap_or_default();
+    assert_eq!(sal["manifest"]["mode"], "active");
+    assert!(st["runs"].as_array().is_some_and(|a| !a.is_empty()));
+    let rb = fx.post("/api/neural/salience/rollback", json!({})).await;
+    assert!(rb["active"].is_null(), "{rb}");
+    let _ = worker.kill().await;
+}
+
 /// Gate W10: een ebook (EPUB) via de echte Python-worker → doorzoekbaar met hoofdstuk-locator.
 #[tokio::test]
 async fn ebook_via_python_worker_is_searchable_with_exact_locator() {

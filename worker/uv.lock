@@ -2106,9 +2106,16 @@ ingest = [
     { name = "pymupdf" },
     { name = "trafilatura" },
 ]
+layers = [
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "onnx" },
+]
 train = [
     { name = "datasets" },
     { name = "huggingface-hub" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "onnx" },
     { name = "peft" },
     { name = "torch" },
@@ -2129,6 +2136,9 @@ requires-dist = [
     { name = "ebooklib", marker = "extra == 'ingest'", specifier = ">=0.18" },
     { name = "grpcio", specifier = ">=1.66" },
     { name = "huggingface-hub", marker = "extra == 'train'" },
+    { name = "numpy", marker = "extra == 'layers'", specifier = ">=1.26" },
+    { name = "numpy", marker = "extra == 'train'" },
+    { name = "onnx", marker = "extra == 'layers'", specifier = ">=1.16" },
     { name = "onnx", marker = "extra == 'train'" },
     { name = "peft", marker = "extra == 'train'" },
     { name = "protobuf", specifier = ">=5.28" },
@@ -2138,7 +2148,7 @@ requires-dist = [
     { name = "trafilatura", marker = "extra == 'ingest'", specifier = ">=1.12" },
     { name = "transformers", marker = "extra == 'train'" },
 ]
-provides-extras = ["ingest", "train"]
+provides-extras = ["ingest", "layers", "train"]
 
 [package.metadata.requires-dev]
 dev = [
