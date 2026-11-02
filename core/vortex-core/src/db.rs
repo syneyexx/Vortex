@@ -30,6 +30,7 @@ pub const CORE_MIGRATIONS: &[Migration] = &[
     Migration { version: 5, name: "cognitie: leeragenda", sql: include_str!("../migrations/0005_cognition.sql") },
     Migration { version: 6, name: "tools en skills", sql: include_str!("../migrations/0006_tools.sql") },
     Migration { version: 7, name: "debatteam en conflict-team", sql: include_str!("../migrations/0007_agents.sql") },
+    Migration { version: 8, name: "research en crawler", sql: include_str!("../migrations/0008_research.sql") },
 ];
 
 /// Database-handle. Goedkoop te delen via `Arc`.
@@ -142,10 +143,10 @@ mod tests {
         let dir = tempfile::tempdir()?;
         let p = dir.path().join("v.db");
         let db = Db::open(&p, CORE_MIGRATIONS)?;
-        assert_eq!(db.schema_version()?, 7);
+        assert_eq!(db.schema_version()?, 8);
         drop(db);
         let db = Db::open(&p, CORE_MIGRATIONS)?;
-        assert_eq!(db.schema_version()?, 7);
+        assert_eq!(db.schema_version()?, 8);
         Ok(())
     }
 

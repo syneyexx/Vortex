@@ -98,6 +98,7 @@ pub fn router(state: AppState, static_dir: Option<PathBuf>) -> Router {
         .merge(crate::observe_api::routes())
         .merge(crate::tools_api::routes())
         .merge(crate::team_api::routes())
+        .merge(crate::research_api::routes())
         .with_state(state);
     match static_dir {
         Some(d) if d.join("index.html").exists() => api.fallback_service(

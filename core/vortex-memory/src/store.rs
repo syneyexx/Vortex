@@ -595,6 +595,47 @@ impl MemoryStore {
         Ok(id)
     }
 
+    /// Huidige content-hash van een bron (incrementele ingest, W10.03).
+    pub fn source_hash(&self, uri: &str) -> Result<Option<String>> {
+        Ok(self.db().read(|c| {
+            Ok(c.query_row("SELECT content_hash FROM sources WHERE uri = ?1", [uri], |r| r.get(0)).optional()?)
+        })?)
+    }
+
+    /// Het taalmodel achter het geheugen (samenvatten, extractie).
+    pub fn llm(&self) -> Arc<dyn MemLlm> {
+        self.llm.clone()
+    }
+
+    /// Niet-verouderde herinneringen van één bron (document), in volgorde van schrijven.
+    pub fn by_source(&self, uri: &str) -> Result<Vec<Memory>> {
+        let sql = format!(
+            "{} WHERE m.source_id = (SELECT id FROM sources WHERE uri = ?1) AND m.stale = 0 ORDER BY m.created_at, m.rowid",
+            mem_select()
+        );
+        Ok(self.db().read(|c| {
+            let mut st = c.prepare(&sql)?;
+            let rows = st.query_map([uri], row_mem)?;
+            Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+        })?)
+    }
+
+    /// Ingelezen documenten (bron-URI, titel van de eerste herinnering, hash, aantal stukken).
+    pub fn documents(&self, workspace: Option<&str>) -> Result<Vec<serde_json::Value>> {
+        Ok(self.db().read(|c| {
+            let mut st = c.prepare(
+                "SELECT s.uri, s.content_hash, s.updated_at, COUNT(m.id), MIN(m.title)
+                 FROM sources s JOIN memories m ON m.source_id = s.id
+                 WHERE m.stale = 0 AND s.uri NOT LIKE 'chat:%' AND (?1 IS NULL OR m.workspace_id = ?1)
+                 GROUP BY s.id ORDER BY s.updated_at DESC LIMIT 500",
+            )?;
+            let rows = st.query_map([workspace], |r| {
+                Ok(serde_json::json!({"uri": r.get::<_, String>(0)?, "hash": r.get::<_, String>(1)?, "updated_at": r.get::<_, String>(2)?, "pieces": r.get::<_, i64>(3)?, "title": r.get::<_, Option<String>>(4)?}))
+            })?;
+            Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+        })?)
+    }
+
     /// Alles wat (transitief) van `from` is afgeleid op `stale` zetten.
     pub fn mark_derived_stale(&self, from: &str, reason: &str) -> Result<Vec<MemoryId>> {
         let ids = self.derived_closure(from)?;

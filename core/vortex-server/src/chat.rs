@@ -129,6 +129,8 @@ pub struct ChatEngine {
     pub(crate) skill_vecs: Arc<Mutex<HashMap<String, Vec<f32>>>>,
     /// Online of offline (webcheck van de Fact-checker, W09.04).
     pub online: Arc<vortex_agents::connectivity::Connectivity>,
+    /// Webcrawler (W10), lui aangemaakt.
+    pub(crate) crawler: Arc<Mutex<Option<Arc<vortex_crawler::Crawler>>>>,
 }
 
 /// Maximale tijd voor geheugen-ophalen vóór een antwoord (chat wacht nooit langer).
@@ -151,6 +153,7 @@ impl ChatEngine {
             tools: None,
             skill_vecs: Arc::new(Mutex::new(HashMap::new())),
             online: Arc::new(vortex_agents::connectivity::Connectivity::new(None)),
+            crawler: Arc::new(Mutex::new(None)),
         }
     }
 

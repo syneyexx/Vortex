@@ -14,6 +14,8 @@ pub mod debate;
 pub mod evidence;
 pub mod factcheck;
 pub mod json;
+pub mod records;
+pub mod research;
 pub mod roles;
 pub mod specialist;
 pub mod team;

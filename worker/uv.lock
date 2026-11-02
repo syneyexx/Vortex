@@ -2102,6 +2102,7 @@ dependencies = [
 [package.optional-dependencies]
 ingest = [
     { name = "ebooklib" },
+    { name = "pyarrow" },
     { name = "pymupdf" },
     { name = "trafilatura" },
 ]
@@ -2131,6 +2132,7 @@ requires-dist = [
     { name = "onnx", marker = "extra == 'train'" },
     { name = "peft", marker = "extra == 'train'" },
     { name = "protobuf", specifier = ">=5.28" },
+    { name = "pyarrow", marker = "extra == 'ingest'", specifier = ">=17" },
     { name = "pymupdf", marker = "extra == 'ingest'", specifier = ">=1.24" },
     { name = "torch", marker = "extra == 'train'" },
     { name = "trafilatura", marker = "extra == 'ingest'", specifier = ">=1.12" },

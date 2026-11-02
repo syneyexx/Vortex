@@ -177,4 +177,64 @@ export const api = {
   teamConflict: (id: string) => req<{ resolution: unknown }>("POST", `/api/memory/conflicts/${id}/team`, {}),
   rollbackConflict: (id: string) =>
     req<{ restored: number }>("POST", `/api/memory/conflicts/${id}/rollback`, {}),
+  startResearch: (question: string, mode: string) =>
+    req<{ id: string }>("POST", "/api/research", { question, mode }),
+  researchList: () =>
+    req<{ id: string; question: string; mode: string; status: string; created_at: string }[]>(
+      "GET",
+      "/api/research",
+    ),
+  research: (id: string) => req<ResearchDetail>("GET", `/api/research/${id}`),
+  corpus: (question: string) => req<{ answer: string }>("POST", "/api/research/corpus", { question }),
+  ingest: (paths: string[]) =>
+    req<{
+      done: boolean;
+      report?: {
+        docs: number;
+        sections: number;
+        skipped: number;
+        summaries: number;
+        errors: string[];
+        via_worker: boolean;
+      };
+    }>("POST", "/api/ingest", { paths }),
+  documents: () =>
+    req<{ uri: string; title: string | null; pieces: number; updated_at: string }[]>(
+      "GET",
+      "/api/ingest/documents",
+    ),
 };
+
+export interface ResearchDetail {
+  id: string;
+  question: string;
+  mode: string;
+  status: string;
+  report: string | null;
+  report_path: string | null;
+  subquestions: {
+    i: number;
+    text: string;
+    status: string;
+    answer: string;
+    cited: number[];
+    next_query: string | null;
+  }[];
+  sources: {
+    n: number;
+    kind: string;
+    uri: string;
+    title: string;
+    domain: string;
+    locator: string | null;
+    reliability: number;
+  }[];
+  records: {
+    id: string;
+    kind: string;
+    data: Record<string, unknown>;
+    source_url: string | null;
+    status: string;
+    subquestion: number | null;
+  }[];
+}

@@ -356,7 +356,24 @@ impl ChatEngine {
                     }
                 }
             }
-            let team = if w09 && strategy.prediction != Prediction::AskUser { vortex_agents::compose(&route, &strategy, mode.as_str()) } else { None };
+            // Research-pad (W10): research-team → rapport met bronverwijzingen → Synthesizer.
+            let research = strategy.path == Path::Research && crate::eval_api::FEATURES.contains(&"W10");
+            if research {
+                let rmode = vortex_agents::research::choose_mode(mode.as_str(), route.difficulty, route.features.words);
+                let rid = format!("res_{}", run_id.to_string().trim_start_matches("run_"));
+                let out = self.research_in(&ctx, &rid, &question, rmode, None, Some(ws.clone())).await;
+                let _ = ctx.checkpoint(&serde_json::json!({"research": rid, "sources": out.sources.len(), "records": out.records}));
+                guidance.push(format!(
+                    "Onderzoeksrapport van het research-team ({} modus, {} bronnen, {} records, {}):\n{}\n\nGeef de gebruiker een helder antwoord op basis van dit rapport. Behoud de [n]-bronverwijzingen en sluit af met de bronnenlijst. Voeg niets toe wat niet in het rapport staat.{}",
+                    out.mode,
+                    out.sources.len(),
+                    out.records,
+                    if out.scope == "lokaal" { "alleen lokaal — geen internet" } else { "lokaal + web" },
+                    out.report.chars().take(12_000).collect::<String>(),
+                    out.report_path.as_ref().map(|p| format!(" Het volledige rapport staat in {p}.")).unwrap_or_default()
+                ));
+            }
+            let team = if w09 && !research && strategy.prediction != Prediction::AskUser { vortex_agents::compose(&route, &strategy, mode.as_str()) } else { None };
             if let Some(t) = &team {
                 // Debatteam (W09): pas antwoorden als de Judge het vertrouwt; daarna streamt de Synthesizer.
                 let mut material: Vec<String> = mems.iter().map(|m| format!("[{} {}] {}", m.kind, m.date, m.text)).collect();
@@ -378,7 +395,7 @@ impl ChatEngine {
                 let _ = ctx.checkpoint(&serde_json::json!({"team": t.roles(), "judge": out.verdict, "trusted": out.trusted}));
                 guidance.push(vortex_agents::debate::synthesizer_guidance(&deps.roles, &out));
                 deps.reporter.started("Synthesizer", "eindantwoord in jouw stijl");
-            } else if strategy.path != Path::Fast && strategy.prediction != Prediction::AskUser {
+            } else if !research && strategy.path != Path::Fast && strategy.prediction != Prediction::AskUser {
                 // System 2: plan → stappen (geïsoleerde contexten) → evt. kritiek.
                 let plan = make_plan(&llm, &ws, &question, &mems.iter().map(|m| m.text.clone()).collect::<Vec<_>>().join("\n")).await;
                 let _ = log.append(Event::new(EventKind::PlanCreated, trace, serde_json::json!({"steps": plan.steps})).for_run(run_id));

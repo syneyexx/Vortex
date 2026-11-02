@@ -21,12 +21,12 @@ updated: 2026-11-02
 | `vortex-tools` | toolregistry, contracten, sandbox, MCP-client, skills | [[modules/tools-skills]] | W08 | **ja** (W08) |
 | `vortex-agents` | debatteam, research-team, conflict-team, rollen | [[modules/redeneren-debat]], [[modules/research-team]] | W09, W10 | **ja** (W09) |
 | `vortex-neural` | ONNX via `ort`, feature logging, hot-swap van layers | [[modules/neurale-layers]] | W11 | skelet |
-| `vortex-crawler` | Scout/Crawler (reqwest), frontier, per-domein tempo | [[modules/research-kennis]] | W10, W14 | skelet |
+| `vortex-crawler` | Scout/Crawler (reqwest), frontier, per-domein tempo | [[modules/research-kennis]] | W10, W14 | **ja** (W10) |
 
 ## Overige mappen
 | Map | Inhoud | Waves | Bestaat |
 | --- | --- | --- | --- |
-| `worker/` | Python (uv): ingest, parsers, training, datasets, layer-training → ONNX | W10, W11, W13, W14 | **ja** (skelet + gRPC) |
+| `worker/` | Python (uv): ingest, parsers, training, datasets, layer-training → ONNX | W10, W11, W13, W14 | **ja** (gRPC + parsers/ingest W10) |
 | `app/` | Tauri 2 + React + TS, design tokens, WebGL-vortex | W03+ | **ja** (chat-GUI) |
 | `config/` | `models.toml`, `prompts/`, `roles/`, `skills/` (hot-reload) | W00+ | **ja** |
 | `evals/` | eval-sets, fixtures, retrieval-tests | W06+ | **ja** (7 suites + retrieval) |

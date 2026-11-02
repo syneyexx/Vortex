@@ -575,3 +575,135 @@ async fn chat_uses_tools_with_cards_and_proposes_skill() {
     assert_eq!(r["ok"], true);
     assert_eq!(std::fs::read_to_string(&target).unwrap_or_default(), "hallo uit een tool\n");
 }
+
+#[tokio::test]
+async fn ingest_markdown_with_locators_incremental_and_research_api() {
+    let fx = setup().await;
+    let dir = fx._dir.path().join("docs");
+    std::fs::create_dir_all(&dir).unwrap_or_default();
+    std::fs::write(dir.join("handleiding.md"), "# Handleiding\nIntro over Vortex.\n## Installatie\nDraai eerst `just models-up` om de llama-servers te starten.\n## Gebruik\nOpen de GUI op poort 7420.\n").unwrap_or_default();
+    // Zonder worker → Rust-parser (Markdown).
+    let r = fx.post("/api/ingest", json!({"paths": [dir.display().to_string()]})).await;
+    assert_eq!(r["done"], true, "{r}");
+    assert_eq!(r["report"]["docs"], 1);
+    assert_eq!(r["report"]["via_worker"], false);
+    let docs = fx.get("/api/ingest/documents").await;
+    assert!(
+        docs.as_array().is_some_and(|d| d.iter().any(|x| x["uri"].as_str().unwrap_or("").ends_with("handleiding.md"))),
+        "{docs}"
+    );
+    // Doorzoekbaar met exacte bronverwijzing.
+    let s = fx.post("/api/memory/search", json!({"text": "llama-servers starten models-up"})).await;
+    let hit = s
+        .as_array()
+        .and_then(|a| a.iter().find(|i| i["memory"]["content"].as_str().unwrap_or("").contains("models-up")))
+        .cloned()
+        .unwrap_or_default();
+    assert_eq!(hit["memory"]["locator"], "regel 3 > Installatie", "{s}");
+    // Incrementeel: ongewijzigd = overgeslagen.
+    let r2 = fx.post("/api/ingest", json!({"paths": [dir.display().to_string()]})).await;
+    assert_eq!(r2["report"]["skipped"], 1);
+    // Research-API (quick, offline: alleen lokaal).
+    let id =
+        fx.post("/api/research", json!({"question": "Hoe start ik de llama-servers?", "mode": "quick"})).await["id"]
+            .as_str()
+            .unwrap_or_default()
+            .to_string();
+    let mut d = json!({});
+    for _ in 0..100 {
+        d = fx.get(&format!("/api/research/{id}")).await;
+        if d["status"] == "klaar" {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    assert_eq!(d["status"], "klaar", "{d}");
+    assert!(d["report"].as_str().unwrap_or("").contains("## Bronnen (lokaal)"));
+    assert!(d["sources"].as_array().is_some_and(|s| s.iter().any(|x| x["locator"] == "regel 3 > Installatie")), "{d}");
+    let csv = fx
+        .http
+        .get(format!("{}/api/research/{id}/export?format=csv", fx.base))
+        .send()
+        .await
+        .unwrap_or_else(|e| panic!("{e}"))
+        .text()
+        .await
+        .unwrap_or_default();
+    assert!(csv.starts_with("id,kind,text,status"));
+}
+
+/// Gate W10: een ebook (EPUB) via de echte Python-worker → doorzoekbaar met hoofdstuk-locator.
+#[tokio::test]
+async fn ebook_via_python_worker_is_searchable_with_exact_locator() {
+    let worker = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../worker");
+    if std::process::Command::new("uv").arg("--version").output().is_err() || !worker.join(".venv").exists() {
+        return;
+    }
+    let fx = setup().await;
+    let port = {
+        let l = std::net::TcpListener::bind("127.0.0.1:0").unwrap_or_else(|e| panic!("{e}"));
+        l.local_addr().map(|a| a.port()).unwrap_or(50099)
+    };
+    std::fs::write(
+        fx.cfg.join("paths.toml"),
+        format!(
+            "worker_address = \"127.0.0.1:{port}\"\ncold_dir = \"{}\"\n",
+            fx._dir.path().join("cold").display().to_string().replace('\\', "/")
+        ),
+    )
+    .unwrap_or_default();
+    fx.kernel.config().reload().unwrap_or_else(|e| panic!("{e}"));
+    let book = fx._dir.path().join("boek.epub");
+    let mk = format!(
+        "import zipfile\nz=zipfile.ZipFile({:?},'w')\nz.writestr('META-INF/container.xml','<?xml version=\"1.0\"?><container xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\" version=\"1.0\"><rootfiles><rootfile full-path=\"OEBPS/c.opf\"/></rootfiles></container>')\nz.writestr('OEBPS/c.opf','<?xml version=\"1.0\"?><package xmlns=\"http://www.idpf.org/2007/opf\"><metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\"><dc:title>Testboek</dc:title></metadata><manifest><item id=\"a\" href=\"a.xhtml\"/><item id=\"b\" href=\"b.xhtml\"/></manifest><spine><itemref idref=\"a\"/><itemref idref=\"b\"/></spine></package>')\nz.writestr('OEBPS/a.xhtml','<html><body><h1>Begin</h1><p>Het begin van het boek over sterren.</p></body></html>')\nz.writestr('OEBPS/b.xhtml','<html><body><h1>Planeten</h1><h2>Jupiter</h2><p>Jupiter heeft de Grote Rode Vlek, een storm groter dan de aarde.</p></body></html>')\nz.close()\n",
+        book.display().to_string()
+    );
+    let ok = std::process::Command::new("uv")
+        .args(["run", "python", "-c", &mk])
+        .current_dir(&worker)
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false);
+    assert!(ok, "epub maken");
+    // Direct de venv-binary (geen `uv run`-tussenproces dat een wees achterlaat).
+    let bin = if cfg!(windows) {
+        worker.join(".venv/Scripts/vortex-worker.exe")
+    } else {
+        worker.join(".venv/bin/vortex-worker")
+    };
+    let mut child = tokio::process::Command::new(bin)
+        .args([
+            "--address",
+            &format!("127.0.0.1:{port}"),
+            "--out-dir",
+            &fx._dir.path().join("cold/ingest").display().to_string(),
+        ])
+        .current_dir(&worker)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .kill_on_drop(true)
+        .spawn()
+        .unwrap_or_else(|e| panic!("{e}"));
+    // Wachten tot de worker luistert.
+    for _ in 0..100 {
+        if tokio::net::TcpStream::connect(("127.0.0.1", port)).await.is_ok() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    let r = fx.post("/api/ingest", json!({"paths": [book.display().to_string()]})).await;
+    let rep = if r["done"] == true { r["report"].clone() } else { json!({}) };
+    assert_eq!(rep["via_worker"], true, "{r}");
+    assert_eq!(rep["docs"], 1);
+    let s = fx.post("/api/memory/search", json!({"text": "Grote Rode Vlek storm Jupiter"})).await;
+    let hit = s
+        .as_array()
+        .and_then(|a| a.iter().find(|i| i["memory"]["content"].as_str().unwrap_or("").contains("Rode Vlek")))
+        .cloned()
+        .unwrap_or_default();
+    assert_eq!(hit["memory"]["locator"], "hoofdstuk 2 > Jupiter", "{s}");
+    assert!(hit["memory"]["source_uri"].as_str().unwrap_or("").ends_with("boek.epub"));
+    // Ruwe/tussendata op de koude schijf.
+    assert!(std::fs::read_dir(fx._dir.path().join("cold/ingest")).map(|d| d.count()).unwrap_or(0) >= 1);
+    let _ = child.kill().await;
+}

@@ -91,4 +91,10 @@ Nieuwste onderaan. Per sessie 3–5 regels: wat gedaan, wat open, volgende stap.
 - GUI: agentpaneel met het echte team, Judge in de Verdict-balk, bewijskaart onder antwoorden, conflict-team/terugdraaien in het register. Eval: set `moeilijk` + `--mode quick|deep`.
 - Schijf vol in de cloud: `target/` 16 GB → `profile.dev debug = "line-tables-only"` → 2,5 GB. Alle tests groen; Windows-check groen.
 
-**Actieve wave:** PC-verificatie W00–W09 · cloud: volgende = W10 (research + ingest)
+## 2026-11-02 (W10 research + ingest)
+- Worker: parsers (EPUB/PDF/DOCX/MD/HTML/code) met exacte locators + gRPC Parse/Ingest (JSONL op de koude schijf). Kern: ingest als run → geheugen met locator, incrementeel, hoofdstuk-/boeksamenvattingen; Rust-fallback zonder worker.
+- `vortex-crawler`: frontier in SQLite, robots.txt, tempo per domein, Ranker (VOI), Curator (simhash, nieuwheid), cache, PDF → ingest.
+- Research-team (`vortex-agents::research`): 11 rollen, 8 stappen, 3 modi, records met schema's → Archivist, triangulatie, rapport met [n] + getallentabel, corpus-synthese. Chat: pad Research. GUI: Research-pagina + Documenten-tab; export CSV/JSONL/Parquet.
+- Gevonden: records uit één URL maakten elkaar "verouderd" (geen vaste bron-hash) → opgelost; `uv run` liet een wees-worker achter in tests → venv-binary direct. Gate 1 (EPUB via worker, locator) groen.
+
+**Actieve wave:** PC-verificatie W00–W10 · cloud: volgende = W11 (neurale layers)

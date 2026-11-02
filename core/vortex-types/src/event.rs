@@ -61,6 +61,16 @@ event_kinds! {
     ToolCallFailed => "tool.call.failed",
     ToolCallInvalid => "tool.call.invalid",
     SkillLoaded => "tool.skill.loaded",
+    // ingest + research (W10)
+    IngestStarted => "ingest.job.started",
+    IngestProgress => "ingest.job.progress",
+    IngestCompleted => "ingest.job.completed",
+    ResearchStarted => "research.run.started",
+    ResearchSubquestion => "research.subquestion.updated",
+    ResearchSource => "research.source.found",
+    ResearchRecord => "research.record.extracted",
+    ResearchReport => "research.report.written",
+    CrawlPageFetched => "crawl.page.fetched",
     // debatteam (W09)
     TeamComposed => "agent.team.composed",
     AgentRoleStarted => "agent.role.started",

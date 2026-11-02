@@ -78,4 +78,9 @@ Nieuwste onderaan. Formaat: datum · besluit · waarom.
 | 2026-11-02 | Online = zoekbron ingesteld én bereikbaar (60 s cache); anders scope "lokaal" | Offline-first, geen stille webcalls |
 | 2026-11-02 | Conflictbeslissingen via `apply_resolution` met historie-tabel; rollback zet waarden terug en heropent | Alles gelogd en terug te draaien |
 | 2026-11-02 | `profile.dev`: debug = line-tables-only, dependencies zonder debug-info | Cloud-schijf liep vol (16 GB target); backtraces houden regelnummers |
+| 2026-11-02 | Worker schrijft per document JSONL naar de koude schijf; de kern leest en schrijft naar het geheugen | Grote documenten niet over gRPC; ruwe/tussendata op HDD, kennis op SSD |
+| 2026-11-02 | Ingest gebruikt de bestaande geheugen-schrijfpijplijn (W05) per sectie met locator + document-hash | Eén pijplijn voor chunken/claims/dedup/conflicten; incrementeel per bestand |
+| 2026-11-02 | Research-records krijgen een vaste bron-hash (hash van de paginatekst) | Anders zette elk nieuw record uit dezelfde bron de vorige op verouderd |
+| 2026-11-02 | Parquet-export via Python + pyarrow (sandbox), CSV/JSONL in Rust | Geen zware Parquet-crate in de kern |
+| 2026-11-02 | Research-modus: Research-knop/deep → deep; korte eenvoudige vraag → quick; anders standaard | "Metacognitie kiest; Research-knop overrulet" |
 

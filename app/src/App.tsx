@@ -4,6 +4,7 @@ import { ChatPane } from "./components/ChatPane.tsx";
 import { LeftColumn } from "./components/LeftColumn.tsx";
 import { DashboardPage } from "./pages/DashboardPage.tsx";
 import { MemoryPage } from "./pages/MemoryPage.tsx";
+import { ResearchPage } from "./pages/ResearchPage.tsx";
 import { StatusBar } from "./components/StatusBar.tsx";
 import { SubNav, TopNav, type Sub, type Top } from "./components/TopNav.tsx";
 import { ModelsPage, Placeholder, RunsPage, SettingsPage } from "./pages/Pages.tsx";
@@ -58,9 +59,14 @@ export function App() {
     );
   } else if (top === "chat" && sub === "dashboard") body = <DashboardPage />;
   else if (top === "chat")
-    body = <Placeholder title="Agents" wave="W09" text="Debatteam en rollen met hun prompts." />;
-  else if (top === "research")
-    body = <Placeholder title="Research" wave="W10" text="Live records, deelvragen, bronnen en rapporten." />;
+    body = (
+      <Placeholder
+        title="Agents"
+        wave="W09 ✓"
+        text="Het debatteam draait live in het Agent collaboration-paneel; rollen en prompts bewerk je in Instellingen (config/roles/)."
+      />
+    );
+  else if (top === "research") body = <ResearchPage />;
   else if (top === "memory") body = <MemoryPage />;
   else if (top === "models") body = <ModelsPage />;
   else if (top === "studio")

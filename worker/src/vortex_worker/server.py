@@ -1,18 +1,22 @@
-"""gRPC-server van de worker. W00: Health + Cancel. Ingest volgt in W10, training in W13."""
+"""gRPC-server van de worker. W00: Health + Cancel; W10: Parse + Ingest; training volgt in W13."""
 
 # VX:W00.12
 from __future__ import annotations
 
 import argparse
 import logging
+import os
 import threading
 from concurrent import futures
+from pathlib import Path
 
 import grpc
 
 from vortex_worker import __version__
 from vortex_worker.gen.vortex.common.v1 import common_pb2
-from vortex_worker.gen.vortex.worker.v1 import worker_pb2_grpc
+from vortex_worker.gen.vortex.worker.v1 import worker_pb2, worker_pb2_grpc
+from vortex_worker.ingest import ingest
+from vortex_worker.parsers import parse
 
 log = logging.getLogger("vortex.worker")
 
@@ -42,8 +46,10 @@ class CancelRegistry:
 
 
 class WorkerService(worker_pb2_grpc.WorkerServiceServicer):
-    def __init__(self) -> None:
+    def __init__(self, out_dir: Path | None = None) -> None:
         self.cancels = CancelRegistry()
+        # Ruwe/tussenbestanden op de koude schijf (W10.14).
+        self.out_dir = out_dir or Path(os.environ.get("VORTEX_COLD_DIR", "data/cold")) / "ingest"
 
     def GetHealth(self, request, context):
         return common_pb2.Health(ok=True, component="worker", detail="gereed", version=__version__)
@@ -52,18 +58,56 @@ class WorkerService(worker_pb2_grpc.WorkerServiceServicer):
         return common_pb2.CancelReply(accepted=self.cancels.cancel(request.trace.trace_id))
 
     def Parse(self, request, context):
-        context.abort(grpc.StatusCode.UNIMPLEMENTED, "Parse volgt in W10")
+        if not Path(request.path).exists():
+            context.abort(grpc.StatusCode.NOT_FOUND, f"{request.path} bestaat niet")
+        try:
+            p = parse(request.path, request.media_type)
+        except FileNotFoundError:
+            context.abort(grpc.StatusCode.NOT_FOUND, f"{request.path} bestaat niet")
+        except Exception as e:
+            context.abort(grpc.StatusCode.INVALID_ARGUMENT, f"parsen mislukt: {e}")
+        return worker_pb2.ParseReply(
+            content_hash=p.content_hash,
+            sections=[
+                worker_pb2.ParsedSection(title=s.title, level=s.level, text=s.text, locator=s.locator)
+                for s in p.sections
+            ],
+            metadata=p.metadata,
+        )
 
     def Ingest(self, request, context):
-        context.abort(grpc.StatusCode.UNIMPLEMENTED, "Ingest volgt in W10")
+        trace = request.trace
+        flag = self.cancels.flag(trace.trace_id) if trace.trace_id else threading.Event()
+        try:
+            for u in ingest(list(request.paths), self.out_dir, cancel=flag):
+                if u.kind == "progress":
+                    yield worker_pb2.IngestUpdate(
+                        progress=common_pb2.Progress(trace=trace, fraction=u.fraction, stage=u.stage, message=u.message)
+                    )
+                elif u.kind == "batch":
+                    yield worker_pb2.IngestUpdate(
+                        chunk_batch=common_pb2.ArtifactRef(
+                            artifact_id=u.content_hash,
+                            path=u.path,
+                            media_type="application/x-ndjson",
+                            size_bytes=u.size,
+                        )
+                    )
+                elif u.kind == "error":
+                    yield worker_pb2.IngestUpdate(error=u.message)
+                else:
+                    yield worker_pb2.IngestUpdate(done=True)
+        finally:
+            if trace.trace_id:
+                self.cancels.forget(trace.trace_id)
 
     def Train(self, request, context):
         context.abort(grpc.StatusCode.UNIMPLEMENTED, "Train volgt in W13")
 
 
-def build_server(address: str, max_workers: int = 4) -> tuple[grpc.Server, int]:
+def build_server(address: str, max_workers: int = 4, out_dir: Path | None = None) -> tuple[grpc.Server, int]:
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))
-    worker_pb2_grpc.add_WorkerServiceServicer_to_server(WorkerService(), server)
+    worker_pb2_grpc.add_WorkerServiceServicer_to_server(WorkerService(out_dir), server)
     port = server.add_insecure_port(address)
     return server, port
 
@@ -71,9 +115,10 @@ def build_server(address: str, max_workers: int = 4) -> tuple[grpc.Server, int]:
 def main() -> None:
     p = argparse.ArgumentParser(description="Vortex Python-worker")
     p.add_argument("--address", default="127.0.0.1:50061")
+    p.add_argument("--out-dir", default=None, help="map voor ingest-JSONL (koude schijf)")
     args = p.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
-    server, port = build_server(args.address)
+    server, port = build_server(args.address, out_dir=Path(args.out_dir) if args.out_dir else None)
     server.start()
     log.info("worker luistert op poort %s", port)
     server.wait_for_termination()

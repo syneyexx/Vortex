@@ -27,6 +27,7 @@
 | Chat met tools: kernset met schema, toolrondes (max 8) via `Executor::execute_plan`, skills automatisch geladen bij hoge score | |
 | `team_api.rs`: rol-LLM's, conflict-team (voorgrond in de chat, achtergrond-worker P3), `POST /api/memory/conflicts/:id/team`, `POST /api/memory/conflicts/:id/rollback` | |
 | Deep/moeilijk: debatteam vóór het streamen (Synthesizer); eval `--mode quick|deep` voor de W09-vergelijking | |
+| `ingest.rs`: `ChatEngine::ingest` (worker of Rust-fallback → geheugen met locator → samenvattingen, incrementeel) · `research_api.rs`: `POST/GET /api/research`, `GET /api/research/:id[/export?format=csv|jsonl|parquet]`, `POST /api/research/corpus`, `POST /api/ingest`, `GET /api/ingest/documents`; chat: pad Research → research-team | |
 | CLI: `vortex serve [--listen 127.0.0.1:7420] [--app-dist ../app/dist]`, `vortex status`, `vortex runs` | |
 
 ## Events (schrijft)
@@ -40,4 +41,4 @@
 `src/api.rs` · `src/chat.rs` · `src/cognitive.rs` · `src/observe_api.rs` · `src/sessions.rs` · `src/live.rs` · `src/main.rs` (CLI) · schema: `vortex-core/migrations/0002_sessions.sql`
 
 ## Tests
-`cargo test -p vortex-server` — `tests/api.rs` (13): chat end-to-end, resume zonder gaten, stop midden in stream (+ herladen tijdens streamen), verbinding weg, fork, prompts met versies, geheugen, eval, diep pad met plan + kritiek, persoonlijke vraag zonder geheugen, bijsturen midden in een stream, diep pad met debatteam (Judge vóór het antwoord, lokaal bewijs), chat met tools (kaarten, preview, skill-voorstel).
+`cargo test -p vortex-server` — `tests/api.rs` (15): chat end-to-end, resume zonder gaten, stop midden in stream (+ herladen tijdens streamen), verbinding weg, fork, prompts met versies, geheugen, eval, diep pad met plan + kritiek, persoonlijke vraag zonder geheugen, bijsturen midden in een stream, diep pad met debatteam (Judge vóór het antwoord, lokaal bewijs), chat met tools (kaarten, preview, skill-voorstel), ingest + research-API, EPUB via de echte Python-worker (gate W10).

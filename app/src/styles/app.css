@@ -1227,3 +1227,15 @@ button.tool-card {
   padding: 6px 0;
   border-top: 1px solid var(--vx-border);
 }
+
+/* W10: research-pagina */
+.research-item {
+  padding: 8px 6px;
+  border-top: 1px solid var(--vx-border);
+  cursor: pointer;
+  font-size: 14px;
+}
+.research-item.active {
+  background: var(--vx-panel-hi);
+  border-radius: var(--vx-r-sm, 6px);
+}

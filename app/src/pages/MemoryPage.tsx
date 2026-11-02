@@ -193,6 +193,70 @@ function Conflicts() {
   );
 }
 
+function Documents() {
+  const [docs, setDocs] = useState<Awaited<ReturnType<typeof api.documents>>>([]);
+  const [path, setPath] = useState("");
+  const [msg, setMsg] = useState<string | null>(null);
+  const load = useCallback(() => {
+    api
+      .documents()
+      .then(setDocs)
+      .catch((e: unknown) => setError(String(e)));
+  }, []);
+  useEffect(load, [load]);
+  const go = async () => {
+    const r = await api.ingest(
+      path
+        .split(";")
+        .map((p) => p.trim())
+        .filter(Boolean),
+    );
+    setMsg(
+      r.done && r.report
+        ? `${r.report.docs} document(en), ${r.report.sections} secties, ${r.report.skipped} ongewijzigd, ${r.report.summaries} samenvattingen${r.report.via_worker ? "" : " (zonder Python-worker: alleen tekst/Markdown/HTML/code)"}${r.report.errors.length ? ` — fouten: ${r.report.errors.join("; ")}` : ""}`
+        : "Gestart op de achtergrond — voortgang in Lopend werk.",
+    );
+    load();
+  };
+  return (
+    <div className="panel card">
+      <h3>Documenten inlezen</h3>
+      <p style={{ color: "var(--vx-muted)", fontSize: 13 }}>
+        Bestanden of mappen (EPUB, PDF, DOCX, Markdown, HTML, code, tekst). Meerdere paden scheiden met ;.
+        Ongewijzigde bestanden worden overgeslagen. Antwoorden verwijzen naar hoofdstuk/pagina/regel.
+      </p>
+      <div className="row">
+        <input
+          className="btn"
+          style={{ flex: 1 }}
+          placeholder="D:/Boeken of C:/Projecten/notities"
+          value={path}
+          onChange={(e) => setPath(e.target.value)}
+        />
+        <button
+          className="btn primary"
+          disabled={!path.trim()}
+          onClick={() => void go().catch((e: unknown) => setError(String(e)))}
+        >
+          Inlezen
+        </button>
+      </div>
+      {msg && <p style={{ fontSize: 13 }}>{msg}</p>}
+      <table className="table">
+        <tbody>
+          {docs.map((d) => (
+            <tr key={d.uri}>
+              <td>{d.title ?? d.uri}</td>
+              <td style={{ fontSize: 12, color: "var(--vx-muted)" }}>{d.uri}</td>
+              <td>{d.pieces} stukken</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function Profile() {
   const [p, setP] = useState<Awaited<ReturnType<typeof api.profile>> | null>(null);
   useEffect(() => {
@@ -234,7 +298,7 @@ function Profile() {
 }
 
 export function MemoryPage() {
-  const [tab, setTab] = useState<"list" | "search" | "conflicts" | "profile">("list");
+  const [tab, setTab] = useState<"list" | "search" | "conflicts" | "profile" | "docs">("list");
   const [q, setQ] = useState("");
   const [kind, setKind] = useState("");
   const [ws, setWs] = useState("");
@@ -317,12 +381,13 @@ export function MemoryPage() {
       </div>
       {msg && <p style={{ color: "var(--vx-muted)" }}>{msg}</p>}
       <div className="chat-tabs" style={{ display: "inline-flex", margin: "16px 0" }}>
-        {(["list", "search", "conflicts", "profile"] as const).map((t) => (
+        {(["list", "search", "docs", "conflicts", "profile"] as const).map((t) => (
           <button key={t} className={tab === t ? "active" : ""} onClick={() => setTab(t)}>
             {
               {
                 list: "Bekijken",
                 search: "Zoek als Vortex",
+                docs: "Documenten",
                 conflicts: "Conflictregister",
                 profile: "Over jou",
               }[t]
@@ -476,6 +541,7 @@ export function MemoryPage() {
       )}
       {tab === "conflicts" && <Conflicts />}
       {tab === "profile" && <Profile />}
+      {tab === "docs" && <Documents />}
     </div>
   );
 }
