@@ -1,7 +1,7 @@
 ---
 type: module
 crate: vortex-neural + worker/
-waves: [W10, W12, W17]
+waves: [W11, W13, W18]
 updated: 2026-10-31
 ---
 # Neurale layers (framework-eigen netwerken)
@@ -20,10 +20,10 @@ Kleine netwerken (MLP's / mini-transformers op embeddings + features), getraind 
 | Decay-predictor | wanneer naar koud geheugen | vaste halfwaardetijd |
 | Skill selector | welke skill past | embedding-match |
 | Salience-net | belang/verrassing | heuristiek |
-| Neural memory module | differentieerbaar associatief geheugen | — (W17) |
+| Neural memory module | differentieerbaar associatief geheugen | — (W18) |
 
 ## Leerproces
-1. Feature logging per beslissing (features, keuze, uitkomst: feedback, test, Judge, gebruikt ja/nee) — vanaf W1 in event log
+1. Feature logging per beslissing (features, keuze, uitkomst: feedback, test, Judge, gebruikt ja/nee) — vanaf W01 in event log
 2. Bootstrap: LM labelt voorbeelden → distillatie
 3. Training in idle (PyTorch) → ONNX
 4. Schaduwmodus naast huidige versie → promoveren alleen bij betere eval, anders automatisch terug

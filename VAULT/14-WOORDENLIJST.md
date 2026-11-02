@@ -37,4 +37,4 @@ updated: 2026-11-02
 | **1060-team** | embedding + reranker + router, altijd geladen | [[05-MODELLEN]] |
 | **Gate** | eindcriterium van een wave; groen = álles af | [[01-REGELS]] |
 | **CARD** | `CARD.md` per crate: kaart van API, events, ingangen | [[12-NAVIGATIE]] |
-| **Item-ID** | `W04.07` = wave 4, item 7; ook als code-tag `VX:W04.07` | [[12-NAVIGATIE]] |
+| **Item-ID** | `W05.07` = wave 5, item 7; ook als code-tag `VX:W05.07` | [[12-NAVIGATIE]] |

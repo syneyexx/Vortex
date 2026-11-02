@@ -1,7 +1,7 @@
 ---
 type: module
 crate: vortex-context
-waves: [W06]
+waves: [W07]
 updated: 2026-10-31
 ---
 # Context assembly
@@ -19,7 +19,7 @@ Context is een beperkt rekenmiddel. De Context Assembler bouwt per stap de promp
 - **Resultaten met code filteren** vóór modelinvoer.
 - **Prompt caching** (prefix) waar backend het kan; cache-isolatie per werkruimte.
 - **Context Assembly Inspector**: toont instructies, herinneringen, bronnen, toolresultaten en wat wegviel.
-- Positionele contexttests per model (W16).
+- Positionele contexttests per model (W17).
 
 ## Gesprekken
 Session persistence & restore, conversation branching/forking, multi-turn state, artifact management (code, bestanden, tabellen), project-werkruimtes.

@@ -1,7 +1,7 @@
 ---
 type: module
 crate: worker/ingest + vortex-memory
-waves: [W09, W13]
+waves: [W10, W14]
 updated: 2026-10-31
 ---
 # Research en kennis
@@ -12,13 +12,13 @@ Ruwe data (HDD) → parsen → structuur-bewust chunken → contextbeschrijving 
 ## Bronnen
 | Bron | Werkwijze | Wave |
 | --- | --- | --- |
-| Onderwerp-research | plan + deelvragen → zoeken → lezen → claims → kruiscontrole → rapport met bronverwijzingen (brongebonden: passage ↔ claim); iteratief, adaptief bijsturen; onderzoek naar ontbrekend bewijs | W9 |
-| Bestanden | ebooks (EPUB, PDF), docs, code, lokale mappen doorzoekbaar | W9 |
-| Tabellen | structuurbehoud (samengevoegde cellen, kopregels, eenheden, voetnoten) | W15 |
-| Visuele documenten | ColPali-achtige retrieval, coördinaat-bronverwijzing, OCR-onzekerheid doorgeven | W15 |
-| Wereldmonitor | GDELT, RSS (meerdere landen/richtingen), Wikipedia Current Events + Wikidata, ReliefWeb, USGS, NASA EONET, World Bank/Eurostat/CBS, arXiv, Hacker News | W13 |
-| Grote spelers per sector | interviews, boeken, aandeelhoudersbrieven, jaarverslagen, filings → beslissingen, context, uitkomst, principes; ook mislukkingen (survivorship bias); "wat zou X doen"-voorspellingen toetsen | W13 |
-| Hugging Face-datasets | zie hieronder | W13 |
+| Onderwerp-research | plan + deelvragen → zoeken → lezen → claims → kruiscontrole → rapport met bronverwijzingen (brongebonden: passage ↔ claim); iteratief, adaptief bijsturen; onderzoek naar ontbrekend bewijs | W10 |
+| Bestanden | ebooks (EPUB, PDF), docs, code, lokale mappen doorzoekbaar | W10 |
+| Tabellen | structuurbehoud (samengevoegde cellen, kopregels, eenheden, voetnoten) | W16 |
+| Visuele documenten | ColPali-achtige retrieval, coördinaat-bronverwijzing, OCR-onzekerheid doorgeven | W16 |
+| Wereldmonitor | GDELT, RSS (meerdere landen/richtingen), Wikipedia Current Events + Wikidata, ReliefWeb, USGS, NASA EONET, World Bank/Eurostat/CBS, arXiv, Hacker News | W14 |
+| Grote spelers per sector | interviews, boeken, aandeelhoudersbrieven, jaarverslagen, filings → beslissingen, context, uitkomst, principes; ook mislukkingen (survivorship bias); "wat zou X doen"-voorspellingen toetsen | W14 |
+| Hugging Face-datasets | zie hieronder | W14 |
 
 ## Eigen webcrawler-team (besloten 2026-10-31)
 Vortex zoekt niet alleen via SearXNG, maar crawlt zelf gericht door.

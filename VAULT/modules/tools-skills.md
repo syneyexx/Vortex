@@ -1,7 +1,7 @@
 ---
 type: module
 crate: vortex-tools
-waves: [W07, W16, W17]
+waves: [W08, W17, W18]
 updated: 2026-10-31
 ---
 # Tools en skills
@@ -15,17 +15,17 @@ updated: 2026-10-31
 - Native function calling + fallback (parser per model).
 - Parallel + sequentieel, chaining/composition, effectanalyse bepaalt parallel.
 - **Tool discovery**: alleen naam+beschrijving in context.
-- **Programmatic tool calling** (W16): model schrijft script dat tools aanroept.
+- **Programmatic tool calling** (W17): model schrijft script dat tools aanroept.
 - Resultaten filteren met code; tool result caching; single-flight; negative caching.
 - Herstel bij toolfouten: foutmelding verwerken, invoer aanpassen, andere route.
 - Per-run capability handles (bv. één projectmap) — als techniek; toegangspolicy → ethics-laag.
 - Pluginprotocol-versies; subprocess-supervisie.
 
 ## Tools per wave
-- **W7**: bestanden (lezen/schrijven/bewerken/zoeken), web search (SearXNG) + pagina lezen, code interpreter (Python, shell) in sandbox, geheugen-tools, MCP-client, database-tool (SQLite), API-calling framework (generiek).
-- **W15**: documentverwerking (PDF, DOCX, spreadsheets), audio, beeld genereren/bewerken.
-- **W16**: browser automation, git/repository-tools, computer use, repo-niveau codebegrip.
-- **W17**: Vortex schrijft en registreert eigen tools.
+- **W08**: bestanden (lezen/schrijven/bewerken/zoeken), web search (SearXNG) + pagina lezen, code interpreter (Python, shell) in sandbox, geheugen-tools, MCP-client, database-tool (SQLite), API-calling framework (generiek).
+- **W16**: documentverwerking (PDF, DOCX, spreadsheets), audio, beeld genereren/bewerken.
+- **W17**: browser automation, git/repository-tools, computer use, repo-niveau codebegrip.
+- **W18**: Vortex schrijft en registreert eigen tools.
 
 ## Skills
 - Eigen Vortex-skillformaat (superset).

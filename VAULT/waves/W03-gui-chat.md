@@ -17,7 +17,7 @@ Zie [[modules/gui]], `design/reference-chat.png`.
 - [ ] `W03.06` Vortex WebGL-shader (geanimeerd, performant, pauzeert als tab inactief)
 - [ ] `W03.07` Chat: streaming berichten, markdown, codeblokken (highlighting, kopiëren, diff), tabellen, LaTeX, Mermaid
 - [ ] `W03.08` Invoerbalk: bijlage, Quick/Deep/Research/Adaptive, modelkiezer, strategie, stopknop (echte cancellation)
-- [ ] `W03.09` Tool-kaarten en Agent collaboration-paneel aangesloten op events (vult zich vanaf W07/W08)
+- [ ] `W03.09` Tool-kaarten en Agent collaboration-paneel aangesloten op events (vult zich vanaf W08/W09)
 - [ ] `W03.10` Achtergrondtaak-balk + Lopend werk-pagina (pauzeren/stoppen)
 - [ ] `W03.11` Statusbalk: gezondheid per subsysteem, beide GPU's live VRAM, actief model, tok/s sparkline
 - [ ] `W03.12` Instellingen: system prompt + rol-prompts, live vanaf volgend bericht, "nu toepassen", versiegeschiedenis + terugzetten; paden; modellen; gedrag

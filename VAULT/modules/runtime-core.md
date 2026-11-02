@@ -1,7 +1,7 @@
 ---
 type: module
 crate: vortex-core
-waves: [W01]
+waves: [W01, W04]
 updated: 2026-10-31
 ---
 # Runtime core
@@ -29,7 +29,7 @@ Doel: na crash, afsluiten of hangende tool precies weten **wat voltooid is, wat 
 - **Stall/livelock-detectie** — zelfde tool herhalen, zelfde fout, plan herschrijven zonder uitvoering, geen nieuw resultaat.
 - **Retry-amplification-detectie.**
 - **Effectanalyse** — stap = lezen / lokaal wijzigen / extern → bepaalt parallel (gegevens uit toolcontracten, [[modules/tools-skills]]).
-- **Single-flight**, **negative caching** (korte TTL), **dead-task elimination**, **common subexpression elimination**, **incremental recomputation** (W16).
+- **Single-flight**, **negative caching** (korte TTL), **dead-task elimination**, **common subexpression elimination**, **incremental recomputation** (W17).
 
 ## Verbindingen
 Event log → [[modules/observability-eval]], [[modules/training]], [[modules/geheugen]]. Scheduler ↔ [[modules/inference-modelbeheer]]. Budget ↔ [[modules/cognitie]].

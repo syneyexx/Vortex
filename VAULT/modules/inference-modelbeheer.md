@@ -1,7 +1,7 @@
 ---
 type: module
 crate: vortex-models
-waves: [W00, W02, W16]
+waves: [W00, W02, W17]
 updated: 2026-10-31
 ---
 # Inference en modelbeheer
@@ -31,7 +31,7 @@ Wachttijd, time-to-first-token, prefill t/s, decode t/s, inter-token-tijd, piek-
 ## Streaming
 Incrementele UTF-8-decodering; stopsequenties over fragmentgrenzen; toolargumenten streamen maar pas uitvoeren als volledig + geldig.
 
-## Later (W16)
+## Later (W17)
 Speculative decoding (alleen bij gemeten winst), chunked prefill / continuous batching (bij eigen backend), logprob-diagnostiek, positionele contexttests per model, optionele cloud-escalatie (alleen als gebruiker het aanzet).
 
 Verbindingen: [[modules/runtime-core]] (scheduler), [[modules/neurale-layers]] (router kiest model), [[modules/gui]] (Models-pagina, statusbalk).

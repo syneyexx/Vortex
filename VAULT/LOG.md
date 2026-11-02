@@ -25,4 +25,11 @@ Nieuwste onderaan. Per sessie 3–5 regels: wat gedaan, wat open, volgende stap.
 - Open: voorstellen in [[OPEN-VRAGEN]] bevestigen (vortex-types-crate, W01 splitsen, Judge-gate vs TTFT).
 - **Volgende stap (19:00, op de PC):** repo klonen, [[OPEN-VRAGEN]] "Vanavond eerst" doorlopen, dan [[waves/W00-fundament]].
 
+## 2026-11-02 (open vragen beantwoord, geen code)
+- 13 open vragen beantwoord; besluiten in [[03-BESLUITEN]], overzicht in [[OPEN-VRAGEN]].
+- Waves herzien: W01 gesplitst, nieuwe [[waves/W04-dirigent-performance]], oude W04–W19 → W05–W20. W00 uitgebreid (WSL2-test, `proto/`, `justfile`, `vortex` CLI).
+- Nieuw: [[15-CONTRACTEN]]. Hardware: SSD = NVMe 250 GB.
+- Open: wat "testen pas als laatst" precies betekent; PC-details (moederbord, voeding, Windows, HDD's).
+- **Volgende stap (19:00):** repo klonen naar `C:\dev\Vortex`, dan [[waves/W00-fundament]] checks.
+
 **Actieve wave:** W00 (nog niet gestart)

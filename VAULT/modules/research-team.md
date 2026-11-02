@@ -1,7 +1,7 @@
 ---
 type: module
 crate: vortex-agents (research) + worker/ingest
-waves: [W09, W13, W16]
+waves: [W10, W14, W17]
 updated: 2026-10-31
 ---
 # Research-team (pipeline naast de chat-pipeline)

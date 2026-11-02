@@ -29,7 +29,7 @@ Voorstel 2026-11-02 — bevestigen bij start W00 (zie [[OPEN-VRAGEN]]). Doel: ov
 
 ## Git
 - Branch per wave of per item: `w04/hybrid-retrieval`.
-- Commit-bericht: `W04.07: hybride ophalen met MMR` — item-ID vooraan, zodat `git log --grep W04.07` alles toont.
+- Commit-bericht: `W05.07: hybride ophalen met MMR` — item-ID vooraan, zodat `git log --grep W05.07` alles toont.
 - Vóór commit: `cargo fmt && cargo clippy && cargo test`, `ruff`, `vault.py check`.
 
 ## VAULT

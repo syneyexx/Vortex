@@ -31,16 +31,24 @@ Nieuwste onderaan. Formaat: datum · besluit · waarom.
 | 2026-10-31 | Ethics & security layer helemaal aan het eind, bij "WE GAAN DE ETHICS EN SECURITY LAYER MAKEN" | In één keer goed aanpakken |
 | 2026-10-31 | Werkregels 1–6 vastgelegd | Zie [[01-REGELS]] |
 | 2026-10-31 | Bouwplan in waves; VAULT als tweede brein | Gebruikerswens |
-| 2026-11-01 | Geen eigen programmeertaal; Rust blijft. Snelheid uit GPU-kant: eigen kernels (Triton/CUDA) alleen bij gemeten hotspot (W16) | Rust zit al op native-plafond; bottleneck is GPU/bandbreedte |
+| 2026-11-01 | Geen eigen programmeertaal; Rust blijft. Snelheid uit GPU-kant: eigen kernels (Triton/CUDA) alleen bij gemeten hotspot (W17) | Rust zit al op native-plafond; bottleneck is GPU/bandbreedte |
 | 2026-11-01 | CUDA-toolchain moet sm_61 (1060) én sm_120 (5060 Ti) dekken; CUDA 13 valt af voor 1060 | Pascal-ondersteuning gestopt in CUDA 13 |
 | 2026-11-01 | Model-efficiëntie: MoE + expert-cache, NVFP4 testen, KV-quant, quant-shootout op eigen eval, 1060 int8 | Decode is bandbreedte-gebonden; zie 05-MODELLEN |
-| 2026-11-01 | Geen echte quantum entanglement in Vortex (klassieke hardware kan dat fysiek niet); wel quantum-inspired technieken + quantum-tool als W17-experimenten | Onderzoek: geen aangetoonde QML-winst op klassieke data; tensor-netwerken en simulatie wel bruikbaar |
+| 2026-11-01 | Geen echte quantum entanglement in Vortex (klassieke hardware kan dat fysiek niet); wel quantum-inspired technieken + quantum-tool als W18-experimenten | Onderzoek: geen aangetoonde QML-winst op klassieke data; tensor-netwerken en simulatie wel bruikbaar |
 | 2026-11-01 | Een experimenteel neven-idee is afgesplitst als volledig apart project (eigen map, eigen prompt); valt buiten Vortex | Strikte scheiding op verzoek gebruiker |
 | 2026-11-01 | Tensor-netwerk-compressie nooit op het redeneermodel; alleen testen op eigen neurale layers/hulpmodellen | Redeneren lijdt het hardst onder lossy compressie; redeneren is kern van Vortex |
 | 2026-10-31 | Centrale Dirigent wijst alle taken toe (P0–P3, admission, preemption, model-affiniteit, pipelining); CCD0 interactief / CCD1 achtergrond; RAM-budget per modus; nul-lekbeleid met soak-tests en performance-gates | Maximale snelheid en stabiliteit op 5950X + 5060 Ti + 1060 + 32 GB |
 | 2026-10-31 | Eigen research-team naast chat-pipeline (Lead, Scouts, Readers, Extractor, Bronbeoordelaar, Analysts, Fact-checker, Skepticus, Judge, Writer, Archivist); vondsten direct omgezet naar getypeerde data | Research optimaal + meteen bruikbare data |
-| 2026-10-31 | Eigen webcrawler-team (Scout, Crawler, Reader, Ranker, Curator) voor research en opzoeken | Dieper en gerichter dan alleen zoekresultaten; W09 basis, W13 headless + recrawl |
+| 2026-10-31 | Eigen webcrawler-team (Scout, Crawler, Reader, Ranker, Curator) voor research en opzoeken | Dieper en gerichter dan alleen zoekresultaten; W10 basis, W14 headless + recrawl |
 | 2026-11-02 | Project staat in GitHub-repo `syneyexx/Vortex`; repo-root = `vortex/` uit [[10-ARCHITECTUUR]], VAULT in de repo | Eén bron, versiebeheer, werken vanaf PC én web |
-| 2026-11-02 | Elk wave-item heeft een vast ID (`W04.07`); [[TODO]] wordt gegenereerd uit de waves door `tools/vault/vault.py` | Eén bron van waarheid, geen dubbele lijsten die uit elkaar lopen |
+| 2026-11-02 | Elk wave-item heeft een vast ID (`W05.07`); [[TODO]] wordt gegenereerd uit de waves door `tools/vault/vault.py` | Eén bron van waarheid, geen dubbele lijsten die uit elkaar lopen |
 | 2026-11-02 | Navigatie voor 500K–1M regels: `CARD.md` per crate, code-tags `VX:<ID>`, [[20-CODEMAP]], regels N1–N9 in [[12-NAVIGATIE]] | Claude hoeft nooit het hele project te lezen |
-| 2026-11-02 | Dubbel item "Research-pagina in GUI" uit W09 verwijderd; wave-verwijzingen in module-frontmatter genormaliseerd naar `W0n` | Opruimen |
+| 2026-11-02 | Dubbel item "Research-pagina in GUI" uit W10 verwijderd; wave-verwijzingen in module-frontmatter genormaliseerd naar `W0n` | Opruimen |
+| 2026-11-02 | Repo op NVMe-SSD (`C:\dev\Vortex`), grote data op HDD's; kern + GUI native Windows, training native vs WSL2 testen in `W00.06` | Antwoord gebruiker 1–3; Claude kiest platform na meting |
+| 2026-11-02 | Extra crates `vortex-types` en `vortex-crawler`; `proto/` als bron van alle procescontracten, kaart in [[15-CONTRACTEN]] | Geen afhankelijkheidscycli; crawler eigen ritme; één contractbron |
+| 2026-11-02 | W01 gesplitst: W01 runtime kern (+ simpele GPU-scheduler) en nieuwe [[waves/W04-dirigent-performance]]; latere waves één nummer op (oud W04 → W05 … W19 → W20) | W01 was te groot; Dirigent pas nodig als er meerdere soorten werk draaien |
+| 2026-11-02 | Verticale plak: W00–W03 leveren chat end-to-end | Vroeg iets werkends; gates blijven gelden |
+| 2026-11-02 | Geen vaste TTFT-grens van 1 s; meten in W00 en dan vastzetten; Deep toont direct voortgang, antwoord na Judge | Gebruiker: 1 s niet haalbaar; Judge-gate blijft |
+| 2026-11-02 | Debatteam: snelheid meten in W09, Solvers zo nodig parallel via slots | Eén hoofd-GPU |
+| 2026-11-02 | `vortex` CLI (`W00.15`) en `justfile` (`W00.14`) | Debuggen + Claude kan zelf status/eval draaien |
+| 2026-11-02 | Geen rookproef-eval vanaf W00 ("testen pas als laatst"); reikwijdte voor unit-tests nog open in [[OPEN-VRAGEN]] | Gebruikerskeuze |

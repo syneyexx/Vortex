@@ -41,6 +41,7 @@ Repo-root = `vortex/` (GitHub `syneyexx/Vortex`). Actuele kaart met status: [[20
 ```
 vortex/
   core/  (Rust workspace)
+    vortex-types/      gedeelde ID's, events, fouten (geen logica)
     vortex-core/       runs, scheduler, event log, config, tracing
     vortex-memory/     MemoryStore-trait, SQLite + LanceDB, tiering
     vortex-cognition/  cyclus, workspace, metacognitie, wereld-/zelfmodel
@@ -49,7 +50,9 @@ vortex/
     vortex-agents/     debatteam, rollen, conflict-team
     vortex-tools/      toolcontracten, sandbox, MCP, skills
     vortex-models/     registry, lifecycle, templates, parsers, scheduler-hooks
-    vortex-server/     eventstream naar GUI, lokale OpenAI-API
+    vortex-server/     eventstream naar GUI, lokale OpenAI-API, vortex CLI
+    vortex-crawler/    webcrawler (Scout/Crawler, frontier)
+  proto/    gRPC-contracten (zie 15-CONTRACTEN)
   worker/   Python
   app/      Tauri + React
   config/   prompts, rollen, skills, modellen (hot-reload)

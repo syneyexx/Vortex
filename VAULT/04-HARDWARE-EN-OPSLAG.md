@@ -11,10 +11,10 @@ updated: 2026-10-31
 | GPU 2 | Asus GTX 1060 6 GB (Pascal) | Altijd geladen: embedding, reranker, router/extractie-model; kleine neurale layers |
 | CPU | Ryzen 9 5950X, 16 cores / 32 threads (2 CCD's) | CCD0 interactief, CCD1 achtergrond; MoE-offload, STT/TTS, parsing, ONNX — zie [[modules/orkestrator-performance]] |
 | RAM | 32 GB | MoE-experts, modelcache (concurreren met elkaar!), Python-worker |
-| SSD | 250 GB | Warm: code, actieve modellen, DB's, index |
-| HDD | meerdere TB | Koud: ruwe data, volledige teksten, archief, backups |
+| SSD | **NVMe**, 250 GB (bevestigd 2026-11-02) | Warm: code (`C:\dev\Vortex`), actieve modellen, DB's, index |
+| HDD | meerdere HDD's, TB-schaal (groottes + letters nog noteren) | Koud: ruwe data, volledige teksten, archief, backups |
 
-**Open checks (W0):** SSD NVMe of SATA? Staat Windows op de SSD (vrije ruimte)? llama.cpp-build die Pascal (1060) én Blackwell (5060 Ti) ondersteunt. Beide GPU's zichtbaar in `nvidia-smi`.
+**Open checks (W00):** Staat Windows op de SSD (vrije ruimte)? HDD-groottes + schijfletters? Moederbord/PCIe-slots (welke GPU op x16)? Voeding? Windows-versie? llama.cpp-build die Pascal (1060) én Blackwell (5060 Ti) ondersteunt. Beide GPU's zichtbaar in `nvidia-smi`.
 
 ## Indeling SSD (warm) — ~15–20% vrij houden
 - `vortex/` code + runtime + config

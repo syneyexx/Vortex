@@ -1,6 +1,6 @@
 ---
 type: module
-waves: [W14]
+waves: [W15]
 updated: 2026-10-31
 ---
 # Autonomie en dagelijks gebruik

@@ -29,6 +29,7 @@ Tweede brein voor het bouwen van Vortex. Lees dit bestand eerst; open daarna all
 | Welk model voor welke taak, wisselen | [[05-MODELLEN]] |
 | Processen, talen, repo-indeling | [[10-ARCHITECTUUR]] |
 | Hoe alles verbonden is (one brain) | [[11-ONE-BRAIN]] |
+| Hoe processen praten (proto/gRPC) | [[15-CONTRACTEN]] |
 | Volgorde van bouwen | [[waves/WAVES-OVERZICHT]] |
 | Wat bewust NIET nu | [[GEPARKEERD]] |
 | Originele input Grok / Astra | `bronnen/` |

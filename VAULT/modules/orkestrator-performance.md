@@ -1,7 +1,7 @@
 ---
 type: module
 crate: vortex-core (orchestrator) + alle crates
-waves: [W01, W02, W05, W10, W16]
+waves: [W01, W04, W02, W06, W11, W17]
 updated: 2026-10-31
 ---
 # Orkestrator en performance
@@ -84,7 +84,8 @@ Harde caps per proces (Windows Job Objects); boven de cap: netjes herstarten na 
 ## Prestatiedoelen (startwaarden — eerst meten in W00/W02, dan vastzetten)
 | Meting | Doel |
 | --- | --- |
-| Eerste token chat (model geladen) | < 1 s |
+| Eerste token Quick (model geladen, korte prompt) | meten in W00, dan vastzetten — geen vaste 1 s (besluit 2026-11-02) |
+| Deep/Research: voortgang zichtbaar na verzenden | direct (agent-paneel); antwoord pas na Judge |
 | Retrieval p95 (warm, SSD) | < 150 ms |
 | Stopknop → werk echt gestopt | < 500 ms |
 | GUI tijdens streamen | 60 fps |

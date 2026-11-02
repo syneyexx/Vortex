@@ -1,7 +1,7 @@
 ---
 type: module
 crate: vortex-agents
-waves: [W08]
+waves: [W09]
 updated: 2026-10-31
 ---
 # Redeneren en debatteam
