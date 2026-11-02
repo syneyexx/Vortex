@@ -14,10 +14,10 @@ updated: 2026-11-02
 | `vortex-core` | runs, state machine, scheduler (W01) + Dirigent (W04), event log + outbox, config, tracing, secrets, supervisie | [[modules/runtime-core]], [[modules/orkestrator-performance]] | W01, W04 | **ja** |
 | `vortex-models` | registry, `Backend`-trait, lifecycle, templates, toolcall-parsers, wisselen, metingen | [[modules/inference-modelbeheer]] | W02 | **ja** |
 | `vortex-server` | eventstream naar GUI, opdrachten, lokale OpenAI-API, `vortex` CLI (admin) | [[modules/gui]], [[modules/autonomie]] | W03, W15 | **ja** (API + chat + CLI) |
-| `vortex-memory` | `MemoryStore`-trait, SQLite + LanceDB, schrijf-/ophaalpipeline, tiering | [[modules/geheugen]] | W05, W12 | skelet |
+| `vortex-memory` | `MemoryStore`-trait, SQLite + LanceDB, schrijf-/ophaalpipeline, tiering | [[modules/geheugen]] | W05, W12 | **ja** |
 | `vortex-eval` *(of `evals/` runner)* | eval-runner, scores per versie, lekkagecontrole | [[modules/observability-eval]] | W06 | skelet |
 | `vortex-cognition` | cyclus, Global Workspace, doelstapel, metacognitie, wereld-/zelfmodel | [[modules/cognitie]] | W07, W12 | skelet |
-| `vortex-context` | context assembly, budgetten, compactie, inspector | [[modules/context]] | W07 | skelet |
+| `vortex-context` | context assembly, budgetten, compactie, inspector | [[modules/context]] | W07 | deels (adapters) |
 | `vortex-tools` | toolregistry, contracten, sandbox, MCP-client, skills | [[modules/tools-skills]] | W08 | skelet |
 | `vortex-agents` | debatteam, research-team, conflict-team, rollen | [[modules/redeneren-debat]], [[modules/research-team]] | W09, W10 | skelet |
 | `vortex-neural` | ONNX via `ort`, feature logging, hot-swap van layers | [[modules/neurale-layers]] | W11 | skelet |

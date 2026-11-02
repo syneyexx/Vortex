@@ -1,6 +1,6 @@
 [package]
 name = "vortex-memory"
-description = "MemoryStore-trait, SQLite + LanceDB, schrijf-/ophaalpipeline, tiering."
+description = "MemoryStore: SQLite (waarheid, FTS5, graph) + int8-vectorindex, schrijf-/ophaalpipeline, vergeten, werkruimtes, backup."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,6 +9,19 @@ publish.workspace = true
 [dependencies]
 vortex-types.workspace = true
 vortex-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+parking_lot.workspace = true
+rusqlite = { workspace = true, features = ["backup"] }
+chrono.workspace = true
+async-trait = "0.1"
+
+[dev-dependencies]
+tempfile.workspace = true
+async-trait = "0.1"
 
 [lints]
 workspace = true

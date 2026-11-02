@@ -94,3 +94,67 @@ export interface ModelInfo {
 }
 
 export type Mode = "adaptive" | "quick" | "deep" | "research";
+
+export interface Memory {
+  id: string;
+  kind: string;
+  workspace: string | null;
+  session_id: string | null;
+  title: string;
+  content: string;
+  context: string;
+  summary: string;
+  source_uri: string | null;
+  locator: string | null;
+  provenance: { source: string; origin?: string };
+  importance: number;
+  salience: number;
+  confidence: number;
+  valid_to: string | null;
+  access_count: number;
+  version: number;
+  stale: boolean;
+  merged_count: number;
+  tags: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ScoreParts {
+  vector: number | null;
+  bm25_rank: number | null;
+  graph_hops: number | null;
+  temporal: boolean;
+  rrf: number;
+  rerank: number | null;
+  recency: number;
+  importance: number;
+  final_score: number;
+}
+
+export interface Retrieved {
+  memory: Memory;
+  score: ScoreParts;
+  counter_evidence: boolean;
+}
+
+export interface RetrievalItem {
+  id: string;
+  kind: string;
+  score: ScoreParts;
+  counter: boolean;
+}
+
+export interface ConflictRow {
+  conflict: {
+    id: string;
+    a: string;
+    b: string;
+    reason: string;
+    status: string;
+    resolution: string | null;
+    created_at: string;
+  };
+  a: Memory | null;
+  b: Memory | null;
+}

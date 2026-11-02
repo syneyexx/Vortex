@@ -12,6 +12,9 @@ Besluit genomen → regel in [[03-BESLUITEN]] en hier naar "Beantwoord".
 - [ ] **250 GB SSD is krap** (~60–70 GB modellen + index + training-basismodel) — bewaken vanaf W00; zo nodig modelarchief naar HDD.
 - [ ] **Versies controleren vóór installeren:** CUDA 12.8/12.9 (sm_61 + sm_120), PyTorch-wheel voor Pascal, llama.cpp-build met `--moe-cache-mib` en NVFP4.
 
+- [ ] **Vectorindex: LanceDB of eigen index?** (2026-11-02) Besloten was LanceDB. De Rust-crate trekt datafusion/arrow binnen en vraagt `protoc` bij het bouwen — zwaar op Windows. Nu gebouwd: eigen int8-index in SQLite (zelfde transactie als de herinnering → vergeten/crash waterdicht), exact zoeken, verwacht < 150 ms tot ~2–3 mln vectoren. Achter `VectorIndex`-trait, dus LanceDB of een ANN (HNSW/IVF) kan er in W12 alsnog achter voor TB-schaal. Akkoord?
+- [ ] **"Vergeet dit" en het event log** (2026-11-02): geheugen-events bevatten geen inhoud, maar chatberichten (`chat.message.received`/`delta`) staan wél in het append-only log. Echt wissen daarvan (crypto-shredding of log-compactie) hoort bij de ethics & security layer — of eerder?
+
 ## Beantwoord (2026-11-02)
 | # | Vraag | Antwoord → besluit |
 | --- | --- | --- |

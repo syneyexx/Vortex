@@ -56,6 +56,17 @@ describe("applyEvents", () => {
     expect(s.lastSeq).toBe(e.seq);
   });
 
+  it("onthoudt opgehaalde herinneringen per run", () => {
+    const s = applyEvents(loaded(), [
+      ev(
+        "memory.retrieval.performed",
+        { items: [{ id: "mem_1", kind: "user", score: { final_score: 0.8 }, counter: false }] },
+        "r1",
+      ),
+    ]);
+    expect(s.retrievals.r1?.[0]?.id).toBe("mem_1");
+  });
+
   it("houdt actieve runs bij en meldt afgeronde achtergrondtaken", () => {
     let s = applyEvents(loaded(), [ev("run.lifecycle.created", { kind: "ingest" }, "r9")]);
     expect(Object.keys(s.runs)).toEqual(["r9"]);

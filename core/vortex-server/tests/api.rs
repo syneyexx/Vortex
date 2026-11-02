@@ -79,7 +79,7 @@ async fn setup() -> Fx {
     o.secrets = SecretBroker::memory();
     o.watch_config = false;
     let (kernel, _) = Kernel::open(o).await.unwrap_or_else(|e| panic!("{e}"));
-    let state = vortex_server::api::build_state(kernel.clone());
+    let state = vortex_server::api::build_state(kernel.clone()).unwrap_or_else(|e| panic!("{e}"));
     let app = vortex_server::api::router(state, None);
     let l = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap_or_else(|e| panic!("{e}"));
     let addr = l.local_addr().unwrap_or_else(|e| panic!("{e}"));
@@ -269,7 +269,8 @@ async fn system_prompt_is_live_versioned_and_restorable() {
     let r = fx.put("/api/settings/prompts", json!({"path": "prompts/system.md", "content": "SYS-V2"})).await;
     assert_ne!(r["version"].as_str(), Some(v1.as_str()));
     fx.post(&format!("/api/sessions/{sid}/messages"), json!({"text": "welke prompt?"})).await;
-    assert_eq!(fx.wait_message(&sid, 3, "complete").await["content"], "SYS-V2", "live vanaf volgend bericht");
+    let c = fx.wait_message(&sid, 3, "complete").await["content"].as_str().unwrap_or_default().to_string();
+    assert!(c.starts_with("SYS-V2"), "live vanaf volgend bericht: {c}");
     let hist = fx.get("/api/settings/history").await;
     assert!(hist.as_array().map(|a| a.len()).unwrap_or(0) >= 2);
     fx.post("/api/settings/restore", json!({"version": v1, "path": "prompts/system.md"})).await;
@@ -284,4 +285,52 @@ async fn status_reports_subsystems() {
     let s = fx.get("/api/status").await;
     assert_eq!(s["subsystems"][0]["name"], "kern");
     assert_eq!(s["default_model"], "m");
+}
+
+async fn delete(fx: &Fx, path: &str) -> Value {
+    fx.http
+        .delete(format!("{}{path}", fx.base))
+        .send()
+        .await
+        .unwrap_or_else(|e| panic!("{e}"))
+        .json()
+        .await
+        .unwrap_or_default()
+}
+
+#[tokio::test]
+async fn chat_writes_memory_and_uses_it_next_time() {
+    let fx = setup().await;
+    let sid = fx.post("/api/sessions", json!({})).await["id"].as_str().unwrap_or_default().to_string();
+    fx.post(&format!("/api/sessions/{sid}/messages"), json!({"text": "Onthoud: mijn favoriete editor is Helix."}))
+        .await;
+    fx.wait_message(&sid, 1, "complete").await;
+    // Herinnering wordt op de achtergrond geschreven.
+    let mut found = Value::Null;
+    for _ in 0..100 {
+        found = fx.get("/api/memory?q=Helix").await;
+        if found.as_array().is_some_and(|a| !a.is_empty()) {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    let arr = found.as_array().cloned().unwrap_or_default();
+    assert!(arr.iter().any(|m| m["kind"] == "user"), "persoonlijk feit als user-geheugen: {found}");
+    // Volgende vraag: geheugen zit in de system prompt (nep-model echoot hem bij 'welke prompt?').
+    fx.post(&format!("/api/sessions/{sid}/messages"), json!({"text": "welke prompt?"})).await;
+    let c = fx.wait_message(&sid, 3, "complete").await["content"].as_str().unwrap_or_default().to_string();
+    assert!(c.contains("Helix") && c.contains("Relevante herinneringen"), "geheugen in prompt: {c}");
+    // Retrieval-event gekoppeld aan de run (voor het GUI-paneel).
+    let runs = fx.get("/api/runs").await;
+    let run = runs["recent"][0]["id"].as_str().unwrap_or_default().to_string();
+    let ev = fx.kernel.events().for_run(run.parse().unwrap_or_default()).unwrap_or_default();
+    assert!(ev.iter().any(|e| e.kind == vortex_types::EventKind::RetrievalPerformed));
+    // Zoeken + vergeten via de API.
+    let hits = fx.post("/api/memory/search", json!({"text": "welke editor gebruik ik?"})).await;
+    let id = hits[0]["memory"]["id"].as_str().unwrap_or_default().to_string();
+    assert!(!id.is_empty(), "{hits}");
+    let f = delete(&fx, &format!("/api/memory/{id}")).await;
+    assert!(f["forgotten"].as_array().is_some_and(|a| !a.is_empty()));
+    let stats = fx.get("/api/memory/stats").await;
+    assert!(stats["memories"].as_i64().is_some());
 }

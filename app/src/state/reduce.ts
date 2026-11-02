@@ -1,5 +1,5 @@
 // Pure reducer: events → GUI-toestand. Getest in reduce.test.ts.
-import type { ChatMessage, MessageStatus, Session, VxEvent } from "../api/types.ts";
+import type { ChatMessage, MessageStatus, RetrievalItem, Session, VxEvent } from "../api/types.ts";
 
 export interface RunInfo {
   id: string;
@@ -26,6 +26,8 @@ export interface State {
   runs: Record<string, RunInfo>;
   streamStats: Record<string, StreamStat>;
   toasts: Toast[];
+  /** Opgehaalde herinneringen per run (Retrieved memory-paneel). */
+  retrievals: Record<string, RetrievalItem[]>;
   /** Sessies waarvan de server-versie opnieuw opgehaald moet worden (metingen e.d.). */
   dirty: string[];
   lastSeq: number;
@@ -37,6 +39,7 @@ export const initialState: State = {
   messages: {},
   runs: {},
   streamStats: {},
+  retrievals: {},
   toasts: [],
   dirty: [],
   lastSeq: 0,
@@ -137,6 +140,14 @@ export function applyEvents(state: State, events: VxEvent[], now = Date.now()): 
         }
         break;
       }
+      case "memory.retrieval.performed":
+        if (e.run_id) {
+          s = {
+            ...s,
+            retrievals: { ...s.retrievals, [e.run_id]: (p.items as RetrievalItem[] | undefined) ?? [] },
+          };
+        }
+        break;
       case "run.lifecycle.created":
         if (e.run_id)
           s = {

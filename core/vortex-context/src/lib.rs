@@ -1,3 +1,4 @@
-//! Context assembly, budgetten, compactie, inspector.
-//!
-//! Status: skelet (W00). Wordt gebouwd in W07. Zie `CARD.md` en VAULT/20-CODEMAP.md.
+//! # vortex-context
+//! Context assembly (W07) en de koppeling geheugen ⇄ modellen ([`adapters`]). Zie `CARD.md`.
+
+pub mod adapters;

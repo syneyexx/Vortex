@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { ChatPane } from "./components/ChatPane.tsx";
 import { LeftColumn } from "./components/LeftColumn.tsx";
+import { MemoryPage } from "./pages/MemoryPage.tsx";
 import { StatusBar } from "./components/StatusBar.tsx";
 import { SubNav, TopNav, type Sub, type Top } from "./components/TopNav.tsx";
 import { Dashboard, ModelsPage, Placeholder, RunsPage, SettingsPage } from "./pages/Pages.tsx";
@@ -59,14 +60,7 @@ export function App() {
     body = <Placeholder title="Agents" wave="W09" text="Debatteam en rollen met hun prompts." />;
   else if (top === "research")
     body = <Placeholder title="Research" wave="W10" text="Live records, deelvragen, bronnen en rapporten." />;
-  else if (top === "memory")
-    body = (
-      <Placeholder
-        title="Memory"
-        wave="W05"
-        text="Herinneringen bekijken, bewerken, vergeten; conflictregister."
-      />
-    );
+  else if (top === "memory") body = <MemoryPage />;
   else if (top === "models") body = <ModelsPage />;
   else if (top === "studio")
     body = <Placeholder title="Studio" wave="W16" text="Beeld, audio en multimodale uitvoer." />;

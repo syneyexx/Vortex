@@ -110,14 +110,91 @@ pub struct ChatEngine {
     kernel: Kernel,
     sessions: SessionStore,
     backends: Arc<Backends>,
+    memory: Option<crate::memory_api::MemoryHandle>,
 }
+
+/// Maximale tijd voor geheugen-ophalen vóór een antwoord (chat wacht nooit langer).
+pub const MEMORY_TIMEOUT_MS: u64 = 1500;
 
 const DEFAULT_TITLE: &str = "Nieuwe chat";
 
 impl ChatEngine {
-    pub fn new(kernel: Kernel) -> Self {
+    pub fn new(kernel: Kernel, memory: Option<crate::memory_api::MemoryHandle>) -> Self {
         let sessions = SessionStore::new(kernel.events().clone());
-        Self { kernel, sessions, backends: Arc::new(Backends::default()) }
+        Self { kernel, sessions, backends: Arc::new(Backends::default()), memory }
+    }
+
+    /// Herinneringen ophalen voor deze vraag → tekstblok voor de system prompt.
+    // VX:W05.06
+    async fn memory_context(&self, run: RunId, question: &str) -> Option<String> {
+        let mem = self.memory.as_ref()?;
+        let mut q = vortex_memory::Query::new(question);
+        q.k = 6;
+        q.run_id = Some(run);
+        let r = tokio::time::timeout(
+            Duration::from_millis(MEMORY_TIMEOUT_MS),
+            mem.store.retrieve(&q, mem.reranker.as_ref()),
+        )
+        .await;
+        let items = match r {
+            Ok(Ok(items)) if !items.is_empty() => items,
+            Ok(Err(e)) => {
+                tracing::warn!(error = %e, "geheugen ophalen mislukt");
+                return None;
+            }
+            _ => return None,
+        };
+        let mut out = String::from("Relevante herinneringen (eigen geheugen; noem ze als je ze gebruikt):\n");
+        for it in items {
+            let m = &it.memory;
+            let src = m.source_uri.as_deref().unwrap_or(m.provenance.origin.as_deref().unwrap_or("geheugen"));
+            let date = m.event_time.as_deref().unwrap_or(&m.created_at).get(..10).unwrap_or("");
+            let text: String = m.content.chars().take(600).collect();
+            if it.counter_evidence {
+                out.push_str(&format!(
+                    "- LET OP, mogelijk tegenstrijdig [{}] ({src}, {date}): {text}\n",
+                    m.kind.as_str()
+                ));
+            } else {
+                out.push_str(&format!("- [{}] ({src}, {date}): {text}\n", m.kind.as_str()));
+            }
+        }
+        Some(out)
+    }
+
+    /// Na een afgerond antwoord: episodisch geheugen + persoonlijke feiten (via de policy).
+    fn remember_exchange(&self, session: SessionId, question: String, answer: String) {
+        let Some(mem) = self.memory.clone() else { return };
+        tokio::spawn(async move {
+            use vortex_memory::{MemoryKind, NewMemory};
+            use vortex_types::{Provenance, SourceKind};
+            let uri = format!("chat:{session}");
+            let mut ep = NewMemory::new(
+                MemoryKind::Episodic,
+                format!("Gebruiker: {question}\nVortex: {}", answer.chars().take(2000).collect::<String>()),
+                Provenance::with_origin(SourceKind::User, uri.clone()),
+            );
+            ep.session_id = Some(session);
+            ep.source_uri = Some(uri.clone());
+            ep.source_hash = Some("chat".into());
+            ep.title = question.chars().take(80).collect();
+            // Belang komt uit wat de gebruiker zei, niet uit het antwoord van het model.
+            ep.importance = Some(vortex_memory::policy::importance(&question, MemoryKind::Episodic).0);
+            if let Err(e) = mem.store.write_or_defer(ep).await {
+                tracing::warn!(error = %e, "episodisch geheugen schrijven mislukt");
+            }
+            let f = vortex_memory::policy::features(&question);
+            if f.personal || f.explicit_remember {
+                let mut u =
+                    NewMemory::new(MemoryKind::User, question, Provenance::with_origin(SourceKind::User, uri.clone()));
+                u.session_id = Some(session);
+                u.source_uri = Some(uri);
+                u.source_hash = Some("chat".into());
+                if let Err(e) = mem.store.write_or_defer(u).await {
+                    tracing::warn!(error = %e, "gebruikersfeit schrijven mislukt");
+                }
+            }
+        });
     }
 
     pub fn sessions(&self) -> &SessionStore {
@@ -199,10 +276,23 @@ impl ChatEngine {
         Ok(SendReply { run_id, user_message_id: user_id, assistant_message_id: asst_id, model })
     }
 
-    fn history(&self, ctx: &RunContext, session: SessionId, upto: MessageId) -> Result<Vec<Message>, ChatError> {
+    fn history(
+        &self,
+        ctx: &RunContext,
+        session: SessionId,
+        upto: MessageId,
+        memory: Option<String>,
+    ) -> Result<Vec<Message>, ChatError> {
         let mut msgs = Vec::new();
-        if let Some(sys) = ctx.config().file("prompts/system.md") {
-            msgs.push(Message::system(sys.trim()));
+        let mut sys = ctx.config().file("prompts/system.md").map(|s| s.trim().to_string()).unwrap_or_default();
+        if let Some(m) = memory {
+            if !sys.is_empty() {
+                sys.push_str("\n\n");
+            }
+            sys.push_str(&m);
+        }
+        if !sys.is_empty() {
+            msgs.push(Message::system(sys));
         }
         for m in self.sessions.messages(session)? {
             if m.id == upto {
@@ -229,7 +319,16 @@ impl ChatEngine {
         let outcome: Result<Option<serde_json::Value>, ChatError> = async {
             ctx.start()?;
             let _gpu = ctx.gpu(Priority::P0).await?;
-            let mut req = ChatRequest::new(self.history(&ctx, session, msg)?);
+            let question = self
+                .sessions
+                .messages(session)?
+                .into_iter()
+                .rev()
+                .find(|m| m.role == "user")
+                .map(|m| m.content)
+                .unwrap_or_default();
+            let mem_ctx = self.memory_context(run_id, &question).await;
+            let mut req = ChatRequest::new(self.history(&ctx, session, msg, mem_ctx)?);
             if backend.capabilities().reasoning_effort {
                 req.reasoning_effort = Some(mode.reasoning_effort().into());
             }
@@ -313,6 +412,15 @@ impl ChatEngine {
         });
         if let Err(e) = fin {
             tracing::error!(run = %run_id, error = %e, "bericht afronden mislukt");
+        }
+        if status == "complete" {
+            let q = self
+                .sessions
+                .messages(session)
+                .ok()
+                .and_then(|ms| ms.into_iter().rev().find(|m| m.role == "user").map(|m| m.content))
+                .unwrap_or_default();
+            self.remember_exchange(session, q, text.clone());
         }
         let r = match status {
             "complete" => ctx.complete(serde_json::json!({"message_id": msg})).map(|_| ()),

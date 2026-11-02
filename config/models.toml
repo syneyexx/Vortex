@@ -10,11 +10,24 @@ url = "http://127.0.0.1:8080"
 gpu = 0                # RTX 5060 Ti — controleer index met `nvidia-smi`
 model = "gpt-oss-20b"
 
+# 1060-team: llama-server draait één model per proces → drie kleine servers.
 [servers.aux]
-role = "1060-team (embed/rerank/router)"
+role = "1060: embeddings"
 url = "http://127.0.0.1:8081"
 gpu = 1                # GTX 1060
 model = "qwen3-embedding"
+
+[servers.rerank]
+role = "1060: reranker"
+url = "http://127.0.0.1:8082"
+gpu = 1
+model = "qwen3-reranker"
+
+[servers.router]
+role = "1060: router/extractie"
+url = "http://127.0.0.1:8083"
+gpu = 1
+model = "router"
 
 [models.gpt-oss-20b]
 file = "D:/vortex-models/gpt-oss-20b-mxfp4.gguf"
@@ -33,9 +46,9 @@ dims = 512
 [models.qwen3-reranker]
 file = "D:/vortex-models/qwen3-reranker-0.6b-q8_0.gguf"
 roles = ["rerank"]
-gpu = "aux"
+gpu = "rerank"
 
 [models.router]
 file = "D:/vortex-models/qwen3.5-2b-q8_0.gguf"
 roles = ["router", "extract"]
-gpu = "aux"
+gpu = "router"

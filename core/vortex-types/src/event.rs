@@ -55,6 +55,13 @@ event_kinds! {
     // geheugen
     RetrievalPerformed => "memory.retrieval.performed",
     MemoryWritten => "memory.item.written",
+    MemoryMerged => "memory.item.merged",
+    MemoryUpdated => "memory.item.updated",
+    MemoryForgotten => "memory.item.forgotten",
+    MemoryStale => "memory.item.staled",
+    ConflictDetected => "memory.conflict.detected",
+    ConflictResolved => "memory.conflict.resolved",
+    IndexGenerationSwitched => "memory.index.switched",
     // debat
     DebateRoundCompleted => "debate.round.completed",
     VerdictGiven => "debate.verdict.given",

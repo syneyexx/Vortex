@@ -1,11 +1,11 @@
 # CARD — `vortex-context`
 
-**Doel:** Context assembly, budgetten, compactie, inspector.
-**VAULT-module:** VAULT/modules/context.md · **Waves:** W07
-**Status:** skelet (leeg, compileert). Deze CARD wordt ingevuld zodra de wave start.
+**Doel:** context assembly (W07) en de koppeling geheugen ⇄ modellen.
+**VAULT-module:** VAULT/modules/context.md · **Waves:** W05 (adapters), W07
 
 ## Publieke API
-— (nog niets)
-
-## Afhankelijk van
-zie `Cargo.toml`; richting wordt gecontroleerd door `tools/check_deps.py`.
+| Item | Doet |
+| --- | --- |
+| `adapters::ModelEmbedder` | `Embedder` via een backend (Qwen3-Embedding op de 1060) |
+| `adapters::ModelReranker` | `Reranker` via `/v1/rerank` |
+| `adapters::ModelMemLlm` | contextbeschrijving, extractie (JSON-schema), samenvatten, query-varianten via het router-model; valt terug op `HeuristicLlm` |

@@ -58,3 +58,7 @@ Nieuwste onderaan. Formaat: datum · besluit · waarom.
 | 2026-11-02 | Antwoordtekst wordt tijdens streamen alleen als gecoalesceerde deltas in het event log bewaard; het bericht krijgt zijn tekst bij afronden; lezen tijdens streamen bouwt op uit deltas | Eén bron, crash-/herlaadveilig |
 | 2026-11-02 | Alle GPU-werk loopt via de Dirigent (`RunContext::gpu` → `Dirigent`); de simpele slot-scheduler blijft alleen als bouwsteen | Eén plek voor prioriteit, preemption, pauzeren en kostenmodel |
 | 2026-11-02 | Windows-code wordt in de cloud getypecheckt met `cargo check --target x86_64-pc-windows-gnu` (zig als C-compiler); gedrag verifiëren op de PC | Compileerfouten vóór de PC-sessie vangen |
+| 2026-11-02 | Geheugenvectoren voorlopig in eigen int8-index (in SQLite) achter `VectorIndex`-trait i.p.v. LanceDB; bevestiging gevraagd in [[OPEN-VRAGEN]] | Lichte build, transactioneel met de herinnering, snel genoeg tot miljoenen; LanceDB/ANN kan later |
+| 2026-11-02 | Geheugen-traits (`Embedder`, `MemLlm`, `Reranker`) in `vortex-memory`; model-adapters in `vortex-context` | Lagenregel: memory en models zitten in dezelfde laag |
+| 2026-11-02 | 1060-team = drie llama-server-processen (embed 8081, rerank 8082, router 8083) | llama-server laadt één model per proces |
+| 2026-11-02 | Geen inhoud in geheugen-events; belang van episodisch geheugen komt uit de gebruikersvraag | Vergeten moet echt vergeten zijn; modelantwoord mag de policy niet sturen |

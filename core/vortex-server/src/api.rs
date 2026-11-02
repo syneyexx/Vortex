@@ -28,10 +28,17 @@ pub struct AppState {
     pub kernel: Kernel,
     pub chat: ChatEngine,
     pub live: Live,
+    pub memory: crate::memory_api::MemoryHandle,
 }
 
 #[derive(Debug)]
 pub struct ApiError(StatusCode, String);
+
+impl ApiError {
+    pub fn new(code: StatusCode, msg: impl Into<String>) -> Self {
+        Self(code, msg.into())
+    }
+}
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
@@ -84,6 +91,7 @@ pub fn router(state: AppState, static_dir: Option<PathBuf>) -> Router {
         .route("/api/settings/prompts", get(get_prompts).put(put_prompt))
         .route("/api/settings/history", get(config_history))
         .route("/api/settings/restore", post(restore_prompt))
+        .merge(crate::memory_api::routes())
         .with_state(state);
     match static_dir {
         Some(d) if d.join("index.html").exists() => api.fallback_service(
@@ -380,8 +388,10 @@ async fn restore_prompt(State(s): State<AppState>, Json(b): Json<RestoreBody>) -
 }
 
 /// Gedeelde staat opbouwen + achtergrondtaken starten.
-pub fn build_state(kernel: Kernel) -> AppState {
-    let chat = ChatEngine::new(kernel.clone());
+pub fn build_state(kernel: Kernel) -> anyhow::Result<AppState> {
+    let memory = crate::memory_api::build(&kernel)?;
+    crate::memory_api::spawn_maintenance(memory.clone(), kernel.shutdown_token().child_token());
+    let chat = ChatEngine::new(kernel.clone(), Some(memory.clone()));
     if let Ok(n) = chat.sessions().repair_streaming(kernel.runs())
         && n > 0
     {
@@ -395,7 +405,7 @@ pub fn build_state(kernel: Kernel) -> AppState {
         vortex_core::sampler::SamplerConfig::default(),
         kernel.shutdown_token().child_token(),
     );
-    AppState { kernel, chat, live }
+    Ok(AppState { kernel, chat, live, memory })
 }
 
 pub type Shared = Arc<AppState>;

@@ -61,4 +61,10 @@ Nieuwste onderaan. Per sessie 3–5 regels: wat gedaan, wat open, volgende stap.
 - Windows-typecheck in de cloud (zig) vond 1 fout (feature Win32_Security) — opgelost. 89 kern-tests groen.
 - Open (PC): Windows-affiniteit/prioriteit/Job Objects/idle-tijd echt testen.
 
-**Actieve wave:** PC-verificatie W00–W04 · cloud: volgende = W05 (geheugen)
+## 2026-11-02 (W05 geheugen kern)
+- `vortex-memory`: schema 0003, schrijfpipeline (policy, chunken met koppen/code, contextbeschrijving, embeddings, dedup/merge, conflicten, entiteiten/claims/graph, samenvatting, herkomst), hybride ophalen (vector+BM25+graph+temporeel, RRF, rerank, MMR, tegenbewijs, scoreherkomst), vergeten met doorwerking, verouderen, werkruimtes, versies, export/import, backup/restore, decay, sessiesamenvatting, wachtrij als het model weg is.
+- Koppeling met modellen in `vortex-context::adapters`; chat haalt herinneringen op (max 1,5 s) en schrijft daarna; GUI: Memory-pagina + live Retrieved memory-paneel.
+- W05-gate groen met hash-embedder: recall@3 ≥ 9/10, vergeten overal, backup/restore. Gevonden: policy keek naar het modelantwoord ("remember") → opgelost.
+- 1060-config gesplitst in drie servers. Open: LanceDB-vraag + "vergeten" in event log (OPEN-VRAGEN); echte embedder op PC.
+
+**Actieve wave:** PC-verificatie W00–W05 · cloud: volgende = W06 (eval + observability)

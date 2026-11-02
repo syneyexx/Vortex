@@ -98,7 +98,7 @@ async fn serve(cli: &Cli, listen: &str, app_dist: &std::path::Path) -> anyhow::R
     println!("{}", report.summary());
     let stop = kernel.shutdown_token();
     let disp = kernel.dispatcher().spawn(stop.child_token(), Duration::from_secs(1));
-    let state = vortex_server::api::build_state(kernel.clone());
+    let state = vortex_server::api::build_state(kernel.clone())?;
     let app = vortex_server::api::router(state, Some(app_dist.to_path_buf()));
     let listener = tokio::net::TcpListener::bind(listen).await.with_context(|| format!("luisteren op {listen}"))?;
     println!(

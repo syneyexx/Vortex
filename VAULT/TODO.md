@@ -8,7 +8,7 @@ generated: true
 > daarna `python tools/vault/vault.py todo`. Legenda: `[ ]` open · `[~]` bezig · `[x]` af.
 > Functionaliteiten per domein (wat Vortex *kan*): [[FUNCTIES]].
 
-**Totaal: 41/235 af.**
+**Totaal: 53/235 af.**
 
 | Wave | Status | Af | Open |
 | --- | --- | --- | --- |
@@ -17,7 +17,7 @@ generated: true
 | [[waves/W02-modelbeheer\|W02 — Modelbeheer]] | bezig | 4 | 12 |
 | [[waves/W03-gui-chat\|W03 — GUI en chat]] | bezig | 11 | 4 |
 | [[waves/W04-dirigent-performance\|W04 — Dirigent en performance]] | bezig | 5 | 2 |
-| [[waves/W05-geheugen-kern\|W05 — Geheugen kern]] | open | 0 | 14 |
+| [[waves/W05-geheugen-kern\|W05 — Geheugen kern]] | bezig | 12 | 2 |
 | [[waves/W06-eval-observability\|W06 — Eval en observability]] | open | 0 | 13 |
 | [[waves/W07-cognitie-context\|W07 — Cognitie en context]] | open | 0 | 12 |
 | [[waves/W08-tools-skills\|W08 — Tools en skills]] | open | 0 | 15 |
@@ -138,21 +138,21 @@ Bron: [[waves/W04-dirigent-performance]] · status: `bezig`
 - [x] `W04.07` Single-flight + negative caching utilities
 
 ## W05 — Geheugen kern
-Bron: [[waves/W05-geheugen-kern]] · status: `open`
-- [ ] `W05.01` `MemoryStore`-trait; SQLite-schema (herinneringen, typen, bron, tijd, validity, confidence, salience, versie, werkruimte, edges, FTS5)
-- [ ] `W05.02` LanceDB-index (int8, dims configureerbaar) + embedding-metadata per vector + index-generaties
-- [ ] `W05.03` Embedding-service (1060) met single-flight en batching
-- [ ] `W05.04` Schrijfpipeline: policy (heuristisch), chunking, contextbeschrijving, entiteiten/claims (router-model), graph-koppeling, salience, bron, samenvatting, herkomstafhankelijkheden
-- [ ] `W05.05` Dedup/merge (similarity-drempel) + conflictdetectie → conflictregister (team volgt in W09)
-- [ ] `W05.06` Short-term, long-term, episodic, semantic, user/project-geheugen
-- [ ] `W05.07` Ophalen: query rewriting, vector + FTS5 + graph (multi-hop) + temporeel, samenvoegen, rerank (Qwen3-Reranker), MMR, tegenbewijs-slot, ranking relevantie+recency+importance, filters, scoreherkomst
-- [ ] `W05.08` Tool results → geheugen via policy
-- [ ] `W05.09` Deletion propagation (alle indexen, samenvattingen, caches) + "vergeet dit"
-- [ ] `W05.10` Bron gewijzigd → afgeleiden verouderd
-- [ ] `W05.11` Project-werkruimtes (isolatie + gedeelde algemene kennis), cache-isolatie
-- [ ] `W05.12` Export/import, backup → HDD, restore getest
-- [ ] `W05.13` Memory-pagina in GUI: bekijken, bewerken, vergeten, filters, conflictregister, Retrieved memory-paneel live
-- [ ] `W05.14` Basis decay + samenvattingen
+Bron: [[waves/W05-geheugen-kern]] · status: `bezig`
+- [x] `W05.01` `MemoryStore`-trait; SQLite-schema (herinneringen, typen, bron, tijd, validity, confidence, salience, versie, werkruimte, edges, FTS5)
+- [~] `W05.02` LanceDB-index (int8, dims configureerbaar) + embedding-metadata per vector + index-generaties — **afwijking:** eigen int8-index (`FlatI8Index`, in SQLite, zelfde transactie) i.p.v. LanceDB achter `VectorIndex`-trait; generaties + metadata af — zie [[OPEN-VRAGEN]]
+- [~] `W05.03` Embedding-service (1060) met single-flight en batching — batching + single-flight + MRL-inkorting af en getest; **echte Qwen3-Embedding op de 1060 verifiëren op de PC**
+- [x] `W05.04` Schrijfpipeline: policy (heuristisch), chunking, contextbeschrijving, entiteiten/claims (router-model), graph-koppeling, salience, bron, samenvatting, herkomstafhankelijkheden
+- [x] `W05.05` Dedup/merge (similarity-drempel) + conflictdetectie → conflictregister (team volgt in W09)
+- [x] `W05.06` Short-term, long-term, episodic, semantic, user/project-geheugen
+- [x] `W05.07` Ophalen: query rewriting, vector + FTS5 + graph (multi-hop) + temporeel, samenvoegen, rerank (Qwen3-Reranker), MMR, tegenbewijs-slot, ranking relevantie+recency+importance, filters, scoreherkomst — rerank via Qwen3-Reranker zodra de 1060-server draait (adapter af)
+- [x] `W05.08` Tool results → geheugen via policy
+- [x] `W05.09` Deletion propagation (alle indexen, samenvattingen, caches) + "vergeet dit"
+- [x] `W05.10` Bron gewijzigd → afgeleiden verouderd
+- [x] `W05.11` Project-werkruimtes (isolatie + gedeelde algemene kennis), cache-isolatie
+- [x] `W05.12` Export/import, backup → HDD, restore getest — restore getest; backup standaard naar `paths.cold_dir`
+- [x] `W05.13` Memory-pagina in GUI: bekijken, bewerken, vergeten, filters, conflictregister, Retrieved memory-paneel live
+- [x] `W05.14` Basis decay + samenvattingen
 
 ## W06 — Eval en observability
 Bron: [[waves/W06-eval-observability]] · status: `open`

@@ -5,4 +5,5 @@
 pub mod api;
 pub mod chat;
 pub mod live;
+pub mod memory_api;
 pub mod sessions;

@@ -1,6 +1,16 @@
 // REST-client voor de kern. In de browser (geserveerd door `vortex serve`) = zelfde origin;
 // in dev/Tauri: VITE_VORTEX_API of standaard http://127.0.0.1:7420.
-import type { ChatMessage, Mode, ModelInfo, RunRecord, Session, Status } from "./types.ts";
+import type {
+  ChatMessage,
+  ConflictRow,
+  Memory,
+  Mode,
+  ModelInfo,
+  Retrieved,
+  RunRecord,
+  Session,
+  Status,
+} from "./types.ts";
 
 function defaultBase(): string {
   const env = import.meta.env.VITE_VORTEX_API as string | undefined;
@@ -50,4 +60,38 @@ export const api = {
   history: () => req<{ version: string; ts: string }[]>("GET", "/api/settings/history"),
   restore: (version: string, path: string) =>
     req<{ version: string }>("POST", "/api/settings/restore", { version, path }),
+  memories: (p: {
+    q?: string;
+    kind?: string;
+    workspace?: string;
+    stale?: boolean;
+    limit?: number;
+    offset?: number;
+  }) => {
+    const qs = new URLSearchParams();
+    Object.entries(p).forEach(([k, v]) => {
+      if (v !== undefined && v !== "") qs.set(k, String(v));
+    });
+    return req<Memory[]>("GET", `/api/memory?${qs.toString()}`);
+  },
+  memory: (id: string) =>
+    req<{ memory: Memory; versions: [number, string, string, string][] }>("GET", `/api/memory/${id}`),
+  memoryStats: () => req<Record<string, unknown>>("GET", "/api/memory/stats"),
+  remember: (content: string, kind: string, workspace?: string) =>
+    req<unknown>("POST", "/api/memory", { content, kind, workspace: workspace || undefined }),
+  editMemory: (id: string, content: string) => req<Memory>("PATCH", `/api/memory/${id}`, { content }),
+  forget: (id: string) => req<{ forgotten: string[] }>("DELETE", `/api/memory/${id}`),
+  searchMemory: (text: string, workspace?: string) =>
+    req<Retrieved[]>("POST", "/api/memory/search", { text, workspace: workspace || undefined, k: 10 }),
+  conflicts: (status?: string) =>
+    req<ConflictRow[]>("GET", `/api/memory/conflicts${status ? `?status=${status}` : ""}`),
+  resolveConflict: (id: string, winner: string | null, note: string) =>
+    req<unknown>("POST", `/api/memory/conflicts/${id}/resolve`, { winner, note }),
+  workspaces: () => req<string[]>("GET", "/api/memory/workspaces"),
+  backup: () => req<{ path: string }>("POST", "/api/memory/backup", {}),
+  importMemory: async (body: string): Promise<{ imported?: number; error?: string }> => {
+    const r = await fetch(`${API_BASE}/api/memory/import`, { method: "POST", body });
+    return (await r.json()) as { imported?: number; error?: string };
+  },
+  exportUrl: () => `${API_BASE}/api/memory/export`,
 };

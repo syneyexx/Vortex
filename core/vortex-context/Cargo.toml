@@ -1,6 +1,6 @@
 [package]
 name = "vortex-context"
-description = "Context assembly, budgetten, compactie, inspector."
+description = "Context assembly, budgetten, compactie, inspector — plus de koppeling geheugen ⇄ modellen."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -12,6 +12,12 @@ vortex-core.workspace = true
 vortex-memory.workspace = true
 vortex-models.workspace = true
 vortex-tools.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+tracing.workspace = true
+async-trait = "0.1"
 
 [lints]
 workspace = true
